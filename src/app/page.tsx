@@ -7,6 +7,7 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { getRootCategories } from '@/data/categories';
+import ReportButton from '@/components/ReportButton';
 
 type AdItem = {
   id: number;
@@ -40,19 +41,25 @@ const generateMockAds = (page: number, limit: number): AdItem[] => {
   return items;
 };
 
-// অ্যাড কার্ড (৩ কলামের জন্য)
+// অ্যাড কার্ড (৩ কলামের জন্য) - শুধু ছবি/ইমোজি, ভিডিও নেই
 const AdCard = ({ ad }: { ad: AdItem }) => (
-  <Link href="/post-details">
+  <Link href={`/post/${ad.id}`}>
     <div className="bg-white rounded-xl overflow-hidden shadow-sm border border-gray-100 cursor-pointer hover:shadow-md transition-all group">
-      <div className="relative bg-gradient-to-br from-orange-50 to-orange-100 p-6 flex items-center justify-center">
+      <div className="relative bg-gradient-to-br from-orange-50 to-orange-100 p-6 flex items-center justify-center h-40">
         <div className="text-6xl">{ad.image}</div>
         {ad.urgent && (
-          <div className="absolute top-2 left-2 bg-red-500 text-white text-[9px] font-bold px-1.5 py-0.5 rounded shadow-sm">
+          <div className="absolute top-2 left-2 bg-red-500 text-white text-[9px] font-bold px-1.5 py-0.5 rounded shadow-sm z-10">
             Urgent
           </div>
         )}
-        <button className="absolute top-2 right-2 bg-white/80 rounded-full p-1 shadow-sm">
-          <Heart size={14} className="text-gray-500" />
+        <button 
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+          }} 
+          className="absolute top-2 right-2 bg-white/80 rounded-full p-1 shadow-sm z-10 hover:bg-white transition"
+        >
+          <Heart size={14} className="text-gray-500 hover:text-red-500 transition" />
         </button>
       </div>
       <div className="p-2">
@@ -73,7 +80,7 @@ const AdCard = ({ ad }: { ad: AdItem }) => (
 // স্কেলেটন কার্ড
 const SkeletonCard = () => (
   <div className="bg-white rounded-xl overflow-hidden shadow-sm border border-gray-100 animate-pulse">
-    <div className="h-32 bg-gray-200" />
+    <div className="h-40 bg-gray-200" />
     <div className="p-2">
       <div className="h-3 bg-gray-200 rounded w-3/4 mb-2" />
       <div className="h-2 bg-gray-200 rounded w-1/2 mb-2" />
@@ -115,7 +122,6 @@ const AmarDuniyaHome = () => {
   // মূল ক্যাটাগরি গুলো (ডাটা ফাইল থেকে)
   const rootCategories = getRootCategories();
 
-  // ৪ সেকেন্ডে স্লাইড পরিবর্তন
   useEffect(() => {
     const timer = setInterval(() => {
       setCurrentSlide((prev) => (prev === slides.length - 1 ? 0 : prev + 1));
@@ -164,7 +170,6 @@ const AmarDuniyaHome = () => {
     return () => observer.disconnect();
   }, [loadingRecent, hasMoreRecent, loadRecentAds]);
 
-  // সুইপ হ্যান্ডলার
   const handleSwipe = (direction: 'left' | 'right') => {
     if (direction === 'left') {
       setCurrentSlide((prev) => (prev === slides.length - 1 ? 0 : prev + 1));
@@ -190,11 +195,9 @@ const AmarDuniyaHome = () => {
 
       <div className="max-w-[1200px] mx-auto">
         
-        {/* ব্যানার স্লাইডার - শুধু হাত দিয়ে সুইপ (বাটন বাদ) */}
+        {/* ব্যানার স্লাইডার - সুইপ সিস্টেম সহ */}
         <div className="mx-2 md:mx-0">
           <div className="relative h-44 md:h-80 overflow-hidden md:mt-4 md:rounded-3xl shadow-sm">
-            
-            {/* সুইপ কন্টেইনার */}
             <div className="relative w-full h-full">
               <AnimatePresence mode="wait" initial={false}>
                 <motion.div
@@ -241,10 +244,9 @@ const AmarDuniyaHome = () => {
                 />
               ))}
             </div>
-
           </div>
 
-          {/* ব্যানারের নিচের টেক্সট - ক্লিক করলেও ক্যাটাগরিতে যাবে */}
+          {/* ব্যানারের নিচের টেক্সট */}
           <Link href={slides[currentSlide].link}>
             <div className={`bg-gradient-to-r ${slides[currentSlide].color} mt-3 rounded-xl p-3 text-center shadow-md cursor-pointer`}>
               <h2 className="text-xl md:text-2xl font-black text-white uppercase tracking-tighter">
@@ -257,7 +259,7 @@ const AmarDuniyaHome = () => {
           </Link>
         </div>
 
-        {/* ক্যাটাগরি - আইকন + নাম (ডাটা ফাইল থেকে) */}
+        {/* ক্যাটাগরি - আইকন + নাম */}
         <nav className="bg-white py-6 grid grid-cols-4 md:grid-cols-6 lg:grid-cols-12 gap-4 px-3 md:rounded-2xl md:mt-4 shadow-sm">
           {rootCategories.map((cat) => (
             <Link 
@@ -302,7 +304,6 @@ const AmarDuniyaHome = () => {
         </section>
 
       </div>
-
     </div>
   );
 };
