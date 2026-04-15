@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import TopNavbar from "@/components/TopNavbar";
-import BottomNav from "@/components/BottomNav";
+import ClientLayout from "./ClientLayout";
 
 export const metadata: Metadata = {
   title: "আমার দুনিয়া",
@@ -16,7 +16,7 @@ export default function RootLayout({
       <body className="bg-gray-50">
         <TopNavbar />
         <main className="pb-20 md:pb-0 md:pt-16">{children}</main>
-        <BottomNav />
+        <ClientLayout />
       </body>
     </html>
   );
