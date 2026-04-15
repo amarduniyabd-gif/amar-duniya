@@ -5,7 +5,7 @@ import Link from "next/link";
 import { 
   ArrowLeft, Heart, Share2, MapPin, Phone, User, Eye, 
   Shield, CheckCircle, Flag, X, MessageCircle, Star, ThumbsUp,
-  ChevronLeft, ChevronRight, Play
+  ChevronLeft, ChevronRight, Play, Package, Calendar, Truck, BadgeCheck
 } from "lucide-react";
 
 type Comment = {
@@ -20,6 +20,7 @@ type Comment = {
   replies?: Comment[];
 };
 
+// পোস্ট ডাটা (পরে Supabase থেকে আনবে)
 const getPostById = (id: string) => {
   return {
     id: parseInt(id),
@@ -28,6 +29,10 @@ const getPostById = (id: string) => {
     originalPrice: 85000,
     location: "ঢাকা",
     time: "২ ঘন্টা আগে",
+    condition: "new", // new বা old
+    brand: "Apple",
+    warranty: "12", // 1,3,6,12,24 মাস
+    delivery: "pickup", // pickup বা delivery
     seller: {
       name: "রহিম উদ্দিন",
       phone: "০১৭XXXXXXXX",
@@ -46,6 +51,7 @@ const getPostById = (id: string) => {
   };
 };
 
+// কমেন্ট ডাটা
 const getComments = (): Comment[] => {
   return [
     {
@@ -163,6 +169,18 @@ export default function PostDetailsPage() {
     }
   };
 
+  // ওয়ারেন্টি টেক্সট ফরম্যাট
+  const getWarrantyText = (months: string) => {
+    switch(months) {
+      case "1": return "১ মাস ওয়ারেন্টি";
+      case "3": return "৩ মাস ওয়ারেন্টি";
+      case "6": return "৬ মাস ওয়ারেন্টি";
+      case "12": return "১ বছর ওয়ারেন্টি";
+      case "24": return "২ বছর ওয়ারেন্টি";
+      default: return null;
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gray-100 pb-6">
       
@@ -270,10 +288,9 @@ export default function PostDetailsPage() {
           )}
         </div>
 
-        {/* ========== চ্যাট, হোয়াটসঅ্যাপ, কল বাটন - ছবির নিচে ========== */}
+        {/* চ্যাট, হোয়াটসঅ্যাপ, কল বাটন */}
         <div className="p-4">
           <div className="flex gap-2">
-            {/* ইন্টারনাল চ্যাট */}
             <button
               onClick={handleInternalChat}
               className="flex-1 bg-gray-100 text-gray-700 py-3 rounded-xl font-semibold flex items-center justify-center gap-2 text-sm"
@@ -282,7 +299,6 @@ export default function PostDetailsPage() {
               চ্যাট
             </button>
             
-            {/* হোয়াটসঅ্যাপ */}
             <button
               onClick={handleWhatsAppChat}
               className="flex-1 bg-[#25D366] text-white py-3 rounded-xl font-semibold flex items-center justify-center gap-2 text-sm shadow-md"
@@ -293,7 +309,6 @@ export default function PostDetailsPage() {
               হোয়াটসঅ্যাপ
             </button>
             
-            {/* কল */}
             <button
               onClick={() => setShowPhone(!showPhone)}
               className="flex-1 bg-[#f85606] text-white py-3 rounded-xl font-semibold flex items-center justify-center gap-2 text-sm shadow-md"
@@ -322,6 +337,29 @@ export default function PostDetailsPage() {
                 <span className="text-sm text-gray-400 line-through">৳{post.originalPrice.toLocaleString()}</span>
               )}
             </div>
+            
+            {/* পণ্যের অবস্থা ব্যাজ */}
+            <div className="flex flex-wrap gap-2 mt-2">
+              <span className={`inline-flex items-center gap-1 text-xs px-2 py-1 rounded-full ${post.condition === 'new' ? 'bg-green-100 text-green-700' : 'bg-orange-100 text-orange-700'}`}>
+                {post.condition === 'new' ? '✨ নতুন' : '📦 পুরাতন'}
+              </span>
+              {post.brand && (
+                <span className="inline-flex items-center gap-1 text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded-full">
+                  <BadgeCheck size={12} /> {post.brand}
+                </span>
+              )}
+              {getWarrantyText(post.warranty) && (
+                <span className="inline-flex items-center gap-1 text-xs bg-purple-100 text-purple-700 px-2 py-1 rounded-full">
+                  <Calendar size={12} /> {getWarrantyText(post.warranty)}
+                </span>
+              )}
+              {post.delivery === 'delivery' && (
+                <span className="inline-flex items-center gap-1 text-xs bg-cyan-100 text-cyan-700 px-2 py-1 rounded-full">
+                  <Truck size={12} /> হোম ডেলিভারি
+                </span>
+              )}
+            </div>
+            
             <div className="flex items-center gap-3 mt-2 text-xs text-gray-500">
               <span>🔍 {post.views} বার দেখা</span>
               <span>❤️ {post.likes} লাইক</span>

@@ -4,7 +4,8 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { 
   ImageUp, X, ArrowLeft, Tag, DollarSign, MapPin, Phone, 
   FileText, Sparkles, Shield, Camera, Trash2, CheckCircle,
-  PlusCircle, Video, AlertCircle, FileCheck, Lock
+  PlusCircle, Video, AlertCircle, FileCheck, Lock, 
+  Package, Calendar, Truck, BadgeCheck
 } from "lucide-react";
 import { categories, getRootCategories } from "@/data/categories";
 
@@ -31,7 +32,7 @@ const validateContent = (title: string, description: string): { valid: boolean; 
     if (fullText.includes(keyword)) {
       return { 
         valid: false, 
-        reason: `আপনার পোস্টে অনুমোদিত নয় এমন শব্দ (${keyword}) পাওয়া গেছে। দয়া করে সরিয়ে ফেলুন।` 
+        reason: `আপনার পোস্টে অনুমোদিত নয় এমন শব্দ পাওয়া গেছে। দয়া করে সরিয়ে ফেলুন।` 
       };
     }
   }
@@ -57,11 +58,15 @@ export default function PostAdPage() {
   const [formData, setFormData] = useState({
     title: "",
     price: "",
+    condition: "new",
     category: preSelectedCategory || "",
     subCategory: "",
     description: "",
     phone: "",
     location: "",
+    delivery: "pickup",
+    warranty: "",
+    brand: "",
     termsAccepted: false,
   });
 
@@ -76,8 +81,8 @@ export default function PostAdPage() {
   
   const subCategories = getSubCategoriesForSelected();
 
-  // ইমেজ কম্প্রেস ফাংশন (৫০KB এর মধ্যে)
-  const compressImage = (file: File): Promise<File> => {
+  // 🔥 ইমেজ কম্প্রেস ফাংশন (WebP ফরম্যাটে - ৫০KB এর মধ্যে) - ব্যাকগ্রাউন্ডে
+  const compressImageToWebP = (file: File): Promise<File> => {
     return new Promise((resolve, reject) => {
       const reader = new FileReader();
       reader.readAsDataURL(file);
@@ -104,18 +109,19 @@ export default function PostAdPage() {
           const ctx = canvas.getContext('2d');
           ctx?.drawImage(img, 0, 0, width, height);
           
-          let quality = 0.5;
-          let dataUrl = canvas.toDataURL('image/jpeg', quality);
+          let quality = 0.7;
+          let dataUrl = canvas.toDataURL('image/webp', quality);
           
-          while (dataUrl.length > 50000 && quality > 0.1) {
-            quality -= 0.1;
-            dataUrl = canvas.toDataURL('image/jpeg', quality);
+          while (dataUrl.length > 50000 && quality > 0.2) {
+            quality -= 0.05;
+            dataUrl = canvas.toDataURL('image/webp', quality);
           }
           
           fetch(dataUrl)
             .then(res => res.blob())
             .then(blob => {
-              const compressedFile = new File([blob], file.name, { type: 'image/jpeg' });
+              const originalName = file.name.replace(/\.[^/.]+$/, '');
+              const compressedFile = new File([blob], `${originalName}.webp`, { type: 'image/webp' });
               resolve(compressedFile);
             })
             .catch(reject);
@@ -123,6 +129,23 @@ export default function PostAdPage() {
       };
       reader.onerror = reject;
     });
+  };
+
+  // একাধিক ছবি কম্প্রেস (ব্যাকগ্রাউন্ডে - ইউজার কিছুই দেখবে না)
+  const compressMultipleImages = async (files: File[]): Promise<File[]> => {
+    const compressed: File[] = [];
+    
+    for (const file of files) {
+      try {
+        const compressedFile = await compressImageToWebP(file);
+        compressed.push(compressedFile);
+      } catch (error) {
+        console.error('Compression failed:', error);
+        compressed.push(file);
+      }
+    }
+    
+    return compressed;
   };
 
   // ভিডিও ভ্যালিডেশন (১০০KB)
@@ -137,7 +160,6 @@ export default function PostAdPage() {
       return false;
     }
     
-    // চেক করা ফাইল এক্সটেনশন
     const ext = '.' + file.name.split('.').pop()?.toLowerCase();
     if (blockedExtensions.includes(ext)) {
       setVideoError('এই ধরনের ফাইল আপলোড করা যাবে না');
@@ -164,21 +186,21 @@ export default function PostAdPage() {
           continue;
         }
         
-        // চেক করা ফাইল এক্সটেনশন
         const ext = '.' + file.name.split('.').pop()?.toLowerCase();
         if (blockedExtensions.includes(ext)) {
           newErrors.push(`${file.name} এই ধরনের ফাইল আপলোড করা যাবে না`);
           continue;
         }
-        
-        try {
-          const compressed = await compressImage(file);
-          setImages(prev => [...prev, compressed]);
-        } catch (error) {
-          newErrors.push(`${file.name} কম্প্রেস করতে সমস্যা হয়েছে`);
-        }
       }
-      setImageErrors(newErrors);
+      
+      if (newErrors.length > 0) {
+        setImageErrors(newErrors);
+        return;
+      }
+      
+      // ব্যাকগ্রাউন্ডে কম্প্রেস (ইউজার কিছুই দেখবে না)
+      const compressedImages = await compressMultipleImages(files);
+      setImages(prev => [...prev, ...compressedImages]);
     }
   };
 
@@ -203,7 +225,6 @@ export default function PostAdPage() {
     const { name, value } = e.target;
     setFormData({ ...formData, [name]: value });
     
-    // টাইটেল বা বিবরণ পরিবর্তন হলে কন্টেন্ট চেক ক্লিয়ার করুন
     if (name === 'title' || name === 'description') {
       setContentError(null);
     }
@@ -229,7 +250,6 @@ export default function PostAdPage() {
       return;
     }
     
-    // কন্টেন্ট ভ্যালিডেশন চেক
     const validation = validateContent(formData.title, formData.description);
     if (!validation.valid) {
       setContentError(validation.reason);
@@ -262,7 +282,6 @@ export default function PostAdPage() {
 
         <form onSubmit={handleSubmit} className="space-y-5">
           
-          {/* কন্টেন্ট এরর দেখালে */}
           {contentError && (
             <div className="bg-red-50 border border-red-200 rounded-xl p-3 flex items-start gap-2">
               <AlertCircle size={18} className="text-red-500 mt-0.5" />
@@ -270,12 +289,12 @@ export default function PostAdPage() {
             </div>
           )}
 
-          {/* ছবি আপলোড */}
+          {/* ছবি আপলোড - WebP ফরম্যাট (ব্যাকগ্রাউন্ডে কম্প্রেস) */}
           <div className="bg-white rounded-2xl shadow-md p-5 border border-gray-100">
             <label className="flex items-center gap-2 text-sm font-semibold text-gray-700 mb-3">
               <Camera size={18} className="text-[#f85606]" />
               ছবি আপলোড করুন
-              <span className="text-xs text-gray-400 font-normal">(সর্বোচ্চ ৪টি, প্রতি ছবি ৫০KB)</span>
+              <span className="text-xs text-gray-400 font-normal">(সর্বোচ্চ ৪টি)</span>
             </label>
             
             <div className="flex flex-wrap gap-3 mb-3">
@@ -286,6 +305,9 @@ export default function PostAdPage() {
                     alt="preview" 
                     className="w-full h-full object-cover"
                   />
+                  <div className="absolute bottom-0 left-0 right-0 bg-black/50 text-white text-[8px] text-center py-0.5">
+                    WebP
+                  </div>
                   <button 
                     type="button" 
                     onClick={() => removeImage(idx)} 
@@ -307,7 +329,7 @@ export default function PostAdPage() {
             {imageErrors.length > 0 && (
               <p className="text-red-500 text-xs mt-1">{imageErrors[0]}</p>
             )}
-            <p className="text-[10px] text-gray-400 mt-2">✓ ছবি স্বয়ংক্রিয়ভাবে ৫০KB এ কম্প্রেস হবে</p>
+            <p className="text-[10px] text-gray-400 mt-2">✓ ছবি স্বয়ংক্রিয়ভাবে WebP ফরম্যাটে ৫০KB এ কম্প্রেস হবে</p>
           </div>
 
           {/* ভিডিও আপলোড */}
@@ -361,12 +383,28 @@ export default function PostAdPage() {
             />
           </div>
 
+          {/* ব্র্যান্ড */}
+          <div className="bg-white rounded-2xl shadow-md p-5 border border-gray-100">
+            <label className="flex items-center gap-2 text-sm font-semibold text-gray-700 mb-2">
+              <BadgeCheck size={18} className="text-[#f85606]" />
+              ব্র্যান্ড (ঐচ্ছিক)
+            </label>
+            <input
+              type="text"
+              name="brand"
+              value={formData.brand}
+              onChange={handleChange}
+              placeholder="যেমন: Apple, Samsung, Nike..."
+              className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#f85606]"
+            />
+          </div>
+
           {/* দাম ও ক্যাটাগরি */}
           <div className="grid grid-cols-2 gap-4">
             <div className="bg-white rounded-2xl shadow-md p-5 border border-gray-100">
               <label className="flex items-center gap-2 text-sm font-semibold text-gray-700 mb-2">
                 <DollarSign size={18} className="text-[#f85606]" />
-                দাম (৳)
+                দাম (৳) <span className="text-red-500">*</span>
               </label>
               <input
                 type="number"
@@ -381,75 +419,114 @@ export default function PostAdPage() {
             
             <div className="bg-white rounded-2xl shadow-md p-5 border border-gray-100">
               <label className="flex items-center gap-2 text-sm font-semibold text-gray-700 mb-2">
-                <FileText size={18} className="text-[#f85606]" />
-                ক্যাটাগরি
+                <Package size={18} className="text-[#f85606]" />
+                পণ্যের অবস্থা <span className="text-red-500">*</span>
               </label>
               <select
-                name="category"
-                value={formData.category}
+                name="condition"
+                value={formData.condition}
                 onChange={handleChange}
                 className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#f85606]"
                 required
               >
-                <option value="">সিলেক্ট করুন</option>
-                {rootCategories.map((cat) => (
-                  <option key={cat.id} value={cat.id}>{cat.icon} {cat.name}</option>
-                ))}
+                <option value="new">✨ নতুন (ব্র্যান্ড নিউ)</option>
+                <option value="old">📦 পুরাতন (ইউজড)</option>
               </select>
-
-              {subCategories.length > 0 && (
-                <div className="mt-3">
-                  <select
-                    name="subCategory"
-                    value={formData.subCategory}
-                    onChange={handleChange}
-                    className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#f85606]"
-                  >
-                    <option value="">সাব-ক্যাটাগরি (ঐচ্ছিক)</option>
-                    {subCategories.map((sub) => (
-                      <option key={sub.id} value={sub.id}>{sub.icon} {sub.name}</option>
-                    ))}
-                  </select>
-                </div>
-              )}
-
-              {!showNewCategory ? (
-                <button
-                  type="button"
-                  onClick={() => setShowNewCategory(true)}
-                  className="mt-3 text-sm text-[#f85606] flex items-center gap-1 hover:underline"
-                >
-                  <PlusCircle size={16} />
-                  আপনার ক্যাটাগরি এখানে নেই? নতুন ক্যাটাগরি যোগ করুন
-                </button>
-              ) : (
-                <div className="mt-3 p-3 bg-orange-50 rounded-xl">
-                  <input
-                    type="text"
-                    value={newCategoryName}
-                    onChange={(e) => setNewCategoryName(e.target.value)}
-                    placeholder="নতুন ক্যাটাগরির নাম লিখুন"
-                    className="w-full p-2 border border-gray-200 rounded-lg mb-2"
-                  />
-                  <div className="flex gap-2">
-                    <button
-                      type="button"
-                      onClick={handleAddNewCategory}
-                      className="bg-[#f85606] text-white px-3 py-1 rounded-lg text-sm"
-                    >
-                      জমা দিন
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setShowNewCategory(false)}
-                      className="bg-gray-200 text-gray-700 px-3 py-1 rounded-lg text-sm"
-                    >
-                      বাতিল
-                    </button>
-                  </div>
-                </div>
-              )}
             </div>
+          </div>
+
+          {/* ক্যাটাগরি */}
+          <div className="bg-white rounded-2xl shadow-md p-5 border border-gray-100">
+            <label className="flex items-center gap-2 text-sm font-semibold text-gray-700 mb-2">
+              <FileText size={18} className="text-[#f85606]" />
+              ক্যাটাগরি <span className="text-red-500">*</span>
+            </label>
+            <select
+              name="category"
+              value={formData.category}
+              onChange={handleChange}
+              className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#f85606]"
+              required
+            >
+              <option value="">সিলেক্ট করুন</option>
+              {rootCategories.map((cat) => (
+                <option key={cat.id} value={cat.id}>{cat.icon} {cat.name}</option>
+              ))}
+            </select>
+
+            {subCategories.length > 0 && (
+              <div className="mt-3">
+                <select
+                  name="subCategory"
+                  value={formData.subCategory}
+                  onChange={handleChange}
+                  className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#f85606]"
+                >
+                  <option value="">সাব-ক্যাটাগরি (ঐচ্ছিক)</option>
+                  {subCategories.map((sub) => (
+                    <option key={sub.id} value={sub.id}>{sub.icon} {sub.name}</option>
+                  ))}
+                </select>
+              </div>
+            )}
+
+            {!showNewCategory ? (
+              <button
+                type="button"
+                onClick={() => setShowNewCategory(true)}
+                className="mt-3 text-sm text-[#f85606] flex items-center gap-1 hover:underline"
+              >
+                <PlusCircle size={16} />
+                আপনার ক্যাটাগরি এখানে নেই? নতুন ক্যাটাগরি যোগ করুন
+              </button>
+            ) : (
+              <div className="mt-3 p-3 bg-orange-50 rounded-xl">
+                <input
+                  type="text"
+                  value={newCategoryName}
+                  onChange={(e) => setNewCategoryName(e.target.value)}
+                  placeholder="নতুন ক্যাটাগরির নাম লিখুন"
+                  className="w-full p-2 border border-gray-200 rounded-lg mb-2"
+                />
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={handleAddNewCategory}
+                    className="bg-[#f85606] text-white px-3 py-1 rounded-lg text-sm"
+                  >
+                    জমা দিন
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setShowNewCategory(false)}
+                    className="bg-gray-200 text-gray-700 px-3 py-1 rounded-lg text-sm"
+                  >
+                    বাতিল
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* ওয়ারেন্টি */}
+          <div className="bg-white rounded-2xl shadow-md p-5 border border-gray-100">
+            <label className="flex items-center gap-2 text-sm font-semibold text-gray-700 mb-2">
+              <Calendar size={18} className="text-[#f85606]" />
+              ওয়ারেন্টি (ঐচ্ছিক)
+            </label>
+            <select
+              name="warranty"
+              value={formData.warranty}
+              onChange={handleChange}
+              className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#f85606]"
+            >
+              <option value="">নেই</option>
+              <option value="1">১ মাস</option>
+              <option value="3">৩ মাস</option>
+              <option value="6">৬ মাস</option>
+              <option value="12">১ বছর</option>
+              <option value="24">২ বছর</option>
+            </select>
           </div>
 
           {/* বিবরণ */}
@@ -469,12 +546,44 @@ export default function PostAdPage() {
             <p className="text-[10px] text-gray-400 mt-2">✓ বিস্তারিত বিবরণ দিলে ক্রেতা আগ্রহী হয়</p>
           </div>
 
+          {/* ডেলিভারি অপশন */}
+          <div className="bg-white rounded-2xl shadow-md p-5 border border-gray-100">
+            <label className="flex items-center gap-2 text-sm font-semibold text-gray-700 mb-2">
+              <Truck size={18} className="text-[#f85606]" />
+              ডেলিভারি অপশন
+            </label>
+            <div className="flex gap-4">
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="radio"
+                  name="delivery"
+                  value="pickup"
+                  checked={formData.delivery === "pickup"}
+                  onChange={handleChange}
+                  className="w-4 h-4 text-[#f85606]"
+                />
+                <span className="text-sm">হাতে হাতে নিবেন</span>
+              </label>
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="radio"
+                  name="delivery"
+                  value="delivery"
+                  checked={formData.delivery === "delivery"}
+                  onChange={handleChange}
+                  className="w-4 h-4 text-[#f85606]"
+                />
+                <span className="text-sm">হোম ডেলিভারি চাই</span>
+              </label>
+            </div>
+          </div>
+
           {/* যোগাযোগ ও লোকেশন */}
           <div className="grid grid-cols-2 gap-4">
             <div className="bg-white rounded-2xl shadow-md p-5 border border-gray-100">
               <label className="flex items-center gap-2 text-sm font-semibold text-gray-700 mb-2">
                 <Phone size={18} className="text-[#f85606]" />
-                মোবাইল নম্বর
+                মোবাইল নম্বর <span className="text-red-500">*</span>
               </label>
               <input
                 type="tel"

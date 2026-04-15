@@ -4,11 +4,11 @@ export interface Category {
   slug: string;
   icon: string;
   parentId: string | null;
-  hasPayment?: boolean; // পাত্র-পাত্রীর জন্য ছবি দেখতে পেমেন্ট লাগবে কিনা
+  hasPayment?: boolean;
 }
 
 export const categories: Category[] = [
-  // মূল ক্যাটাগরি (parentId = null)
+  // ========== আগের ক্যাটাগরি গুলো ==========
   { id: "offer", name: "অফার জোন", slug: "offer", icon: "🎁", parentId: null },
   { id: "mobile", name: "মোবাইল", slug: "mobile", icon: "📱", parentId: null },
   { id: "computer", name: "কম্পিউটার", slug: "computer", icon: "💻", parentId: null },
@@ -22,13 +22,61 @@ export const categories: Category[] = [
   { id: "matrimony", name: "পাত্র-পাত্রী চায়", slug: "matrimony", icon: "💑", parentId: null, hasPayment: true },
   { id: "rent", name: "ভাড়া / রেন্ট", slug: "rent", icon: "🔑", parentId: null },
   { id: "emergency", name: "জরুরি সেবা", slug: "emergency", icon: "🚑", parentId: null },
+  { id: "animal", name: "পশু", slug: "animal", icon: "🐄", parentId: null },
+  { id: "liquid", name: "তরল প্রোডাক্ট", slug: "liquid", icon: "🥛", parentId: null },
+  { id: "daily", name: "প্রতিদিনের বাজার", slug: "daily", icon: "🛒", parentId: null },
 
+  // ========== নতুন: কৃষি ক্যাটাগরি ==========
+  { id: "agriculture", name: "কৃষি", slug: "agriculture", icon: "🌾", parentId: null },
+  { id: "agri_rice", name: "ধান", slug: "rice", icon: "🌾", parentId: "agriculture" },
+  { id: "agri_jute", name: "পাট", slug: "jute", icon: "🌿", parentId: "agriculture" },
+  { id: "agri_tobacco", name: "তামাক পাতা", slug: "tobacco", icon: "🍃", parentId: "agriculture" },
+  { id: "agri_wheat", name: "গম", slug: "wheat", icon: "🌾", parentId: "agriculture" },
+  { id: "agri_corn", name: "ভুট্টা", slug: "corn", icon: "🌽", parentId: "agriculture" },
+  { id: "agri_fertilizer", name: "কীটনাশক ও সার", slug: "fertilizer", icon: "🧪", parentId: "agriculture" },
+  { id: "agri_seeds", name: "বীজ", slug: "seeds", icon: "🌱", parentId: "agriculture" },
+  { id: "agri_tools", name: "কৃষি সরঞ্জাম", slug: "tools", icon: "🔧", parentId: "agriculture" },
+  { id: "agri_irrigation", name: "সেচ পাম্প", slug: "irrigation", icon: "💧", parentId: "agriculture" },
+  { id: "agri_fruit", name: "ফল", slug: "fruit", icon: "🍎", parentId: "agriculture" },
+  { id: "agri_vegetable_seed", name: "সবজি বীজ", slug: "veg-seed", icon: "🥬", parentId: "agriculture" },
+  { id: "agri_other", name: "অন্যান্য", slug: "agri-other", icon: "📦", parentId: "agriculture" },
+
+  // ========== পশু ক্যাটাগরির সাব-ক্যাটাগরি ==========
+  { id: "animal_cow", name: "গরু", slug: "cow", icon: "🐄", parentId: "animal" },
+  { id: "animal_goat", name: "ছাগল", slug: "goat", icon: "🐐", parentId: "animal" },
+  { id: "animal_deshi_chicken", name: "দেশি মুরগি", slug: "deshi-chicken", icon: "🐔", parentId: "animal" },
+  { id: "animal_broiler", name: "বয়লার মুরগি", slug: "broiler", icon: "🐓", parentId: "animal" },
+  { id: "animal_bird", name: "পাখি", slug: "bird", icon: "🐦", parentId: "animal" },
+  { id: "animal_other", name: "অন্যান্য", slug: "animal-other", icon: "📦", parentId: "animal" },
+
+  // ========== তরল প্রোডাক্ট সাব-ক্যাটাগরি ==========
+  { id: "liquid_milk", name: "গরুর দুধ", slug: "milk", icon: "🥛", parentId: "liquid" },
+  { id: "liquid_honey", name: "মধু", slug: "honey", icon: "🍯", parentId: "liquid" },
+  { id: "liquid_ghee", name: "দেশি ঘি", slug: "ghee", icon: "🧈", parentId: "liquid" },
+  { id: "liquid_other", name: "অন্যান্য", slug: "liquid-other", icon: "📦", parentId: "liquid" },
+
+  // ========== প্রতিদিনের বাজার সাব-ক্যাটাগরি ==========
+  { id: "daily_vegetable", name: "সবজি", slug: "vegetable", icon: "🥬", parentId: "daily" },
+  { id: "daily_fish", name: "মাছ", slug: "fish", icon: "🐟", parentId: "daily" },
+  { id: "daily_meat", name: "মাংস", slug: "meat", icon: "🍖", parentId: "daily" },
+  { id: "daily_egg", name: "ডিম", slug: "egg", icon: "🥚", parentId: "daily" },
+  { id: "daily_rice", name: "চাল", slug: "rice", icon: "🍚", parentId: "daily" },
+  { id: "daily_daal", name: "ডাল", slug: "daal", icon: "🫘", parentId: "daily" },
+  { id: "daily_oil", name: "তেল", slug: "oil", icon: "🫒", parentId: "daily" },
+  { id: "daily_onion", name: "পেঁয়াজ", slug: "onion", icon: "🧅", parentId: "daily" },
+  { id: "daily_garlic", name: "রসুন", slug: "garlic", icon: "🧄", parentId: "daily" },
+  { id: "daily_ginger", name: "আদা", slug: "ginger", icon: "🫚", parentId: "daily" },
+  { id: "daily_potato", name: "আলু", slug: "potato", icon: "🥔", parentId: "daily" },
+  { id: "daily_other", name: "অন্যান্য", slug: "daily-other", icon: "📦", parentId: "daily" },
+
+  // ========== আগের সাব-ক্যাটাগরি গুলো (সংক্ষেপে) ==========
+  
   // গাড়ির সাব-ক্যাটাগরি
   { id: "car_motorcycle", name: "মোটরসাইকেল", slug: "motorcycle", icon: "🏍️", parentId: "car" },
   { id: "car_bicycle", name: "সাইকেল", slug: "bicycle", icon: "🚲", parentId: "car" },
   { id: "car_truck", name: "ট্রাক", slug: "truck", icon: "🚛", parentId: "car" },
   { id: "car_micro", name: "মাইক্রো", slug: "micro", icon: "🚐", parentId: "car" },
-  { id: "car_hi ace", name: "হাইস", slug: "hi-ace", icon: "🚌", parentId: "car" },
+  { id: "car_hi-ace", name: "হাইস", slug: "hi-ace", icon: "🚌", parentId: "car" },
   { id: "car_auto", name: "অটো গাড়ি", slug: "auto", icon: "🛺", parentId: "car" },
   { id: "car_van", name: "ভ্যান গাড়ি", slug: "van", icon: "🚐", parentId: "car" },
   { id: "car_other", name: "অন্যান্য", slug: "car-other", icon: "📦", parentId: "car" },
@@ -38,9 +86,6 @@ export const categories: Category[] = [
   { id: "mobile_samsung", name: "Samsung", slug: "samsung", icon: "📱", parentId: "mobile" },
   { id: "mobile_xiaomi", name: "Xiaomi", slug: "xiaomi", icon: "📱", parentId: "mobile" },
   { id: "mobile_oneplus", name: "OnePlus", slug: "oneplus", icon: "📱", parentId: "mobile" },
-  { id: "mobile_realme", name: "Realme", slug: "realme", icon: "📱", parentId: "mobile" },
-  { id: "mobile_oppo", name: "Oppo", slug: "oppo", icon: "📱", parentId: "mobile" },
-  { id: "mobile_vivo", name: "Vivo", slug: "vivo", icon: "📱", parentId: "mobile" },
   { id: "mobile_other", name: "অন্যান্য", slug: "mobile-other", icon: "📦", parentId: "mobile" },
 
   // কম্পিউটারের সাব-ক্যাটাগরি
@@ -49,7 +94,6 @@ export const categories: Category[] = [
   { id: "computer_monitor", name: "মনিটর", slug: "monitor", icon: "🖥️", parentId: "computer" },
   { id: "computer_keyboard", name: "কিবোর্ড", slug: "keyboard", icon: "⌨️", parentId: "computer" },
   { id: "computer_mouse", name: "মাউস", slug: "mouse", icon: "🖱️", parentId: "computer" },
-  { id: "computer_accessories", name: "এক্সেসরিজ", slug: "accessories", icon: "🎧", parentId: "computer" },
   { id: "computer_other", name: "অন্যান্য", slug: "computer-other", icon: "📦", parentId: "computer" },
 
   // ফ্যাশনের সাব-ক্যাটাগরি
@@ -60,11 +104,11 @@ export const categories: Category[] = [
   { id: "fashion_other", name: "অন্যান্য", slug: "fashion-other", icon: "📦", parentId: "fashion" },
 
   // চাকরির সাব-ক্যাটাগরি
-  { id: "job_teach", name: "পড়াতে চায়", slug: "teach", icon: "📚", parentId: "job" },
-  { id: "job_learn", name: "পড়তে চায়", slug: "learn", icon: "🎓", parentId: "job" },
+  { id: "job_teach", name: "পড়াতে চায়", slug: "teach", icon: "📚", parentId: "job" },
+  { id: "job_learn", name: "পড়তে চায়", slug: "learn", icon: "🎓", parentId: "job" },
   { id: "job_hire", name: "চাকরি নিয়োগ", slug: "hire", icon: "👥", parentId: "job" },
-  { id: "job_seek", name: "চাকরি চায়", slug: "seek", icon: "🔍", parentId: "job" },
-  { id: "job_labor", name: "দিন মজুর কাজের লোক চায়", slug: "labor", icon: "🔨", parentId: "job" },
+  { id: "job_seek", name: "চাকরি চায়", slug: "seek", icon: "🔍", parentId: "job" },
+  { id: "job_labor", name: "দিন মজুর কাজের লোক চায়", slug: "labor", icon: "🔨", parentId: "job" },
   { id: "job_other", name: "অন্যান্য", slug: "job-other", icon: "📦", parentId: "job" },
 
   // সার্ভিসের সাব-ক্যাটাগরি
@@ -92,17 +136,19 @@ export const categories: Category[] = [
   { id: "rent_other", name: "অন্যান্য", slug: "rent-other", icon: "📦", parentId: "rent" },
 ];
 
-// হেল্পার ফাংশন: মূল ক্যাটাগরি বের করা
+// হেল্পার ফাংশন
 export function getRootCategories() {
   return categories.filter(cat => cat.parentId === null);
 }
 
-// হেল্পার ফাংশন: সাব-ক্যাটাগরি বের করা
 export function getSubCategories(parentId: string) {
   return categories.filter(cat => cat.parentId === parentId);
 }
 
-// হেল্পার ফাংশন: স্লাগ থেকে ক্যাটাগরি বের করা
 export function getCategoryBySlug(slug: string) {
   return categories.find(cat => cat.slug === slug);
+}
+
+export function getCategoryById(id: string) {
+  return categories.find(cat => cat.id === id);
 }
