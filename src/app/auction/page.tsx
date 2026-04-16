@@ -1,6 +1,7 @@
 "use client";
 import { useState, useEffect } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { Clock, Users, Gavel, Heart, Eye, PlusCircle } from "lucide-react";
 
 type Auction = {
@@ -79,7 +80,24 @@ function Timer({ endTime }: { endTime: string }) {
 }
 
 export default function AuctionListPage() {
+  const router = useRouter();
   const [auctions, setAuctions] = useState(dummyAuctions);
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+
+  useEffect(() => {
+    const loggedIn = localStorage.getItem("isLoggedIn");
+    setIsLoggedIn(loggedIn === "true");
+  }, []);
+
+  const handleAuctionClick = (auctionId: number) => {
+    if (!isLoggedIn) {
+      // লগইন না থাকলে, লগইন করার পর এই পেজে ফিরে আসার জন্য URL সেভ করুন
+      localStorage.setItem("redirectAfterLogin", `/auction/${auctionId}`);
+      router.push("/login");
+    } else {
+      router.push(`/auction/${auctionId}`);
+    }
+  };
 
   return (
     <div className="min-h-screen bg-gray-100 pb-20">
@@ -97,45 +115,62 @@ export default function AuctionListPage() {
 
       <div className="max-w-3xl mx-auto p-4 space-y-4">
         
-        {/* নতুন নিলাম তৈরি বাটন */}
-        <Link href="/auction/create">
-          <button className="w-full bg-gradient-to-r from-[#f85606] to-orange-500 text-white py-3 rounded-xl font-semibold flex items-center justify-center gap-2 shadow-md">
-            <PlusCircle size={18} />
-            নতুন নিলাম তৈরি করুন
-          </button>
-        </Link>
+        {/* নতুন নিলাম তৈরি বাটন - শুধু লগইন করলে দেখাবে */}
+        {isLoggedIn && (
+          <Link href="/auction/create">
+            <button className="w-full bg-gradient-to-r from-[#f85606] to-orange-500 text-white py-3 rounded-xl font-semibold flex items-center justify-center gap-2 shadow-md">
+              <PlusCircle size={18} />
+              নতুন নিলাম তৈরি করুন
+            </button>
+          </Link>
+        )}
 
         {/* নিলাম লিস্ট */}
         {auctions.map((auction) => (
-          <Link key={auction.id} href={`/auction/${auction.id}`}>
-            <div className="bg-white rounded-xl p-4 shadow-sm hover:shadow-md transition-all cursor-pointer">
-              <div className="flex gap-4">
-                <div className="w-20 h-20 bg-gradient-to-br from-orange-50 to-orange-100 rounded-xl flex items-center justify-center text-4xl">
-                  {auction.image}
-                </div>
-                <div className="flex-1">
-                  <h3 className="font-bold text-gray-800 line-clamp-1">{auction.title}</h3>
-                  <p className="text-xs text-gray-500 mt-0.5">{auction.seller}</p>
-                  <div className="flex items-center gap-3 mt-2">
-                    <div className="flex flex-col">
-                      <span className="text-[10px] text-gray-400">বর্তমান দাম</span>
-                      <span className="text-sm font-black text-[#f85606]">৳{auction.currentPrice.toLocaleString()}</span>
-                    </div>
-                    <div className="w-px h-6 bg-gray-200" />
-                    <div className="flex flex-col">
-                      <span className="text-[10px] text-gray-400">মোট বিড</span>
-                      <span className="text-sm font-semibold text-gray-700 flex items-center gap-1">
-                        <Users size={12} /> {auction.totalBids}
-                      </span>
-                    </div>
-                    <div className="w-px h-6 bg-gray-200" />
-                    <Timer endTime={auction.endTime} />
+          <div 
+            key={auction.id} 
+            onClick={() => handleAuctionClick(auction.id)}
+            className="bg-white rounded-xl p-4 shadow-sm hover:shadow-md transition-all cursor-pointer"
+          >
+            <div className="flex gap-4">
+              <div className="w-20 h-20 bg-gradient-to-br from-orange-50 to-orange-100 rounded-xl flex items-center justify-center text-4xl">
+                {auction.image}
+              </div>
+              <div className="flex-1">
+                <h3 className="font-bold text-gray-800 line-clamp-1">{auction.title}</h3>
+                <p className="text-xs text-gray-500 mt-0.5">{auction.seller}</p>
+                <div className="flex items-center gap-3 mt-2">
+                  <div className="flex flex-col">
+                    <span className="text-[10px] text-gray-400">বর্তমান দাম</span>
+                    <span className="text-sm font-black text-[#f85606]">৳{auction.currentPrice.toLocaleString()}</span>
                   </div>
+                  <div className="w-px h-6 bg-gray-200" />
+                  <div className="flex flex-col">
+                    <span className="text-[10px] text-gray-400">মোট বিড</span>
+                    <span className="text-sm font-semibold text-gray-700 flex items-center gap-1">
+                      <Users size={12} /> {auction.totalBids}
+                    </span>
+                  </div>
+                  <div className="w-px h-6 bg-gray-200" />
+                  <Timer endTime={auction.endTime} />
                 </div>
               </div>
             </div>
-          </Link>
+          </div>
         ))}
+
+        {/* লগইন মেসেজ - লগইন না করলে দেখাবে */}
+        {!isLoggedIn && (
+          <div className="bg-blue-50 rounded-xl p-4 text-center">
+            <p className="text-sm text-blue-700">বিড করতে এবং নিলাম তৈরি করতে লগইন করুন</p>
+            <button 
+              onClick={() => router.push("/login")}
+              className="text-sm text-[#f85606] font-semibold mt-2 inline-block"
+            >
+              লগইন করুন →
+            </button>
+          </div>
+        )}
 
       </div>
     </div>

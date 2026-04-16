@@ -1,6 +1,7 @@
 "use client";
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { 
     Search, Home as HomeIcon, Gavel, Users, User, 
     ShoppingBag, Plus, Heart, Loader2
@@ -90,7 +91,9 @@ const SkeletonCard = () => (
 );
 
 const AmarDuniyaHome = () => {
+  const router = useRouter();
   const [currentSlide, setCurrentSlide] = useState(0);
+  const [searchQuery, setSearchQuery] = useState('');
   
   // ১৫টি স্লাইড (প্রতিটির সাথে ক্যাটাগরি লিংক)
   const slides = [
@@ -178,16 +181,41 @@ const AmarDuniyaHome = () => {
     }
   };
 
+  // সার্চ হ্যান্ডলার
+  const handleSearch = () => {
+    if (searchQuery.trim()) {
+      router.push(`/search?q=${encodeURIComponent(searchQuery.trim())}`);
+    }
+  };
+
+  const handleKeyPress = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') {
+      handleSearch();
+    }
+  };
+
   return (
     <div className="bg-[#f2f3f7] min-h-screen pb-24 font-sans w-full overflow-x-hidden text-[#212121]">
       
-      {/* হেডার */}
+      {/* হেডার - সার্চ ফাংশন যোগ করা হয়েছে */}
       <header className="bg-white px-4 py-3 sticky top-0 z-[100] border-b border-gray-100 shadow-sm">
         <div className="max-w-[1200px] mx-auto flex justify-between items-center gap-4">
           <div className="flex items-center bg-[#f0f1f5] rounded-xl px-4 py-1.5 border focus-within:border-[#f85606] transition-all flex-1">
             <Search size={16} className="text-gray-400" />
-            <input type="text" placeholder="আমার দুনিয়ায় খুঁজুন..." className="bg-transparent border-none outline-none ml-2 w-full text-xs" />
-            <button className="bg-[#f85606] text-white px-4 py-1.5 rounded-lg text-xs font-bold shrink-0 active:scale-95 transition-transform">Search</button>
+            <input 
+              type="text" 
+              placeholder="আমার দুনিয়ায় খুঁজুন..." 
+              className="bg-transparent border-none outline-none ml-2 w-full text-xs"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              onKeyPress={handleKeyPress}
+            />
+            <button 
+              onClick={handleSearch}
+              className="bg-[#f85606] text-white px-4 py-1.5 rounded-lg text-xs font-bold shrink-0 active:scale-95 transition-transform"
+            >
+              Search
+            </button>
           </div>
           <ShoppingBag size={20} className="text-gray-600 shrink-0 cursor-pointer" />
         </div>

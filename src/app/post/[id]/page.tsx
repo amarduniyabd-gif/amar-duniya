@@ -5,8 +5,10 @@ import Link from "next/link";
 import { 
   ArrowLeft, Heart, Share2, MapPin, Phone, User, Eye, 
   Shield, CheckCircle, Flag, X, MessageCircle, Star, ThumbsUp,
-  ChevronLeft, ChevronRight, Play, Package, Calendar, Truck, BadgeCheck
+  ChevronLeft, ChevronRight, Play, Package, Calendar, Truck, BadgeCheck,
+  FileText, Lock, CreditCard
 } from "lucide-react";
+import PaymentModal from "@/components/PaymentModal";
 
 type Comment = {
   id: number;
@@ -100,6 +102,7 @@ export default function PostDetailsPage() {
   const [isLiked, setIsLiked] = useState(false);
   const [showPhone, setShowPhone] = useState(false);
   const [showReportModal, setShowReportModal] = useState(false);
+  const [showDocumentModal, setShowDocumentModal] = useState(false);
   const [activeImage, setActiveImage] = useState(0);
   const [newComment, setNewComment] = useState("");
   const [newRating, setNewRating] = useState(0);
@@ -122,7 +125,6 @@ export default function PostDetailsPage() {
   };
 
   const handleInternalChat = () => {
-    // চ্যাট পেজে নিয়ে যাবে
     router.push(`/chat/${post.id}`);
   };
 
@@ -131,6 +133,10 @@ export default function PostDetailsPage() {
     const message = `হ্যালো, আমি "${post.title}" পণ্যটি সম্পর্কে জানতে চাই।`;
     const url = `https://wa.me/${phone.replace(/[^0-9]/g, '')}?text=${encodeURIComponent(message)}`;
     window.open(url, '_blank');
+  };
+
+  const handleDocumentSuccess = () => {
+    alert("ডকুমেন্ট সার্ভিস সক্রিয়! ক্রেতা পণ্য পেলে ডকুমেন্ট পাবেন।");
   };
 
   const handlePrevImage = () => {
@@ -291,7 +297,6 @@ export default function PostDetailsPage() {
         {/* চ্যাট, হোয়াটসঅ্যাপ, কল বাটন */}
         <div className="p-4">
           <div className="flex gap-2">
-            {/* ইন্টারনাল চ্যাট বাটন */}
             <button
               onClick={handleInternalChat}
               className="flex-1 bg-[#f85606] text-white py-3 rounded-xl font-semibold flex items-center justify-center gap-2 text-sm shadow-md"
@@ -300,18 +305,16 @@ export default function PostDetailsPage() {
               চ্যাট করুন
             </button>
             
-            {/* হোয়াটসঅ্যাপ বাটন */}
             <button
               onClick={handleWhatsAppChat}
               className="flex-1 bg-[#25D366] text-white py-3 rounded-xl font-semibold flex items-center justify-center gap-2 text-sm shadow-md"
             >
               <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
-                <path d="M12.032 2.014c-5.514 0-9.988 4.474-9.988 9.988 0 1.762.458 3.494 1.328 5.008l-1.408 5.135 5.262-1.38c1.465.799 3.114 1.225 4.806 1.225 5.514 0 9.988-4.474 9.988-9.988s-4.474-9.988-9.988-9.988zm5.148 13.88c-.224.398-.878.778-1.428.882-.322.06-.65.09-.988.09-.59 0-1.18-.136-1.72-.408-.462-.238-.95-.546-1.456-.884-.64-.432-1.332-.944-1.98-1.536-.548-.506-1.024-1.058-1.41-1.64-.386-.582-.684-1.168-.874-1.736-.19-.568-.28-1.076-.27-1.536.01-.46.108-.86.294-1.198.186-.338.44-.614.762-.828.322-.214.658-.322.958-.322.182 0 .35.014.504.042.154.028.294.084.41.182.116.098.196.224.238.378.042.154.07.308.084.462.014.154.028.308.042.462.028.308.056.616.084.924.028.308.014.56-.07.756-.084.196-.196.35-.35.476-.126.112-.238.224-.35.336-.112.112-.196.21-.252.308-.07.098-.112.182-.126.238-.014.07-.014.14.014.224.028.084.07.154.126.224.28.364.658.742 1.134 1.134.476.392.994.714 1.554.966.28.126.504.196.672.238.084.014.154.014.21-.014.056-.028.112-.07.182-.126.07-.056.14-.126.224-.21.084-.084.168-.154.266-.21.098-.056.196-.07.308-.042.112.028.21.07.294.126.084.056.14.098.182.14.042.042.07.07.07.07.14.112.266.238.378.378.112.14.196.28.252.42.056.14.084.28.084.42 0 .14-.028.294-.084.462z"/>
+                <path d="M12.032 2.014c-5.514 0-9.988 4.474-9.988 9.988 0 1.762.458 3.494 1.328 5.008l-1.408 5.135 5.262-1.38c1.465.799 3.114 1.225 4.806 1.225 5.514 0 9.988-4.474 9.988-9.988s-4.474-9.988-9.988-9.988z"/>
               </svg>
               হোয়াটসঅ্যাপ
             </button>
             
-            {/* কল বাটন */}
             <button
               onClick={() => setShowPhone(!showPhone)}
               className="flex-1 bg-gray-100 text-gray-700 py-3 rounded-xl font-semibold flex items-center justify-center gap-2 text-sm"
@@ -390,6 +393,29 @@ export default function PostDetailsPage() {
                 </div>
               )}
             </div>
+          </div>
+
+          {/* ডকুমেন্ট সার্ভিস সেকশন */}
+          <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl p-4 shadow-sm border border-blue-100">
+            <div className="flex items-center justify-between flex-wrap gap-3">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center">
+                  <FileText size={18} className="text-blue-600" />
+                </div>
+                <div>
+                  <h3 className="font-semibold text-gray-800">📄 ডকুমেন্ট সার্ভিস</h3>
+                  <p className="text-xs text-gray-500">পণ্যের কাগজপত্র নিরাপদে রাখুন</p>
+                </div>
+              </div>
+              <button 
+                onClick={() => setShowDocumentModal(true)}
+                className="bg-[#f85606] text-white px-4 py-2 rounded-xl text-sm font-semibold flex items-center gap-2 shadow-md hover:shadow-lg transition"
+              >
+                <Lock size={14} />
+                ডকুমেন্ট নিন ({post.price * 0.02} টাকা)
+              </button>
+            </div>
+            <p className="text-[10px] text-gray-500 mt-3">✓ ক্রেতা পণ্য পেলে ডকুমেন্ট পাবেন • ২% চার্জ</p>
           </div>
 
           {/* বিবরণ */}
@@ -508,6 +534,16 @@ export default function PostDetailsPage() {
 
         </div>
       </div>
+
+      {/* ডকুমেন্ট সার্ভিস পেমেন্ট মডাল */}
+      <PaymentModal
+        isOpen={showDocumentModal}
+        onClose={() => setShowDocumentModal(false)}
+        onSuccess={handleDocumentSuccess}
+        title="ডকুমেন্ট সার্ভিস"
+        amount={post.price * 0.02}
+        description="পণ্যের কাগজপত্র নিরাপদে সংরক্ষণ ও ডেলিভারির পর রিলিজ"
+      />
 
       {/* রিপোর্ট মডাল */}
       {showReportModal && (

@@ -1,130 +1,214 @@
 "use client";
-import { useState } from "react";
-import Link from "next/link";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, Gavel, Clock, Users, Eye, Trash2, Edit2, X } from "lucide-react";
+import Link from "next/link";
+import { 
+  ArrowLeft, Gavel, Clock, Users, Eye, 
+  PlusCircle, Trash2, Edit, TrendingUp, Crown
+} from "lucide-react";
 
-type Auction = {
+type MyAuction = {
   id: number;
   title: string;
   currentPrice: number;
+  startPrice: number;
   image: string;
   endTime: string;
   totalBids: number;
-  status: "active" | "ended";
+  status: 'active' | 'ended' | 'sold';
+  views: number;
 };
 
-const dummyAuctions: Auction[] = [
-  { id: 1, title: "iPhone 15 Pro Max", currentPrice: 65000, image: "📱", endTime: "২ ঘন্টা বাকি", totalBids: 23, status: "active" },
-  { id: 2, title: "MacBook Pro M2", currentPrice: 145000, image: "💻", endTime: "সমাপ্ত", totalBids: 45, status: "ended" },
+const dummyMyAuctions: MyAuction[] = [
+  {
+    id: 1,
+    title: "iPhone 15 Pro Max - 128GB",
+    currentPrice: 65000,
+    startPrice: 50000,
+    image: "📱",
+    endTime: new Date(Date.now() + 2 * 60 * 60 * 1000).toISOString(),
+    totalBids: 23,
+    status: 'active',
+    views: 1240,
+  },
+  {
+    id: 2,
+    title: "MacBook Pro M2 - 256GB",
+    currentPrice: 145000,
+    startPrice: 120000,
+    image: "💻",
+    endTime: new Date(Date.now() - 1 * 60 * 60 * 1000).toISOString(),
+    totalBids: 45,
+    status: 'ended',
+    views: 890,
+  },
 ];
+
+function Timer({ endTime }: { endTime: string }) {
+  const [timeLeft, setTimeLeft] = useState("");
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      const end = new Date(endTime).getTime();
+      const now = new Date().getTime();
+      const diff = end - now;
+
+      if (diff <= 0) {
+        setTimeLeft("সমাপ্ত");
+        clearInterval(interval);
+      } else {
+        const hours = Math.floor(diff / (1000 * 60 * 60));
+        const minutes = Math.floor((diff % (3600000)) / 60000);
+        const seconds = Math.floor((diff % 60000) / 1000);
+        setTimeLeft(`${hours}ঘ ${minutes}ম ${seconds}স`);
+      }
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [endTime]);
+
+  return (
+    <span className={`flex items-center gap-1 text-xs font-semibold ${timeLeft === "সমাপ্ত" ? "text-red-500" : "text-green-600"}`}>
+      <Clock size={12} />
+      {timeLeft}
+    </span>
+  );
+}
 
 export default function MyAuctionsPage() {
   const router = useRouter();
-  const [auctions, setAuctions] = useState(dummyAuctions);
-  const [showDeleteModal, setShowDeleteModal] = useState<number | null>(null);
-  const [showEditModal, setShowEditModal] = useState<Auction | null>(null);
+  const [auctions, setAuctions] = useState(dummyMyAuctions);
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
 
-  const handleDelete = (id: number) => {
-    setAuctions(auctions.filter(auction => auction.id !== id));
-    setShowDeleteModal(null);
-    alert("নিলাম ডিলিট করা হয়েছে!");
+  useEffect(() => {
+    const loggedIn = localStorage.getItem("isLoggedIn");
+    setIsLoggedIn(loggedIn === "true");
+    if (loggedIn !== "true") {
+      router.push("/login");
+    }
+  }, []);
+
+  const getStatusBadge = (status: string) => {
+    switch(status) {
+      case 'active':
+        return <span className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded-full">চলমান</span>;
+      case 'ended':
+        return <span className="text-xs bg-gray-100 text-gray-700 px-2 py-1 rounded-full">সমাপ্ত</span>;
+      case 'sold':
+        return <span className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded-full">বিক্রিত</span>;
+      default:
+        return null;
+    }
   };
 
-  const handleEdit = (updatedAuction: Auction) => {
-    setAuctions(auctions.map(auction => auction.id === updatedAuction.id ? updatedAuction : auction));
-    setShowEditModal(null);
-    alert("নিলাম আপডেট করা হয়েছে!");
-  };
+  if (!isLoggedIn) return null;
 
   return (
-    <div className="min-h-screen bg-gray-100 pb-20">
-      <div className="max-w-3xl mx-auto p-4">
-        
-        <div className="flex items-center gap-3 mb-6">
-          <button onClick={() => router.back()} className="bg-white p-2 rounded-full shadow-md hover:shadow-lg transition">
-            <ArrowLeft size={20} className="text-gray-600" />
-          </button>
-          <h1 className="text-2xl font-bold bg-gradient-to-r from-[#f85606] to-orange-500 bg-clip-text text-transparent">
-            আমার নিলাম
-          </h1>
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-gray-100 pb-20">
+      
+      {/* হেডার */}
+      <div className="sticky top-0 z-20 bg-white/80 backdrop-blur-md border-b border-gray-100 shadow-sm">
+        <div className="max-w-4xl mx-auto px-4 py-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <button onClick={() => router.back()} className="p-2">
+                <ArrowLeft size={20} className="text-gray-600" />
+              </button>
+              <h1 className="text-2xl font-black bg-gradient-to-r from-[#f85606] via-orange-500 to-[#f85606] bg-clip-text text-transparent">
+                আমার নিলাম
+              </h1>
+            </div>
+            <Link href="/auction/create">
+              <button className="bg-gradient-to-r from-[#f85606] to-orange-500 text-white px-4 py-2 rounded-xl text-sm font-semibold flex items-center gap-2">
+                <PlusCircle size={16} />
+                নতুন নিলাম
+              </button>
+            </Link>
+          </div>
         </div>
+      </div>
 
-        <div className="space-y-3">
-          {auctions.map((auction) => (
-            <div key={auction.id} className="bg-white rounded-2xl p-4 shadow-sm hover:shadow-xl transition-all duration-300">
-              <div className="flex gap-3">
-                <div className="w-20 h-20 bg-gradient-to-br from-orange-50 to-orange-100 rounded-xl flex items-center justify-center text-4xl">
+      <div className="max-w-4xl mx-auto p-4 space-y-4">
+        
+        {/* নিলাম লিস্ট */}
+        {auctions.length === 0 ? (
+          <div className="text-center py-12">
+            <div className="text-6xl mb-4">🔨</div>
+            <h2 className="text-xl font-bold text-gray-800 mb-2">কোনো নিলাম নেই</h2>
+            <p className="text-gray-500 mb-6">আপনি এখনো কোনো নিলাম তৈরি করেননি</p>
+            <Link href="/auction/create">
+              <button className="bg-gradient-to-r from-[#f85606] to-orange-500 text-white px-6 py-2 rounded-xl">
+                প্রথম নিলাম তৈরি করুন
+              </button>
+            </Link>
+          </div>
+        ) : (
+          auctions.map((auction) => (
+            <div key={auction.id} className="bg-white/80 backdrop-blur-sm rounded-2xl p-4 shadow-md hover:shadow-xl transition-all duration-300 border border-[#f85606]/10">
+              <div className="flex gap-4">
+                <div className="w-20 h-20 bg-gradient-to-br from-orange-100 to-amber-100 rounded-xl flex items-center justify-center text-4xl">
                   {auction.image}
                 </div>
                 <div className="flex-1">
-                  <h3 className="font-bold text-gray-800">{auction.title}</h3>
-                  <p className="text-[#f85606] font-bold text-lg">৳{auction.currentPrice.toLocaleString()}</p>
-                  <div className="flex items-center gap-3 mt-1 text-xs text-gray-400">
-                    <span><Clock size={12} /> {auction.endTime}</span>
-                    <span><Users size={12} /> {auction.totalBids} বিড</span>
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <h3 className="font-bold text-gray-800 line-clamp-1">{auction.title}</h3>
+                      <div className="flex items-center gap-2 mt-1">
+                        {getStatusBadge(auction.status)}
+                        <span className="text-xs text-gray-400 flex items-center gap-1"><Eye size={10} /> {auction.views}</span>
+                      </div>
+                    </div>
+                    <div className="flex gap-2">
+                      {auction.status === 'active' && (
+                        <>
+                          <button className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition">
+                            <Edit size={16} />
+                          </button>
+                          <button className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition">
+                            <Trash2 size={16} />
+                          </button>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-4 mt-2">
+                    <div>
+                      <p className="text-[10px] text-gray-400">বর্তমান দাম</p>
+                      <p className="text-sm font-black text-[#f85606]">৳{auction.currentPrice.toLocaleString()}</p>
+                    </div>
+                    <div className="w-px h-8 bg-gray-200" />
+                    <div>
+                      <p className="text-[10px] text-gray-400">শুরু দাম</p>
+                      <p className="text-sm font-semibold text-gray-700">৳{auction.startPrice.toLocaleString()}</p>
+                    </div>
+                    <div className="w-px h-8 bg-gray-200" />
+                    <div>
+                      <p className="text-[10px] text-gray-400">মোট বিড</p>
+                      <p className="text-sm font-semibold text-gray-700 flex items-center gap-1">
+                        <Users size={12} /> {auction.totalBids}
+                      </p>
+                    </div>
+                    <div className="w-px h-8 bg-gray-200" />
+                    <div>
+                      <p className="text-[10px] text-gray-400">{auction.status === 'active' ? 'বাকি সময়' : 'শেষ হয়েছে'}</p>
+                      {auction.status === 'active' ? (
+                        <Timer endTime={auction.endTime} />
+                      ) : (
+                        <span className="text-xs text-gray-500">সমাপ্ত</span>
+                      )}
+                    </div>
                   </div>
                 </div>
               </div>
-              <div className="flex gap-2 mt-3 pt-3 border-t border-gray-100">
-                <Link href={`/auction/${auction.id}`} className="flex-1 bg-gray-100 text-gray-700 py-2 rounded-xl text-sm flex items-center justify-center gap-1 hover:bg-gray-200 transition">
-                  <Eye size={14} /> দেখুন
-                </Link>
-                {auction.status === "active" && (
-                  <button 
-                    onClick={() => setShowEditModal(auction)}
-                    className="flex-1 bg-gray-100 text-gray-700 py-2 rounded-xl text-sm flex items-center justify-center gap-1 hover:bg-gray-200 transition"
-                  >
-                    <Edit2 size={14} /> এডিট
+              {auction.status === 'active' && (
+                <Link href={`/auction/${auction.id}`}>
+                  <button className="w-full mt-3 bg-gradient-to-r from-[#f85606] to-orange-500 text-white py-2 rounded-xl text-sm font-semibold">
+                    নিলাম দেখুন
                   </button>
-                )}
-                <button 
-                  onClick={() => setShowDeleteModal(auction.id)}
-                  className="flex-1 bg-red-50 text-red-600 py-2 rounded-xl text-sm flex items-center justify-center gap-1 hover:bg-red-100 transition"
-                >
-                  <Trash2 size={14} /> ডিলিট
-                </button>
-              </div>
+                </Link>
+              )}
             </div>
-          ))}
-        </div>
-
-        {/* ডিলিট কনফার্মেশন মডাল */}
-        {showDeleteModal && (
-          <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-            <div className="bg-white rounded-2xl max-w-md w-full p-5">
-              <div className="flex justify-between items-center mb-4">
-                <h3 className="text-lg font-bold">নিলাম ডিলিট করুন</h3>
-                <button onClick={() => setShowDeleteModal(null)}><X size={20} /></button>
-              </div>
-              <p className="text-sm text-gray-600 mb-4">আপনি কি এই নিলামটি ডিলিট করতে চান?</p>
-              <div className="flex gap-3">
-                <button onClick={() => handleDelete(showDeleteModal)} className="flex-1 bg-red-600 text-white py-2 rounded-xl">হ্যাঁ, ডিলিট করুন</button>
-                <button onClick={() => setShowDeleteModal(null)} className="flex-1 bg-gray-200 text-gray-700 py-2 rounded-xl">বাতিল</button>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* এডিট মডাল */}
-        {showEditModal && (
-          <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-            <div className="bg-white rounded-2xl max-w-md w-full p-5">
-              <div className="flex justify-between items-center mb-4">
-                <h3 className="text-lg font-bold">নিলাম এডিট করুন</h3>
-                <button onClick={() => setShowEditModal(null)}><X size={20} /></button>
-              </div>
-              <div className="space-y-3">
-                <input type="text" value={showEditModal.title} onChange={(e) => setShowEditModal({...showEditModal, title: e.target.value})} className="w-full p-3 bg-gray-50 border rounded-xl" />
-                <input type="number" value={showEditModal.currentPrice} onChange={(e) => setShowEditModal({...showEditModal, currentPrice: parseInt(e.target.value)})} className="w-full p-3 bg-gray-50 border rounded-xl" />
-                <select value={showEditModal.status} onChange={(e) => setShowEditModal({...showEditModal, status: e.target.value as any})} className="w-full p-3 bg-gray-50 border rounded-xl">
-                  <option value="active">সক্রিয়</option>
-                  <option value="ended">সমাপ্ত</option>
-                </select>
-                <button onClick={() => handleEdit(showEditModal)} className="w-full bg-[#f85606] text-white py-3 rounded-xl font-semibold">সংরক্ষণ করুন</button>
-              </div>
-            </div>
-          </div>
+          ))
         )}
 
       </div>

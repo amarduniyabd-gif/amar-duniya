@@ -6,7 +6,7 @@ import {
   ArrowLeft, Gavel, Clock, Users, Heart, Share2, Flag, 
   User, MapPin, Eye, CheckCircle, AlertCircle, ChevronLeft, 
   ChevronRight, MessageCircle, Phone, TrendingUp, Award,
-  Zap, BarChart3, Settings, X
+  Zap, BarChart3, Settings, X, Loader2
 } from "lucide-react";
 
 type Bid = {
@@ -31,6 +31,7 @@ type Auction = {
     rating: number;
     verified: boolean;
     totalAuctions: number;
+    phone?: string;
   };
   description: string;
   location: string;
@@ -56,6 +57,7 @@ const getAuctionById = (id: string): Auction => {
       rating: 4.8,
       verified: true,
       totalAuctions: 12,
+      phone: "017XXXXXXXX",
     },
     description: "ব্র্যান্ড নতুন iPhone 15 Pro Max। 128GB স্টোরেজ, ফুল বক্স সহ।",
     location: "ঢাকা",
@@ -160,45 +162,68 @@ export default function AuctionDetailPage() {
   
   const [auction, setAuction] = useState(() => getAuctionById(auctionId));
   const [bids, setBids] = useState(() => getBids());
-  const [bidAmount, setBidAmount] = useState(auction.currentPrice + auction.minIncrement);
+  const [bidAmount, setBidAmount] = useState(0);
   const [isAuctionEnded, setIsAuctionEnded] = useState(false);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [loading, setLoading] = useState(false);
   const [showLoginModal, setShowLoginModal] = useState(false);
   const [showShareModal, setShowShareModal] = useState(false);
   const [showReportModal, setShowReportModal] = useState(false);
   const [isLiked, setIsLiked] = useState(false);
   const [showPhone, setShowPhone] = useState(false);
 
+  // 🔥 লগইন স্ট্যাটাস চেক
+  useEffect(() => {
+    const loggedIn = localStorage.getItem("isLoggedIn");
+    setIsLoggedIn(loggedIn === "true");
+    
+    // বিড অ্যামাউন্ট সেট করা
+    setBidAmount(auction.currentPrice + auction.minIncrement);
+  }, [auction.currentPrice, auction.minIncrement]);
+
+  // 🔥 বিড হ্যান্ডলার (লগইন চেক সহ)
   const handleBid = () => {
+    // লগইন চেক - এটাই মূল সমাধান
     if (!isLoggedIn) {
+      // লগইন করার পর এই পেজে ফিরে আসার জন্য URL সেভ করুন
+      localStorage.setItem("redirectAfterLogin", `/auction/${auctionId}`);
       setShowLoginModal(true);
       return;
     }
+    
     if (isAuctionEnded) {
       alert("নিলাম শেষ হয়ে গেছে!");
       return;
     }
+    
     if (bidAmount < auction.currentPrice + auction.minIncrement) {
       alert(`সর্বনিম্ন বিড ${(auction.currentPrice + auction.minIncrement).toLocaleString()} টাকা`);
       return;
     }
     
-    const newBid: Bid = {
-      id: bids.length + 1,
-      userName: "বর্তমান ব্যবহারকারী",
-      userAvatar: "👤",
-      amount: bidAmount,
-      time: "এখনই",
-    };
+    // বিড প্রসেসিং
+    setLoading(true);
     
-    setBids([newBid, ...bids]);
-    setAuction({
-      ...auction,
-      currentPrice: bidAmount,
-      totalBids: auction.totalBids + 1,
-    });
-    setBidAmount(bidAmount + auction.minIncrement);
-    alert("বিড সফল হয়েছে!");
+    // সিমুলেটেড বিড (এখানে আপনার API কল হবে)
+    setTimeout(() => {
+      const newBid: Bid = {
+        id: bids.length + 1,
+        userName: "বর্তমান ব্যবহারকারী",
+        userAvatar: "👤",
+        amount: bidAmount,
+        time: "এখনই",
+      };
+      
+      setBids([newBid, ...bids]);
+      setAuction({
+        ...auction,
+        currentPrice: bidAmount,
+        totalBids: auction.totalBids + 1,
+      });
+      setBidAmount(bidAmount + auction.minIncrement);
+      setLoading(false);
+      alert("✅ বিড সফল হয়েছে!");
+    }, 1000);
   };
 
   const handleAuctionEnd = () => {
@@ -294,9 +319,11 @@ export default function AuctionDetailPage() {
                 />
                 <button 
                   onClick={handleBid} 
-                  className="bg-[#f85606] text-white px-6 py-3 rounded-xl font-semibold flex items-center justify-center gap-2 whitespace-nowrap"
+                  disabled={loading}
+                  className="bg-[#f85606] text-white px-6 py-3 rounded-xl font-semibold flex items-center justify-center gap-2 whitespace-nowrap disabled:opacity-50"
                 >
-                  <Gavel size={18} /> বিড করুন
+                  {loading ? <Loader2 size={18} className="animate-spin" /> : <Gavel size={18} />}
+                  {loading ? "প্রসেসিং..." : "বিড করুন"}
                 </button>
               </div>
               <div className="flex justify-between mt-2">
@@ -338,8 +365,13 @@ export default function AuctionDetailPage() {
               <div><p className="font-medium">{auction.seller.name}</p><div className="flex items-center gap-2 text-xs text-gray-500 mt-1"><span>⭐ {auction.seller.rating}</span><span>•</span><span>{auction.seller.totalAuctions} টি নিলাম</span></div></div>
               {auction.seller.verified && <div className="bg-green-100 text-green-600 text-xs px-2 py-1 rounded-full flex items-center gap-1"><CheckCircle size={12} /> ভেরিফাইড</div>}
             </div>
-            <button onClick={() => setShowPhone(!showPhone)} className="w-full mt-3 bg-gray-100 text-gray-700 py-2 rounded-xl flex items-center justify-center gap-2"><Phone size={16} /> {showPhone ? auction.seller.name : "ফোন নম্বর দেখুন"}</button>
-            {showPhone && <div className="mt-2 text-center"><a href={`tel:017XXXXXXXX`} className="text-sm text-[#f85606]">017XXXXXXXX</a></div>}
+            <button onClick={() => setShowPhone(!showPhone)} className="w-full mt-3 bg-gray-100 text-gray-700 py-2 rounded-xl flex items-center justify-center gap-2"><Phone size={16} /> {showPhone ? auction.seller.phone : "ফোন নম্বর দেখুন"}</button>
+            {showPhone && <div className="mt-2 text-center"><a href={`tel:${auction.seller.phone}`} className="text-sm text-[#f85606]">{auction.seller.phone}</a></div>}
+            <Link href={`/chat?seller=${auction.seller.name}`}>
+              <button className="w-full mt-2 border border-[#f85606] text-[#f85606] py-2 rounded-xl flex items-center justify-center gap-2">
+                <MessageCircle size={16} /> চ্যাট করুন
+              </button>
+            </Link>
           </div>
 
           {/* বিবরণ ও লোকেশন */}
@@ -352,7 +384,19 @@ export default function AuctionDetailPage() {
         </div>
       </div>
 
-      {/* মডাল গুলো */}
+      {/* লগইন মডাল */}
+      {showLoginModal && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl max-w-md w-full p-5">
+            <h3 className="text-lg font-bold mb-2">লগইন প্রয়োজন</h3>
+            <p className="text-sm text-gray-600 mb-4">বিড করতে অনুগ্রহ করে লগইন করুন।</p>
+            <Link href="/login" className="block w-full bg-[#f85606] text-white py-3 rounded-xl text-center">লগইন করুন</Link>
+            <button onClick={() => setShowLoginModal(false)} className="w-full mt-2 bg-gray-200 py-3 rounded-xl">বাতিল</button>
+          </div>
+        </div>
+      )}
+
+      {/* শেয়ার মডাল */}
       {showShareModal && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl max-w-md w-full p-5">
@@ -363,6 +407,7 @@ export default function AuctionDetailPage() {
         </div>
       )}
 
+      {/* রিপোর্ট মডাল */}
       {showReportModal && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl max-w-md w-full p-5">
@@ -370,17 +415,6 @@ export default function AuctionDetailPage() {
             <p className="text-sm text-gray-600 mb-4">আপনি কি এই নিলামটি রিপোর্ট করতে চান?</p>
             <button onClick={() => { alert("রিপোর্ট করা হয়েছে"); setShowReportModal(false); }} className="w-full bg-[#f85606] text-white py-3 rounded-xl">হ্যাঁ, রিপোর্ট করুন</button>
             <button onClick={() => setShowReportModal(false)} className="w-full mt-2 bg-gray-200 py-3 rounded-xl">বাতিল</button>
-          </div>
-        </div>
-      )}
-
-      {showLoginModal && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl max-w-md w-full p-5">
-            <h3 className="text-lg font-bold mb-2">লগইন প্রয়োজন</h3>
-            <p className="text-sm text-gray-600 mb-4">বিড করতে অনুগ্রহ করে লগইন করুন।</p>
-            <Link href="/login" className="block w-full bg-[#f85606] text-white py-3 rounded-xl text-center">লগইন করুন</Link>
-            <button onClick={() => setShowLoginModal(false)} className="w-full mt-2 bg-gray-200 py-3 rounded-xl">বাতিল</button>
           </div>
         </div>
       )}
