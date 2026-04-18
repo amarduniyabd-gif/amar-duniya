@@ -3,12 +3,11 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { 
-    Search, Home as HomeIcon, Gavel, Users, User, 
+    Search, Gavel, Users, User, 
     ShoppingBag, Plus, Heart, Loader2
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { getRootCategories } from '@/data/categories';
-import ReportButton from '@/components/ReportButton';
 
 type AdItem = {
   id: number;
@@ -42,60 +41,64 @@ const generateMockAds = (page: number, limit: number): AdItem[] => {
   return items;
 };
 
-// অ্যাড কার্ড (৩ কলামের জন্য) - শুধু ছবি/ইমোজি, ভিডিও নেই
-const AdCard = ({ ad }: { ad: AdItem }) => (
-  <Link href={`/post/${ad.id}`}>
-    <div className="bg-white rounded-xl overflow-hidden shadow-sm border border-gray-100 cursor-pointer hover:shadow-md transition-all group">
-      <div className="relative bg-gradient-to-br from-orange-50 to-orange-100 p-6 flex items-center justify-center h-40">
-        <div className="text-6xl">{ad.image}</div>
-        {ad.urgent && (
-          <div className="absolute top-2 left-2 bg-red-500 text-white text-[9px] font-bold px-1.5 py-0.5 rounded shadow-sm z-10">
-            Urgent
+// অ্যাড কার্ড (৩ কলামের জন্য)
+const AdCard = ({ ad }: { ad: AdItem }) => {
+  return (
+    <Link href={`/post/${ad.id}`}>
+      <div className="rounded-xl overflow-hidden shadow-sm border cursor-pointer hover:shadow-md transition-all group bg-white border-gray-100">
+        <div className="relative p-6 flex items-center justify-center h-40 bg-gradient-to-br from-orange-50 to-orange-100">
+          <div className="text-6xl">{ad.image}</div>
+          {ad.urgent && (
+            <div className="absolute top-2 left-2 bg-red-500 text-white text-[9px] font-bold px-1.5 py-0.5 rounded shadow-sm z-10">
+              জরুরি
+            </div>
+          )}
+          <button 
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+            }} 
+            className="absolute top-2 right-2 rounded-full p-1 shadow-sm z-10 transition bg-white/80 hover:bg-white"
+          >
+            <Heart size={14} className="text-gray-500 hover:text-red-500 transition" />
+          </button>
+        </div>
+        <div className="p-2">
+          <h3 className="font-bold text-xs line-clamp-1 transition-colors group-hover:text-[#f85606] text-gray-800">
+            {ad.title}
+          </h3>
+          <p className="text-[9px] mt-1 uppercase flex items-center gap-1 text-gray-400">
+            <span>{ad.condition}</span> • <span>{ad.time}</span>
+          </p>
+          <div className="mt-1 text-[#f85606] font-black text-sm">
+            ৳ {ad.price.toLocaleString()}
           </div>
-        )}
-        <button 
-          onClick={(e) => {
-            e.preventDefault();
-            e.stopPropagation();
-          }} 
-          className="absolute top-2 right-2 bg-white/80 rounded-full p-1 shadow-sm z-10 hover:bg-white transition"
-        >
-          <Heart size={14} className="text-gray-500 hover:text-red-500 transition" />
-        </button>
-      </div>
-      <div className="p-2">
-        <h3 className="font-bold text-xs text-gray-800 line-clamp-1 group-hover:text-[#f85606]">
-          {ad.title}
-        </h3>
-        <p className="text-[9px] text-gray-400 mt-1 uppercase flex items-center gap-1">
-          <span>{ad.condition}</span> • <span>{ad.time}</span>
-        </p>
-        <div className="mt-1 text-[#f85606] font-black text-sm">
-          ৳ {ad.price.toLocaleString()}
         </div>
       </div>
-    </div>
-  </Link>
-);
+    </Link>
+  );
+};
 
 // স্কেলেটন কার্ড
-const SkeletonCard = () => (
-  <div className="bg-white rounded-xl overflow-hidden shadow-sm border border-gray-100 animate-pulse">
-    <div className="h-40 bg-gray-200" />
-    <div className="p-2">
-      <div className="h-3 bg-gray-200 rounded w-3/4 mb-2" />
-      <div className="h-2 bg-gray-200 rounded w-1/2 mb-2" />
-      <div className="h-3 bg-gray-200 rounded w-1/3" />
+const SkeletonCard = () => {
+  return (
+    <div className="rounded-xl overflow-hidden shadow-sm border animate-pulse bg-white border-gray-100">
+      <div className="h-40 bg-gray-200" />
+      <div className="p-2">
+        <div className="h-3 rounded w-3/4 mb-2 bg-gray-200" />
+        <div className="h-2 rounded w-1/2 mb-2 bg-gray-200" />
+        <div className="h-3 rounded w-1/3 bg-gray-200" />
+      </div>
     </div>
-  </div>
-);
+  );
+};
 
 const AmarDuniyaHome = () => {
   const router = useRouter();
   const [currentSlide, setCurrentSlide] = useState(0);
   const [searchQuery, setSearchQuery] = useState('');
   
-  // ১৫টি স্লাইড (প্রতিটির সাথে ক্যাটাগরি লিংক)
+  // ১৫টি স্লাইড (শুধু বাংলা)
   const slides = [
     { title: "সব ধরণের পণ্য পাচ্ছেন", discount: "১৫% পর্যন্ত ছাড়", color: "from-[#f85606] to-orange-500", emoji: "🛍️", link: "/category/offer" },
     { title: "মোবাইল মেলায় স্বাগতম", discount: "সর্বোচ্চ ৩০% ছাড়", color: "from-[#e65c00] to-[#ff9933]", emoji: "📱", link: "/category/mobile" },
@@ -195,17 +198,17 @@ const AmarDuniyaHome = () => {
   };
 
   return (
-    <div className="bg-[#f2f3f7] min-h-screen pb-24 font-sans w-full overflow-x-hidden text-[#212121]">
+    <div className="min-h-screen pb-24 font-sans w-full overflow-x-hidden transition-colors duration-300 bg-[#f2f3f7]">
       
-      {/* হেডার - সার্চ ফাংশন যোগ করা হয়েছে */}
-      <header className="bg-white px-4 py-3 sticky top-0 z-[100] border-b border-gray-100 shadow-sm">
+      {/* হেডার */}
+      <header className="px-4 py-3 sticky top-0 z-[100] border-b shadow-sm transition-colors duration-300 bg-white border-gray-100">
         <div className="max-w-[1200px] mx-auto flex justify-between items-center gap-4">
-          <div className="flex items-center bg-[#f0f1f5] rounded-xl px-4 py-1.5 border focus-within:border-[#f85606] transition-all flex-1">
+          <div className="flex items-center rounded-xl px-4 py-1.5 border focus-within:border-[#f85606] transition-all flex-1 bg-[#f0f1f5] border-gray-100">
             <Search size={16} className="text-gray-400" />
             <input 
               type="text" 
-              placeholder="আমার দুনিয়ায় খুঁজুন..." 
-              className="bg-transparent border-none outline-none ml-2 w-full text-xs"
+              placeholder="আমার দুনিয়ায় খুঁজুন..."
+              className="bg-transparent border-none outline-none ml-2 w-full text-xs text-gray-800"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               onKeyPress={handleKeyPress}
@@ -214,10 +217,10 @@ const AmarDuniyaHome = () => {
               onClick={handleSearch}
               className="bg-[#f85606] text-white px-4 py-1.5 rounded-lg text-xs font-bold shrink-0 active:scale-95 transition-transform"
             >
-              Search
+              খুঁজুন
             </button>
           </div>
-          <ShoppingBag size={20} className="text-gray-600 shrink-0 cursor-pointer" />
+          <ShoppingBag size={20} className="shrink-0 cursor-pointer text-gray-600" />
         </div>
       </header>
 
@@ -236,7 +239,6 @@ const AmarDuniyaHome = () => {
                   onDragEnd={(e, { offset, velocity }) => {
                     const swipe = offset.x;
                     const swipeVelocity = velocity.x;
-                    
                     if (swipe < -50 || swipeVelocity < -500) {
                       handleSwipe('left');
                     } else if (swipe > 50 || swipeVelocity > 500) {
@@ -252,8 +254,12 @@ const AmarDuniyaHome = () => {
                   <Link href={slides[currentSlide].link}>
                     <div className={`w-full h-full bg-gradient-to-r ${slides[currentSlide].color} flex flex-col items-center justify-center text-white`}>
                       <div className="text-6xl md:text-8xl mb-4">{slides[currentSlide].emoji}</div>
-                      <h2 className="text-xl md:text-3xl font-black text-center px-4">{slides[currentSlide].title}</h2>
-                      <p className="text-sm md:text-lg mt-2 opacity-90">{slides[currentSlide].discount}</p>
+                      <h2 className="text-xl md:text-3xl font-black text-center px-4">
+                        {slides[currentSlide].title}
+                      </h2>
+                      <p className="text-sm md:text-lg mt-2 opacity-90">
+                        {slides[currentSlide].discount}
+                      </p>
                     </div>
                   </Link>
                 </motion.div>
@@ -287,18 +293,18 @@ const AmarDuniyaHome = () => {
           </Link>
         </div>
 
-        {/* ক্যাটাগরি - আইকন + নাম */}
-        <nav className="bg-white py-6 grid grid-cols-4 md:grid-cols-6 lg:grid-cols-12 gap-4 px-3 md:rounded-2xl md:mt-4 shadow-sm">
+        {/* ক্যাটাগরি */}
+        <nav className="py-6 grid grid-cols-4 md:grid-cols-6 lg:grid-cols-12 gap-4 px-3 md:rounded-2xl md:mt-4 shadow-sm transition-colors duration-300 bg-white">
           {rootCategories.map((cat) => (
             <Link 
               key={cat.id} 
               href={`/category/${cat.slug}`}
               className="flex flex-col items-center group"
             >
-              <div className="w-14 h-14 md:w-16 md:h-16 flex items-center justify-center bg-gray-50 rounded-full border border-gray-100 group-hover:bg-orange-50 group-hover:border-[#f85606] transition-all shadow-sm">
+              <div className="w-14 h-14 md:w-16 md:h-16 flex items-center justify-center rounded-full border transition-all shadow-sm bg-gray-50 border-gray-100 group-hover:bg-orange-50 group-hover:border-[#f85606]">
                 <span className="text-2xl md:text-3xl">{cat.icon}</span>
               </div>
-              <span className="text-[10px] md:text-xs font-semibold text-gray-600 text-center mt-2 group-hover:text-[#f85606] transition-colors line-clamp-1 px-1">
+              <span className="text-[10px] md:text-xs font-semibold text-center mt-2 transition-colors line-clamp-1 px-1 text-gray-600 group-hover:text-[#f85606]">
                 {cat.name}
               </span>
             </Link>
@@ -306,10 +312,14 @@ const AmarDuniyaHome = () => {
         </nav>
 
         {/* রিসেন্ট অ্যাডস */}
-        <section className="mt-4 p-3 bg-white md:rounded-2xl shadow-sm">
+        <section className="mt-4 p-3 rounded-2xl shadow-sm transition-colors duration-300 bg-white">
           <div className="flex justify-between items-center mb-3">
-            <h2 className="text-lg font-black text-gray-800">🔥 রিসেন্ট অ্যাডস</h2>
-            <button className="text-[11px] font-bold text-[#f85606]">সব দেখুন &gt;</button>
+            <h2 className="text-lg font-black text-gray-800">
+              🔥 রিসেন্ট অ্যাডস
+            </h2>
+            <button className="text-[11px] font-bold text-[#f85606]">
+              সব দেখুন &gt;
+            </button>
           </div>
 
           <div className="grid grid-cols-3 gap-2">
@@ -326,7 +336,9 @@ const AmarDuniyaHome = () => {
               <Loader2 className="animate-spin text-[#f85606]" size={18} />
             )}
             {!hasMoreRecent && recentAds.length > 0 && (
-              <p className="text-[9px] text-gray-400">সব পণ্য দেখানো হয়েছে</p>
+              <p className="text-[9px] text-gray-400">
+                সব পণ্য দেখানো হয়েছে
+              </p>
             )}
           </div>
         </section>
