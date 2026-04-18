@@ -1,8 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Suspense } from "react";
 import "./globals.css";
-import TopNavbar from "@/components/TopNavbar";
-import BottomNav from "@/components/BottomNav";
+import ClientLayout from "./ClientLayout";
 
 export const viewport: Viewport = {
   width: 'device-width',
@@ -50,13 +49,11 @@ export default function RootLayout({
   return (
     <html lang="bn" suppressHydrationWarning>
       <body className="bg-gray-50 transition-colors duration-300">
-        <TopNavbar />
-        <main className="pb-20 md:pb-0 md:pt-16">
+        <ClientLayout>
           <Suspense fallback={<Loading />}>
             {children}
           </Suspense>
-        </main>
-        <BottomNav />
+        </ClientLayout>
       </body>
     </html>
   );

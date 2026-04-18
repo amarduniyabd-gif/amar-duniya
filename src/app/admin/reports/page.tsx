@@ -95,7 +95,7 @@ export default function AdminReports() {
 
       {/* ডেস্কটপ সাইডবার */}
       <div className="fixed inset-y-0 left-0 z-40 w-64 hidden md:block">
-        <AdminSidebar onLogout={handleLogout} />
+        <AdminSidebar />
       </div>
 
       {/* মোবাইল সাইডবার ওভারলে */}
@@ -103,7 +103,7 @@ export default function AdminReports() {
 
       {/* মোবাইল সাইডবার */}
       <div className={`fixed inset-y-0 left-0 z-40 w-64 transform transition-transform duration-300 md:hidden ${sidebarOpen ? "translate-x-0" : "-translate-x-full"}`}>
-        <AdminSidebar onLogout={handleLogout} />
+        <AdminSidebar />
       </div>
 
       {/* মেন কন্টেন্ট */}

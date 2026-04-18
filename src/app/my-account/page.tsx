@@ -7,7 +7,8 @@ import {
   MessageCircle, Bell, Shield, MapPin, Phone, Mail,
   ChevronRight, Edit2, Camera, X, CheckCircle,
   Crown, Clock, CreditCard, FileText, Star, Eye,
-  TrendingUp, Award, Zap
+  TrendingUp, Award, Zap, Trash2, AlertCircle,
+  MoreVertical, Plus, Copy, Users, Filter
 } from "lucide-react";
 
 type FeaturedPost = {
@@ -34,13 +35,29 @@ type DocumentRequest = {
   createdAt: string;
 };
 
+type MyAuction = {
+  id: number;
+  title: string;
+  currentPrice: number;
+  startPrice: number;
+  image: string;
+  endTime: string;
+  totalBids: number;
+  status: 'active' | 'ended' | 'won' | 'cancelled';
+  views: number;
+  isWinner?: boolean;
+  winningBid?: number;
+};
+
 export default function MyAccountPage() {
   const router = useRouter();
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [profileImage, setProfileImage] = useState<string>("👨");
   const [isUploading, setIsUploading] = useState(false);
-  const [activeTab, setActiveTab] = useState<'overview' | 'featured' | 'payments' | 'documents'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'featured' | 'payments' | 'documents' | 'auctions'>('overview');
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState<number | null>(null);
+  const [showActionMenu, setShowActionMenu] = useState<number | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   
   const [profile, setProfile] = useState({
@@ -67,6 +84,56 @@ export default function MyAccountPage() {
     { id: '2', postTitle: 'Samsung Galaxy S23', status: 'pending', fee: 1900, createdAt: '২০২৬-০৪-১৫' },
   ]);
 
+  const [myAuctions, setMyAuctions] = useState<MyAuction[]>([
+    {
+      id: 1,
+      title: "iPhone 15 Pro Max - 128GB",
+      currentPrice: 85000,
+      startPrice: 70000,
+      image: "📱",
+      endTime: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000).toISOString(),
+      totalBids: 15,
+      status: 'active',
+      views: 340,
+    },
+    {
+      id: 2,
+      title: "MacBook Pro M2 - 256GB",
+      currentPrice: 145000,
+      startPrice: 120000,
+      image: "💻",
+      endTime: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString(),
+      totalBids: 28,
+      status: 'ended',
+      views: 560,
+      isWinner: true,
+      winningBid: 145000,
+    },
+    {
+      id: 3,
+      title: "Samsung Galaxy S23 Ultra",
+      currentPrice: 75000,
+      startPrice: 65000,
+      image: "📱",
+      endTime: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000).toISOString(),
+      totalBids: 8,
+      status: 'active',
+      views: 210,
+    },
+    {
+      id: 4,
+      title: "Sony PlayStation 5",
+      currentPrice: 45000,
+      startPrice: 40000,
+      image: "🎮",
+      endTime: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString(),
+      totalBids: 42,
+      status: 'ended',
+      views: 890,
+      isWinner: false,
+    },
+  ]);
+
   useEffect(() => {
     const loggedIn = localStorage.getItem("isLoggedIn");
     setIsLoggedIn(loggedIn === "true");
@@ -80,6 +147,20 @@ export default function MyAccountPage() {
     const now = new Date();
     const diff = Math.ceil((end.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
     return diff > 0 ? diff : 0;
+  };
+
+  const getTimeLeft = (endTime: string) => {
+    const end = new Date(endTime).getTime();
+    const now = new Date().getTime();
+    const diff = end - now;
+    
+    if (diff <= 0) return { text: "সমাপ্ত", isEnded: true };
+    
+    const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+    const hours = Math.floor((diff % (86400000)) / (3600000));
+    
+    if (days > 0) return { text: `${days} দিন ${hours} ঘন্টা`, isEnded: false };
+    return { text: `${hours} ঘন্টা`, isEnded: false };
   };
 
   const compressToWebP = (file: File): Promise<string> => {
@@ -122,12 +203,34 @@ export default function MyAccountPage() {
     router.push("/login");
   };
 
+  const handleDeleteAuction = (id: number) => {
+    setMyAuctions(prev => prev.filter(a => a.id !== id));
+    setShowDeleteConfirm(null);
+    alert("✅ নিলাম সফলভাবে ডিলিট করা হয়েছে!");
+  };
+
+  const handleEditAuction = (id: number) => {
+    router.push(`/auction/edit/${id}`);
+  };
+
+  const handleViewAuction = (id: number) => {
+    router.push(`/auction/${id}`);
+  };
+
+  const handleViewBids = (id: number) => {
+    router.push(`/auction/${id}?tab=bids`);
+  };
+
+  const handlePayNow = (auction: MyAuction) => {
+    router.push(`/auction/${auction.id}/payment?amount=${auction.winningBid || auction.currentPrice}`);
+  };
+
   const totalSpent = payments.reduce((sum, p) => sum + p.amount, 0);
   const activeFeaturedCount = featuredPosts.filter(p => p.status === 'active').length;
 
   const menuItems = [
     { icon: <Package size={20} />, label: "আমার পোস্ট", href: "/my-posts", badge: "12", bgColor: "bg-blue-50", iconColor: "text-blue-600" },
-    { icon: <Gavel size={20} />, label: "আমার নিলাম", href: "/my-auctions", badge: "3", bgColor: "bg-green-50", iconColor: "text-green-600" },
+    { icon: <Gavel size={20} />, label: "আমার নিলাম", href: "/my-auctions", badge: String(myAuctions.length), bgColor: "bg-green-50", iconColor: "text-green-600" },
     { icon: <Heart size={20} />, label: "সংরক্ষিত পণ্য", href: "/saved", badge: "8", bgColor: "bg-red-50", iconColor: "text-red-600" },
     { icon: <MessageCircle size={20} />, label: "মেসেজ", href: "/chat", badge: "5", bgColor: "bg-purple-50", iconColor: "text-purple-600" },
     { icon: <Bell size={20} />, label: "নোটিফিকেশন", href: "/notifications", badge: "2", bgColor: "bg-yellow-50", iconColor: "text-yellow-600" },
@@ -170,7 +273,7 @@ export default function MyAccountPage() {
           <div className="flex justify-center gap-6 mt-3">
             <div className="text-center"><p className="text-xl font-bold text-white">12</p><p className="text-xs text-white/70">পোস্ট</p></div>
             <div className="w-px bg-white/30"></div>
-            <div className="text-center"><p className="text-xl font-bold text-white">3</p><p className="text-xs text-white/70">নিলাম</p></div>
+            <div className="text-center"><p className="text-xl font-bold text-white">{myAuctions.length}</p><p className="text-xs text-white/70">নিলাম</p></div>
             <div className="w-px bg-white/30"></div>
             <div className="text-center"><p className="text-xl font-bold text-white">4.8</p><p className="text-xs text-white/70">রেটিং</p></div>
             <div className="w-px bg-white/30"></div>
@@ -210,10 +313,10 @@ export default function MyAccountPage() {
 
       {/* ট্যাব মেনু */}
       <div className="max-w-3xl mx-auto px-4 mt-4">
-        <div className="flex gap-2 bg-white/80 backdrop-blur-sm rounded-2xl p-1 shadow-md border border-[#f85606]/20">
+        <div className="flex gap-2 bg-white/80 backdrop-blur-sm rounded-2xl p-1 shadow-md border border-[#f85606]/20 overflow-x-auto">
           <button
             onClick={() => setActiveTab('overview')}
-            className={`flex-1 py-2.5 rounded-xl text-sm font-semibold transition-all duration-300 ${
+            className={`flex-1 py-2.5 rounded-xl text-sm font-semibold transition-all duration-300 whitespace-nowrap px-3 ${
               activeTab === 'overview' 
                 ? 'bg-gradient-to-r from-[#f85606] to-orange-500 text-white shadow-md' 
                 : 'text-gray-600 hover:text-[#f85606]'
@@ -222,8 +325,18 @@ export default function MyAccountPage() {
             ওভারভিউ
           </button>
           <button
+            onClick={() => setActiveTab('auctions')}
+            className={`flex-1 py-2.5 rounded-xl text-sm font-semibold transition-all duration-300 whitespace-nowrap px-3 ${
+              activeTab === 'auctions' 
+                ? 'bg-gradient-to-r from-[#f85606] to-orange-500 text-white shadow-md' 
+                : 'text-gray-600 hover:text-[#f85606]'
+            }`}
+          >
+            নিলাম
+          </button>
+          <button
             onClick={() => setActiveTab('featured')}
-            className={`flex-1 py-2.5 rounded-xl text-sm font-semibold transition-all duration-300 ${
+            className={`flex-1 py-2.5 rounded-xl text-sm font-semibold transition-all duration-300 whitespace-nowrap px-3 ${
               activeTab === 'featured' 
                 ? 'bg-gradient-to-r from-[#f85606] to-orange-500 text-white shadow-md' 
                 : 'text-gray-600 hover:text-[#f85606]'
@@ -233,7 +346,7 @@ export default function MyAccountPage() {
           </button>
           <button
             onClick={() => setActiveTab('payments')}
-            className={`flex-1 py-2.5 rounded-xl text-sm font-semibold transition-all duration-300 ${
+            className={`flex-1 py-2.5 rounded-xl text-sm font-semibold transition-all duration-300 whitespace-nowrap px-3 ${
               activeTab === 'payments' 
                 ? 'bg-gradient-to-r from-[#f85606] to-orange-500 text-white shadow-md' 
                 : 'text-gray-600 hover:text-[#f85606]'
@@ -243,7 +356,7 @@ export default function MyAccountPage() {
           </button>
           <button
             onClick={() => setActiveTab('documents')}
-            className={`flex-1 py-2.5 rounded-xl text-sm font-semibold transition-all duration-300 ${
+            className={`flex-1 py-2.5 rounded-xl text-sm font-semibold transition-all duration-300 whitespace-nowrap px-3 ${
               activeTab === 'documents' 
                 ? 'bg-gradient-to-r from-[#f85606] to-orange-500 text-white shadow-md' 
                 : 'text-gray-600 hover:text-[#f85606]'
@@ -280,6 +393,188 @@ export default function MyAccountPage() {
               </Link>
             ))}
           </>
+        )}
+
+        {/* নিলাম ট্যাব */}
+        {activeTab === 'auctions' && (
+          <div className="bg-white/80 backdrop-blur-sm rounded-2xl p-5 shadow-md border border-[#f85606]/10">
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-lg font-bold text-gray-800 flex items-center gap-2">
+                <Gavel size={20} className="text-[#f85606]" />
+                <span className="bg-gradient-to-r from-[#f85606] to-orange-500 bg-clip-text text-transparent">
+                  আমার নিলাম ({myAuctions.length})
+                </span>
+              </h2>
+              <Link href="/auction/create">
+                <button className="bg-gradient-to-r from-[#f85606] to-orange-500 text-white px-4 py-2 rounded-xl text-sm font-semibold flex items-center gap-2 hover:shadow-lg transition">
+                  <Plus size={16} /> নতুন নিলাম
+                </button>
+              </Link>
+            </div>
+
+            {/* ফিল্টার */}
+            <div className="flex gap-2 mb-4 overflow-x-auto pb-2">
+              {['সব', 'সক্রিয়', 'সমাপ্ত', 'জিতেছি'].map((filter) => (
+                <button
+                  key={filter}
+                  className="px-4 py-1.5 bg-gray-100 rounded-full text-xs font-medium text-gray-600 hover:bg-[#f85606] hover:text-white transition whitespace-nowrap"
+                >
+                  {filter}
+                </button>
+              ))}
+            </div>
+
+            {myAuctions.length === 0 ? (
+              <div className="text-center py-8">
+                <Gavel size={48} className="mx-auto text-gray-300 mb-3" />
+                <p className="text-gray-400">কোনো নিলাম নেই</p>
+                <Link href="/auction/create">
+                  <button className="mt-4 bg-gradient-to-r from-[#f85606] to-orange-500 text-white px-6 py-2 rounded-xl text-sm font-semibold">
+                    প্রথম নিলাম তৈরি করুন
+                  </button>
+                </Link>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {myAuctions.map((auction) => {
+                  const timeInfo = getTimeLeft(auction.endTime);
+                  
+                  return (
+                    <div 
+                      key={auction.id} 
+                      className="border border-gray-200 rounded-xl p-4 hover:shadow-lg transition-all duration-300 bg-white relative"
+                    >
+                      {/* স্ট্যাটাস ব্যাজ */}
+                      <div className="absolute top-3 right-3 z-10">
+                        {auction.status === 'active' && (
+                          <span className="bg-green-100 text-green-700 text-[10px] px-2 py-1 rounded-full font-semibold flex items-center gap-1">
+                            <span className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse"></span>
+                            সক্রিয়
+                          </span>
+                        )}
+                        {auction.status === 'ended' && auction.isWinner && (
+                          <span className="bg-yellow-100 text-yellow-700 text-[10px] px-2 py-1 rounded-full font-semibold flex items-center gap-1">
+                            <Award size={10} /> আপনি জিতেছেন!
+                          </span>
+                        )}
+                        {auction.status === 'ended' && !auction.isWinner && (
+                          <span className="bg-gray-100 text-gray-600 text-[10px] px-2 py-1 rounded-full font-semibold">
+                            সমাপ্ত
+                          </span>
+                        )}
+                      </div>
+
+                      <div className="flex gap-4">
+                        {/* ইমেজ */}
+                        <div className="w-20 h-20 bg-gradient-to-br from-orange-50 to-orange-100 rounded-xl flex items-center justify-center text-4xl shadow-sm">
+                          {auction.image}
+                        </div>
+
+                        {/* কন্টেন্ট */}
+                        <div className="flex-1">
+                          <h3 className="font-bold text-gray-800 line-clamp-1 pr-20">{auction.title}</h3>
+                          
+                          <div className="flex items-center gap-3 mt-1">
+                            <div>
+                              <span className="text-[10px] text-gray-400">বর্তমান দাম</span>
+                              <p className="font-bold text-[#f85606]">৳{auction.currentPrice.toLocaleString()}</p>
+                            </div>
+                            <div className="w-px h-6 bg-gray-200"></div>
+                            <div>
+                              <span className="text-[10px] text-gray-400">বিড</span>
+                              <p className="font-semibold text-gray-700">{auction.totalBids} টি</p>
+                            </div>
+                            <div className="w-px h-6 bg-gray-200"></div>
+                            <div>
+                              <span className="text-[10px] text-gray-400">ভিউ</span>
+                              <p className="font-semibold text-gray-700">{auction.views}</p>
+                            </div>
+                          </div>
+
+                          {/* টাইমার */}
+                          <div className="mt-2 flex items-center gap-2">
+                            <Clock size={12} className={timeInfo.isEnded ? "text-red-500" : "text-green-500"} />
+                            <span className={`text-xs font-medium ${timeInfo.isEnded ? "text-red-500" : "text-green-600"}`}>
+                              {timeInfo.text}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* অ্যাকশন বাটন */}
+                      <div className="flex gap-2 mt-3 pt-3 border-t border-gray-100">
+                        <button
+                          onClick={() => handleViewAuction(auction.id)}
+                          className="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-700 py-2 rounded-lg text-xs font-medium flex items-center justify-center gap-1 transition"
+                        >
+                          <Eye size={12} /> দেখুন
+                        </button>
+                        
+                        <button
+                          onClick={() => handleViewBids(auction.id)}
+                          className="flex-1 bg-blue-50 hover:bg-blue-100 text-blue-700 py-2 rounded-lg text-xs font-medium flex items-center justify-center gap-1 transition"
+                        >
+                          <Users size={12} /> বিড ({auction.totalBids})
+                        </button>
+
+                        {auction.status === 'active' && (
+                          <button
+                            onClick={() => handleEditAuction(auction.id)}
+                            className="flex-1 bg-orange-50 hover:bg-orange-100 text-orange-700 py-2 rounded-lg text-xs font-medium flex items-center justify-center gap-1 transition"
+                          >
+                            <Edit2 size={12} /> এডিট
+                          </button>
+                        )}
+
+                        {auction.status === 'ended' && auction.isWinner && (
+                          <button
+                            onClick={() => handlePayNow(auction)}
+                            className="flex-1 bg-gradient-to-r from-[#f85606] to-orange-500 text-white py-2 rounded-lg text-xs font-medium flex items-center justify-center gap-1 transition hover:shadow-md"
+                          >
+                            <CreditCard size={12} /> পেমেন্ট করুন
+                          </button>
+                        )}
+
+                        {/* মোর অপশন */}
+                        <div className="relative">
+                          <button
+                            onClick={() => setShowActionMenu(showActionMenu === auction.id ? null : auction.id)}
+                            className="w-8 h-8 bg-gray-100 hover:bg-gray-200 rounded-lg flex items-center justify-center transition"
+                          >
+                            <MoreVertical size={14} className="text-gray-600" />
+                          </button>
+                          
+                          {showActionMenu === auction.id && (
+                            <div className="absolute right-0 bottom-full mb-1 bg-white rounded-xl shadow-xl border border-gray-200 py-1 z-30 min-w-[140px] animate-in slide-in-from-bottom-2 duration-200">
+                              <button
+                                onClick={() => {
+                                  navigator.clipboard.writeText(`${window.location.origin}/auction/${auction.id}`);
+                                  alert("লিংক কপি হয়েছে!");
+                                  setShowActionMenu(null);
+                                }}
+                                className="w-full px-4 py-2 text-left text-xs hover:bg-gray-50 flex items-center gap-2 transition"
+                              >
+                                <Copy size={12} /> লিংক কপি করুন
+                              </button>
+                              <button
+                                onClick={() => {
+                                  setShowActionMenu(null);
+                                  setShowDeleteConfirm(auction.id);
+                                }}
+                                className="w-full px-4 py-2 text-left text-xs hover:bg-red-50 text-red-600 flex items-center gap-2 transition"
+                              >
+                                <Trash2 size={12} /> ডিলিট করুন
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
         )}
 
         {/* ফিচার্ড ট্যাব */}
@@ -351,7 +646,7 @@ export default function MyAccountPage() {
           </div>
         )}
 
-        {/* ডকুমেন্ট ট্যাব - বাটন কাজ করবে */}
+        {/* ডকুমেন্ট ট্যাব */}
         {activeTab === 'documents' && (
           <div className="bg-white/80 backdrop-blur-sm rounded-2xl p-5 shadow-md border border-[#f85606]/10">
             <h2 className="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">
@@ -452,6 +747,37 @@ export default function MyAccountPage() {
         </div>
       )}
 
+      {/* ডিলিট কনফার্মেশন মডাল */}
+      {showDeleteConfirm && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl max-w-sm w-full p-6 shadow-2xl animate-in zoom-in-95 duration-200">
+            <div className="text-center">
+              <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <AlertCircle size={32} className="text-red-500" />
+              </div>
+              <h3 className="text-lg font-bold text-gray-800 mb-2">নিলাম ডিলিট করবেন?</h3>
+              <p className="text-sm text-gray-500 mb-6">
+                এই নিলামটি স্থায়ীভাবে ডিলিট হয়ে যাবে। এই কাজটি আনডু করা যাবে না।
+              </p>
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setShowDeleteConfirm(null)}
+                  className="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-700 py-3 rounded-xl font-semibold transition"
+                >
+                  বাতিল
+                </button>
+                <button
+                  onClick={() => handleDeleteAuction(showDeleteConfirm)}
+                  className="flex-1 bg-red-500 hover:bg-red-600 text-white py-3 rounded-xl font-semibold transition"
+                >
+                  ডিলিট করুন
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* আপলোডিং ইন্ডিকেটর */}
       {isUploading && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center">
@@ -464,4 +790,4 @@ export default function MyAccountPage() {
 
     </div>
   );
-} 
+}

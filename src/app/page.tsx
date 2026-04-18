@@ -19,6 +19,15 @@ type AdItem = {
   urgent: boolean;
 };
 
+type SliderItem = {
+  title: string;
+  discount: string;
+  color: string;
+  emoji: string;
+  link: string;
+  status?: string;
+};
+
 // ডামি অ্যাড ডাটা জেনারেটর (ইমোজি ব্যবহার করে)
 const generateMockAds = (page: number, limit: number): AdItem[] => {
   const items = [];
@@ -98,8 +107,8 @@ const AmarDuniyaHome = () => {
   const [currentSlide, setCurrentSlide] = useState(0);
   const [searchQuery, setSearchQuery] = useState('');
   
-  // ১৫টি স্লাইড (শুধু বাংলা)
-  const slides = [
+  // ডিফল্ট স্লাইড (ফলব্যাক হিসেবে)
+  const defaultSlides: SliderItem[] = [
     { title: "সব ধরণের পণ্য পাচ্ছেন", discount: "১৫% পর্যন্ত ছাড়", color: "from-[#f85606] to-orange-500", emoji: "🛍️", link: "/category/offer" },
     { title: "মোবাইল মেলায় স্বাগতম", discount: "সর্বোচ্চ ৩০% ছাড়", color: "from-[#e65c00] to-[#ff9933]", emoji: "📱", link: "/category/mobile" },
     { title: "সেরা দামে সেরা ল্যাপটপ", discount: "বিশেষ অফার", color: "from-[#cc5200] to-[#ff7733]", emoji: "💻", link: "/category/computer" },
@@ -117,6 +126,35 @@ const AmarDuniyaHome = () => {
     { title: "উইকেন্ড স্পেশাল", discount: "শনি-রবিবার ৩৫% ছাড়", color: "from-[#9c89b8] to-[#b8a9c9]", emoji: "🎊", link: "/category/offer" },
   ];
 
+  // স্লাইড স্টেট
+  const [slides, setSlides] = useState<SliderItem[]>(defaultSlides);
+
+  // লোকাল স্টোরেজ থেকে স্লাইডার লোড
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const savedSliders = localStorage.getItem("homeSliders");
+      if (savedSliders) {
+        try {
+          const allSliders = JSON.parse(savedSliders);
+          const activeSliders = allSliders.filter((s: SliderItem) => s.status === 'active');
+          if (activeSliders.length > 0) {
+            setSlides(activeSliders);
+          } else {
+            // যদি কোনো সক্রিয় স্লাইডার না থাকে, ডিফল্ট সেভ করে দিন
+            const defaultWithStatus = defaultSlides.map((s, i) => ({ ...s, status: 'active', id: i + 1, order: i + 1 }));
+            localStorage.setItem("homeSliders", JSON.stringify(defaultWithStatus));
+          }
+        } catch (e) {
+          console.error("স্লাইডার লোড করতে সমস্যা:", e);
+        }
+      } else {
+        // প্রথমবার লোড হলে ডিফল্ট স্লাইডার সেভ করুন
+        const defaultWithStatus = defaultSlides.map((s, i) => ({ ...s, status: 'active', id: i + 1, order: i + 1 }));
+        localStorage.setItem("homeSliders", JSON.stringify(defaultWithStatus));
+      }
+    }
+  }, []);
+
   // রিসেন্ট অ্যাডস
   const [recentAds, setRecentAds] = useState<AdItem[]>([]);
   const [recentPage, setRecentPage] = useState(1);
@@ -128,12 +166,14 @@ const AmarDuniyaHome = () => {
   // মূল ক্যাটাগরি গুলো (ডাটা ফাইল থেকে)
   const rootCategories = getRootCategories();
 
+  // অটো স্লাইড টাইমার
   useEffect(() => {
+    if (slides.length === 0) return;
     const timer = setInterval(() => {
       setCurrentSlide((prev) => (prev === slides.length - 1 ? 0 : prev + 1));
     }, 4000);
     return () => clearInterval(timer);
-  }, []);
+  }, [slides.length]);
 
   const loadRecentAds = useCallback(async (reset: boolean = false) => {
     if (isLoadingRecent.current || (reset === false && !hasMoreRecent)) return;
@@ -177,6 +217,7 @@ const AmarDuniyaHome = () => {
   }, [loadingRecent, hasMoreRecent, loadRecentAds]);
 
   const handleSwipe = (direction: 'left' | 'right') => {
+    if (slides.length === 0) return;
     if (direction === 'left') {
       setCurrentSlide((prev) => (prev === slides.length - 1 ? 0 : prev + 1));
     } else {
@@ -196,6 +237,15 @@ const AmarDuniyaHome = () => {
       handleSearch();
     }
   };
+
+  // যদি কোনো স্লাইড না থাকে
+  if (slides.length === 0) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-[#f2f3f7]">
+        <Loader2 className="animate-spin text-[#f85606]" size={40} />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen pb-24 font-sans w-full overflow-x-hidden transition-colors duration-300 bg-[#f2f3f7]">
