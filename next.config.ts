@@ -31,7 +31,13 @@ const nextConfig: NextConfig = {
   reactStrictMode: true,
   
   // ============ ডেভেলপমেন্ট সেটিংস ============
-  allowedDevOrigins: ['localhost', '10.59.153.225', '10.43.113.225'],
+  allowedDevOrigins: [
+    'localhost', 
+    '10.59.153.225', 
+    '10.43.113.225', 
+    '192.168.0.104',  // 🔥 আপনার নতুন IP যোগ করা হয়েছে
+    '192.168.0.103'   // 🔥 আগের IP রাখা হয়েছে
+  ],
   
   // ============ প্রোডাকশন আউটপুট ============
   output: 'standalone',

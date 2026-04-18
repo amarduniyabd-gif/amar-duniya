@@ -5,7 +5,7 @@ import {
   LayoutDashboard, Users, Package, Gavel, 
   CreditCard, FileText, Flag, Settings, FolderTree,
   LogOut, ChevronRight, Shield, Home, Menu, X,
-  Sparkles
+  Sparkles, MessageCircle
 } from "lucide-react";
 import { useState, useEffect } from "react";
 
@@ -18,6 +18,7 @@ const menuItems = [
   { href: "/admin/documents", label: "ডকুমেন্ট সার্ভিস", icon: <FileText size={18} /> },
   { href: "/admin/categories", label: "ক্যাটাগরি ম্যানেজমেন্ট", icon: <FolderTree size={18} /> },
   { href: "/admin/sliders", label: "স্লাইডার ম্যানেজমেন্ট", icon: <Sparkles size={18} /> },
+  { href: "/admin/chat", label: "চ্যাট মনিটরিং", icon: <MessageCircle size={18} /> },
   { href: "/admin/reports", label: "রিপোর্ট ম্যানেজমেন্ট", icon: <Flag size={18} /> },
   { href: "/admin/settings", label: "সেটিংস", icon: <Settings size={18} /> },
 ];

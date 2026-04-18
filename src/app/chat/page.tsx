@@ -2,7 +2,7 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, MessageCircle, Clock, User, Search, Plus } from "lucide-react";
+import { ArrowLeft, MessageCircle, Clock, User, Search, Plus, Trash2, MoreVertical, X, AlertCircle } from "lucide-react";
 
 type Conversation = {
   id: number;
@@ -52,11 +52,20 @@ export default function ChatListPage() {
   const router = useRouter();
   const [conversations, setConversations] = useState(dummyConversations);
   const [searchTerm, setSearchTerm] = useState("");
+  const [showActionMenu, setShowActionMenu] = useState<number | null>(null);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState<number | null>(null);
 
   const filteredConversations = conversations.filter(conv =>
     conv.userName.toLowerCase().includes(searchTerm.toLowerCase()) ||
     conv.productName.toLowerCase().includes(searchTerm.toLowerCase())
   );
+
+  const handleDeleteConversation = (id: number) => {
+    setConversations(prev => prev.filter(c => c.id !== id));
+    setShowDeleteConfirm(null);
+    setShowActionMenu(null);
+    alert("✅ কনভারসেশন ডিলিট করা হয়েছে!");
+  };
 
   return (
     <div className="min-h-screen bg-gray-100 pb-20">
@@ -99,47 +108,115 @@ export default function ChatListPage() {
             </div>
           ) : (
             filteredConversations.map((conv) => (
-              <Link key={conv.id} href={`/chat/${conv.id}`}>
-                <div className="bg-white rounded-2xl p-4 shadow-sm hover:shadow-xl transition-all duration-300 cursor-pointer">
-                  <div className="flex gap-3">
-                    {/* অ্যাভাটার */}
-                    <div className="relative">
-                      <div className="w-14 h-14 rounded-full bg-gradient-to-br from-orange-100 to-orange-200 flex items-center justify-center text-2xl">
-                        {conv.userAvatar}
-                      </div>
-                      {conv.unreadCount > 0 && (
-                        <div className="absolute -top-1 -right-1 bg-[#f85606] text-white text-xs font-bold w-5 h-5 rounded-full flex items-center justify-center">
-                          {conv.unreadCount}
+              <div key={conv.id} className="relative">
+                <Link href={`/chat/${conv.id}`}>
+                  <div className="bg-white rounded-2xl p-4 shadow-sm hover:shadow-xl transition-all duration-300 cursor-pointer">
+                    <div className="flex gap-3">
+                      {/* অ্যাভাটার */}
+                      <div className="relative">
+                        <div className="w-14 h-14 rounded-full bg-gradient-to-br from-orange-100 to-orange-200 flex items-center justify-center text-2xl">
+                          {conv.userAvatar}
                         </div>
-                      )}
-                    </div>
-                    
-                    {/* তথ্য */}
-                    <div className="flex-1">
-                      <div className="flex justify-between items-start">
-                        <div>
-                          <h3 className="font-bold text-gray-800">{conv.userName}</h3>
-                          <div className="flex items-center gap-2 mt-0.5">
-                            <span className="text-xs text-gray-400">{conv.productImage} {conv.productName}</span>
+                        {conv.unreadCount > 0 && (
+                          <div className="absolute -top-1 -right-1 bg-[#f85606] text-white text-xs font-bold w-5 h-5 rounded-full flex items-center justify-center">
+                            {conv.unreadCount}
+                          </div>
+                        )}
+                      </div>
+                      
+                      {/* তথ্য */}
+                      <div className="flex-1">
+                        <div className="flex justify-between items-start">
+                          <div>
+                            <h3 className="font-bold text-gray-800">{conv.userName}</h3>
+                            <div className="flex items-center gap-2 mt-0.5">
+                              <span className="text-xs text-gray-400">{conv.productImage} {conv.productName}</span>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-1 text-xs text-gray-400">
+                            <Clock size={12} />
+                            <span>{conv.lastMessageTime}</span>
                           </div>
                         </div>
-                        <div className="flex items-center gap-1 text-xs text-gray-400">
-                          <Clock size={12} />
-                          <span>{conv.lastMessageTime}</span>
-                        </div>
+                        <p className={`text-sm mt-1 ${conv.unreadCount > 0 ? 'font-semibold text-gray-800' : 'text-gray-500'} line-clamp-1`}>
+                          {conv.lastMessage}
+                        </p>
                       </div>
-                      <p className={`text-sm mt-1 ${conv.unreadCount > 0 ? 'font-semibold text-gray-800' : 'text-gray-500'} line-clamp-1`}>
-                        {conv.lastMessage}
-                      </p>
                     </div>
                   </div>
-                </div>
-              </Link>
+                </Link>
+                
+                {/* 🔥 ডিলিট বাটন */}
+                <button
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    setShowActionMenu(showActionMenu === conv.id ? null : conv.id);
+                  }}
+                  className="absolute top-3 right-3 p-2 hover:bg-gray-100 rounded-full transition z-10"
+                >
+                  <MoreVertical size={16} className="text-gray-400" />
+                </button>
+                
+                {/* অ্যাকশন মেনু */}
+                {showActionMenu === conv.id && (
+                  <div className="absolute top-12 right-3 bg-white rounded-xl shadow-xl border border-gray-200 py-1 z-20 min-w-[140px]">
+                    <button
+                      onClick={() => {
+                        setShowDeleteConfirm(conv.id);
+                        setShowActionMenu(null);
+                      }}
+                      className="w-full px-4 py-2 text-left text-sm hover:bg-red-50 text-red-600 flex items-center gap-2 transition"
+                    >
+                      <Trash2 size={14} /> ডিলিট করুন
+                    </button>
+                    <button
+                      onClick={() => {
+                        alert(`⚠️ "${conv.userName}" রিপোর্ট করা হয়েছে!`);
+                        setShowActionMenu(null);
+                      }}
+                      className="w-full px-4 py-2 text-left text-sm hover:bg-yellow-50 text-yellow-600 flex items-center gap-2 transition"
+                    >
+                      <AlertCircle size={14} /> রিপোর্ট করুন
+                    </button>
+                  </div>
+                )}
+              </div>
             ))
           )}
         </div>
-
       </div>
+
+      {/* 🔥 ডিলিট কনফার্মেশন মডাল */}
+      {showDeleteConfirm && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl max-w-sm w-full p-6 shadow-2xl">
+            <div className="text-center">
+              <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <AlertCircle size={32} className="text-red-500" />
+              </div>
+              <h3 className="text-lg font-bold text-gray-800 mb-2">কনভারসেশন ডিলিট করবেন?</h3>
+              <p className="text-sm text-gray-500 mb-6">
+                এই কনভারসেশন স্থায়ীভাবে ডিলিট হয়ে যাবে। এই কাজটি আনডু করা যাবে না।
+              </p>
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setShowDeleteConfirm(null)}
+                  className="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-700 py-3 rounded-xl font-semibold transition"
+                >
+                  বাতিল
+                </button>
+                <button
+                  onClick={() => handleDeleteConversation(showDeleteConfirm)}
+                  className="flex-1 bg-red-500 hover:bg-red-600 text-white py-3 rounded-xl font-semibold transition"
+                >
+                  ডিলিট করুন
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
