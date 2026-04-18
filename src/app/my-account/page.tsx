@@ -9,7 +9,7 @@ import {
   Crown, Clock, CreditCard, FileText, Star, Eye,
   TrendingUp, Award, Zap, Trash2, AlertCircle,
   MoreVertical, Plus, Copy, Users, Filter, RefreshCw,
-  Calendar, ExternalLink
+  Calendar, ExternalLink, EyeOff, Lock, Gem, Bookmark
 } from "lucide-react";
 
 // ============ টাইপ ডেফিনিশন ============
@@ -23,7 +23,7 @@ type FeaturedPost = {
 
 type PaymentHistory = {
   id: string;
-  type: 'featured' | 'document' | 'bid';
+  type: 'featured' | 'document' | 'bid' | 'matrimony';
   amount: number;
   postTitle?: string;
   date: string;
@@ -51,14 +51,32 @@ type MyAuction = {
   winningBid?: number;
 };
 
-// ============ মেমোইজড কম্পোনেন্ট ============
-const StatCard = memo(({ title, value, color }: { title: string; value: string | number; color: string }) => (
-  <div className={`bg-gradient-to-r ${color} rounded-xl p-3 text-white shadow-lg transform-gpu`}>
-    <p className="text-xs opacity-90">{title}</p>
-    <p className="text-xl font-bold">{value}</p>
-  </div>
-));
-StatCard.displayName = 'StatCard';
+// 🔥 পাত্র-পাত্রী প্রোফাইল টাইপ
+type MyMatrimonyProfile = {
+  id: number;
+  name: string;
+  age: number;
+  gender: 'male' | 'female';
+  district: string;
+  profession: string;
+  status: 'pending' | 'approved' | 'rejected';
+  isVerified: boolean;
+  isPremium: boolean;
+  views: number;
+  interests: number;
+  createdAt: string;
+  expiresAt?: string;
+};
+
+// 🔥 পাত্র-পাত্রী পেমেন্ট হিস্ট্রি
+type MatrimonyPayment = {
+  id: string;
+  profileId: number;
+  profileName: string;
+  amount: number;
+  date: string;
+  type: 'profile_unlock' | 'premium' | 'featured';
+};
 
 // ============ ইমেজ কম্প্রেশন (সুপার ফাস্ট) ============
 const compressToWebP = (file: File): Promise<string> => {
@@ -88,7 +106,7 @@ export default function MyAccountPage() {
   const [showEditModal, setShowEditModal] = useState(false);
   const [profileImage, setProfileImage] = useState<string>("👨");
   const [isUploading, setIsUploading] = useState(false);
-  const [activeTab, setActiveTab] = useState<'overview' | 'featured' | 'payments' | 'documents' | 'auctions'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'auctions' | 'matrimony' | 'featured' | 'payments' | 'documents'>('overview');
   const [showDeleteConfirm, setShowDeleteConfirm] = useState<number | null>(null);
   const [showActionMenu, setShowActionMenu] = useState<number | null>(null);
   const [showExtendModal, setShowExtendModal] = useState<number | null>(null);
@@ -110,7 +128,7 @@ export default function MyAccountPage() {
 
   const [payments, setPayments] = useState<PaymentHistory[]>([
     { id: '1', type: 'featured', amount: 100, postTitle: 'iPhone 15 Pro Max', date: '২০২৬-০৪-১৬' },
-    { id: '2', type: 'featured', amount: 100, postTitle: 'MacBook Pro M2', date: '২০২৬-০৪-১৩' },
+    { id: '2', type: 'matrimony', amount: 500, postTitle: 'পাত্রী প্রোফাইল আনলক', date: '২০২৬-০৪-১৫' },
     { id: '3', type: 'bid', amount: 2, date: '২০২৬-০৪-১৫' },
   ]);
 
@@ -130,11 +148,31 @@ export default function MyAccountPage() {
       image: "💻", endTime: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString(),
       totalBids: 28, status: 'ended', views: 560, isWinner: true, winningBid: 145000,
     },
+  ]);
+
+  // 🔥 পাত্র-পাত্রী প্রোফাইল স্টেট
+  const [myMatrimonyProfiles, setMyMatrimonyProfiles] = useState<MyMatrimonyProfile[]>([
     {
-      id: 3, title: "Samsung Galaxy S23 Ultra", currentPrice: 75000, startPrice: 65000,
-      image: "📱", endTime: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000).toISOString(),
-      totalBids: 8, status: 'active', views: 210,
+      id: 1, name: "রহিমা খাতুন", age: 24, gender: "female", district: "নারায়ণগঞ্জ",
+      profession: "সফটওয়্যার ইঞ্জিনিয়ার", status: "approved", isVerified: true, isPremium: true,
+      views: 1240, interests: 56, createdAt: "২০২৬-০৪-১৫",
     },
+    {
+      id: 2, name: "আব্দুল করিম", age: 28, gender: "male", district: "গাজীপুর",
+      profession: "ব্যবসায়ী", status: "pending", isVerified: false, isPremium: false,
+      views: 120, interests: 8, createdAt: "২০২৬-০৪-১৮",
+    },
+  ]);
+
+  // 🔥 পাত্র-পাত্রী পেমেন্ট হিস্ট্রি
+  const [matrimonyPayments, setMatrimonyPayments] = useState<MatrimonyPayment[]>([
+    { id: '1', profileId: 1, profileName: 'রহিমা খাতুন', amount: 500, date: '২০২৬-০৪-১৫', type: 'profile_unlock' },
+    { id: '2', profileId: 2, profileName: 'নিজের প্রোফাইল', amount: 1000, date: '২০২৬-০৪-১৮', type: 'premium' },
+  ]);
+
+  // 🔥 সেভ করা প্রোফাইল
+  const [savedProfiles, setSavedProfiles] = useState<MyMatrimonyProfile[]>([
+    { id: 3, name: "ফাতেমা বেগম", age: 22, gender: "female", district: "কুমিল্লা", profession: "চিকিৎসা শিক্ষার্থী", status: "approved", isVerified: true, isPremium: false, views: 2100, interests: 89, createdAt: "২০২৬-০৪-১৩" },
   ]);
 
   useEffect(() => {
@@ -144,7 +182,7 @@ export default function MyAccountPage() {
     if (loggedIn !== "true") router.push("/login");
   }, [router]);
 
-  // ============ অপটিমাইজড হ্যান্ডলার (useCallback) ============
+  // ============ অপটিমাইজড হ্যান্ডলার ============
   const getDaysLeft = useCallback((endDate: string) => {
     const end = new Date(endDate).getTime();
     const now = Date.now();
@@ -189,9 +227,7 @@ export default function MyAccountPage() {
   }, []);
 
   const handleEditAuction = useCallback((id: number) => {
-    // 🔥 এডিট পেজ না থাকলে অ্যালার্ট দেখাবে
     alert(`📝 নিলাম এডিট ফিচার শীঘ্রই আসছে!\nনিলাম আইডি: ${id}`);
-    // router.push(`/auction/edit/${id}`); // পেজ তৈরি হলে আনকমেন্ট করবেন
   }, []);
 
   const handleExtendFeatured = useCallback((postId: number, days: number) => {
@@ -216,9 +252,28 @@ export default function MyAccountPage() {
     router.push(`/auction/${auction.id}/payment?amount=${auction.winningBid || auction.currentPrice}`);
   }, [router]);
 
-  const handleChatWithSeller = useCallback(() => {
-    router.push('/chat');
+  // 🔥 পাত্র-পাত্রী হ্যান্ডলার
+  const handleEditMatrimonyProfile = useCallback((id: number) => {
+    router.push(`/category/matrimony/edit/${id}`);
   }, [router]);
+
+  const handleViewMatrimonyProfile = useCallback((id: number) => {
+    router.push(`/category/matrimony?id=${id}`);
+  }, [router]);
+
+  const handleDeleteMatrimonyProfile = useCallback((id: number) => {
+    setMyMatrimonyProfiles(prev => prev.filter(p => p.id !== id));
+    setShowDeleteConfirm(null);
+    alert("✅ প্রোফাইল ডিলিট করা হয়েছে!");
+  }, []);
+
+  const handleBoostProfile = useCallback((id: number) => {
+    alert(`🚀 প্রোফাইল বুস্ট করতে ২০০ টাকা পেমেন্ট করতে হবে!\nপ্রোফাইল আইডি: ${id}`);
+  }, []);
+
+  const handleRenewPremium = useCallback((id: number) => {
+    alert(`👑 প্রিমিয়াম নবায়ন করতে ১০০০ টাকা পেমেন্ট করতে হবে!\nপ্রোফাইল আইডি: ${id}`);
+  }, []);
 
   const totalSpent = payments.reduce((sum, p) => sum + p.amount, 0);
   const activeFeaturedCount = featuredPosts.filter(p => p.status === 'active').length;
@@ -226,6 +281,7 @@ export default function MyAccountPage() {
   const menuItems = [
     { icon: <Package size={20} />, label: "আমার পোস্ট", href: "/my-posts", badge: "12", bgColor: "bg-blue-50", iconColor: "text-blue-600" },
     { icon: <Gavel size={20} />, label: "আমার নিলাম", href: "/my-auctions", badge: String(myAuctions.length), bgColor: "bg-green-50", iconColor: "text-green-600" },
+    { icon: <Heart size={20} />, label: "পাত্র-পাত্রী", href: "/category/matrimony", badge: String(myMatrimonyProfiles.length), bgColor: "bg-pink-50", iconColor: "text-pink-600" },
     { icon: <Heart size={20} />, label: "সংরক্ষিত পণ্য", href: "/saved", badge: "8", bgColor: "bg-red-50", iconColor: "text-red-600" },
     { icon: <MessageCircle size={20} />, label: "মেসেজ", href: "/chat", badge: "5", bgColor: "bg-purple-50", iconColor: "text-purple-600" },
     { icon: <Bell size={20} />, label: "নোটিফিকেশন", href: "/notifications", badge: "2", bgColor: "bg-yellow-50", iconColor: "text-yellow-600" },
@@ -238,7 +294,7 @@ export default function MyAccountPage() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-orange-50 via-white to-amber-50 pb-20">
       
-      {/* প্রোফাইল হেডার - GPU Accelerated */}
+      {/* প্রোফাইল হেডার */}
       <div className="relative bg-gradient-to-r from-[#f85606] via-orange-500 to-[#f85606] overflow-hidden transform-gpu">
         <div className="absolute inset-0 bg-black/5" />
         <div className="absolute -top-24 -right-24 w-64 h-64 bg-white/10 rounded-full blur-3xl" />
@@ -270,9 +326,9 @@ export default function MyAccountPage() {
             <div className="w-px bg-white/30" />
             <div className="text-center"><p className="text-xl font-bold text-white">{myAuctions.length}</p><p className="text-xs text-white/70">নিলাম</p></div>
             <div className="w-px bg-white/30" />
-            <div className="text-center"><p className="text-xl font-bold text-white">4.8</p><p className="text-xs text-white/70">রেটিং</p></div>
+            <div className="text-center"><p className="text-xl font-bold text-white">{myMatrimonyProfiles.length}</p><p className="text-xs text-white/70">পাত্র-পাত্রী</p></div>
             <div className="w-px bg-white/30" />
-            <div className="text-center"><p className="text-xl font-bold text-white">500+</p><p className="text-xs text-white/70">লেনদেন</p></div>
+            <div className="text-center"><p className="text-xl font-bold text-white">4.8</p><p className="text-xs text-white/70">রেটিং</p></div>
           </div>
           
           <button 
@@ -287,7 +343,10 @@ export default function MyAccountPage() {
       {/* স্ট্যাটাস কার্ড */}
       <div className="max-w-3xl mx-auto px-4 mt-4">
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-          <StatCard title="মোট খরচ" value={`${totalSpent} ৳`} color="from-[#f85606] to-orange-500" />
+          <div className="bg-gradient-to-r from-[#f85606] to-orange-500 rounded-xl p-3 text-white shadow-lg">
+            <p className="text-xs opacity-90">মোট খরচ</p>
+            <p className="text-xl font-bold">{totalSpent} ৳</p>
+          </div>
           <div className="bg-white rounded-xl p-3 shadow-md">
             <p className="text-xs text-gray-500">সক্রিয় ফিচার্ড</p>
             <p className="text-xl font-bold text-[#f85606]">{activeFeaturedCount}</p>
@@ -309,6 +368,7 @@ export default function MyAccountPage() {
           {[
             { id: 'overview', label: 'ওভারভিউ' },
             { id: 'auctions', label: 'নিলাম' },
+            { id: 'matrimony', label: 'পাত্র-পাত্রী' },
             { id: 'featured', label: 'ফিচার্ড' },
             { id: 'payments', label: 'পেমেন্ট' },
             { id: 'documents', label: 'ডকুমেন্ট' },
@@ -353,19 +413,145 @@ export default function MyAccountPage() {
                 </div>
               </Link>
             ))}
-            
-            {/* 🔥 চ্যাট কুইক অ্যাকশন */}
-            <button
-              onClick={handleChatWithSeller}
-              className="w-full bg-gradient-to-r from-purple-500 to-purple-600 text-white rounded-2xl p-4 flex items-center justify-between shadow-md hover:shadow-xl transition-all duration-200 hover:-translate-y-0.5"
-            >
-              <div className="flex items-center gap-3">
-                <MessageCircle size={20} />
-                <span className="font-semibold">চ্যাট করুন</span>
-              </div>
-              <ChevronRight size={18} />
-            </button>
           </>
+        )}
+
+        {/* 🔥 পাত্র-পাত্রী ট্যাব */}
+        {activeTab === 'matrimony' && (
+          <div className="space-y-4">
+            {/* আমার প্রোফাইল */}
+            <div className="bg-white/80 backdrop-blur-sm rounded-2xl p-5 shadow-md border border-[#f85606]/10">
+              <div className="flex justify-between items-center mb-4">
+                <h2 className="text-lg font-bold text-gray-800 flex items-center gap-2">
+                  <Heart size={20} className="text-[#f85606]" />
+                  <span className="bg-gradient-to-r from-[#f85606] to-orange-500 bg-clip-text text-transparent">
+                    আমার প্রোফাইল ({myMatrimonyProfiles.length})
+                  </span>
+                </h2>
+                <Link href="/category/matrimony/create">
+                  <button className="bg-gradient-to-r from-[#f85606] to-orange-500 text-white px-4 py-2 rounded-xl text-sm font-semibold flex items-center gap-2">
+                    <Plus size={16} /> নতুন প্রোফাইল
+                  </button>
+                </Link>
+              </div>
+
+              {myMatrimonyProfiles.length === 0 ? (
+                <p className="text-center text-gray-400 py-4">কোনো প্রোফাইল নেই</p>
+              ) : (
+                <div className="space-y-3">
+                  {myMatrimonyProfiles.map((prof) => (
+                    <div key={prof.id} className="border border-gray-200 rounded-xl p-4 hover:shadow-md transition bg-white">
+                      <div className="flex items-start justify-between">
+                        <div className="flex items-center gap-3">
+                          <div className="w-12 h-12 rounded-full bg-gradient-to-br from-pink-100 to-rose-100 flex items-center justify-center text-2xl">
+                            {prof.gender === 'male' ? '👨' : '👩'}
+                          </div>
+                          <div>
+                            <h3 className="font-bold text-gray-800 flex items-center gap-2">
+                              {prof.name}
+                              {prof.isVerified && <CheckCircle size={12} className="text-green-500" />}
+                              {prof.isPremium && <Crown size={12} className="text-amber-500" />}
+                            </h3>
+                            <p className="text-xs text-gray-400">{prof.age} বছর • {prof.profession}</p>
+                            <p className="text-xs text-gray-400">{prof.district}</p>
+                          </div>
+                        </div>
+                        <div className="text-right">
+                          <span className={`text-xs px-2 py-1 rounded-full ${
+                            prof.status === 'approved' ? 'bg-green-100 text-green-700' :
+                            prof.status === 'pending' ? 'bg-yellow-100 text-yellow-700' :
+                            'bg-red-100 text-red-700'
+                          }`}>
+                            {prof.status === 'approved' ? 'অনুমোদিত' : prof.status === 'pending' ? 'পেন্ডিং' : 'বাতিল'}
+                          </span>
+                        </div>
+                      </div>
+                      
+                      <div className="flex items-center gap-4 mt-3 text-xs text-gray-500">
+                        <span>👁️ {prof.views} ভিউ</span>
+                        <span>❤️ {prof.interests} আগ্রহ</span>
+                        <span>📅 {prof.createdAt}</span>
+                      </div>
+
+                      <div className="flex gap-2 mt-3 pt-3 border-t border-gray-100">
+                        <button onClick={() => handleViewMatrimonyProfile(prof.id)} className="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-700 py-2 rounded-lg text-xs font-medium flex items-center justify-center gap-1">
+                          <Eye size={12} /> দেখুন
+                        </button>
+                        <button onClick={() => handleEditMatrimonyProfile(prof.id)} className="flex-1 bg-blue-50 hover:bg-blue-100 text-blue-700 py-2 rounded-lg text-xs font-medium flex items-center justify-center gap-1">
+                          <Edit2 size={12} /> এডিট
+                        </button>
+                        {!prof.isPremium && (
+                          <button onClick={() => handleRenewPremium(prof.id)} className="flex-1 bg-amber-50 hover:bg-amber-100 text-amber-700 py-2 rounded-lg text-xs font-medium flex items-center justify-center gap-1">
+                            <Crown size={12} /> প্রিমিয়াম
+                          </button>
+                        )}
+                        <button onClick={() => handleBoostProfile(prof.id)} className="flex-1 bg-green-50 hover:bg-green-100 text-green-700 py-2 rounded-lg text-xs font-medium flex items-center justify-center gap-1">
+                          <Zap size={12} /> বুস্ট
+                        </button>
+                        <button onClick={() => { setShowDeleteConfirm(prof.id); }} className="w-8 h-8 bg-red-50 hover:bg-red-100 text-red-600 rounded-lg flex items-center justify-center">
+                          <Trash2 size={14} />
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* সেভ করা প্রোফাইল */}
+            {savedProfiles.length > 0 && (
+              <div className="bg-white/80 backdrop-blur-sm rounded-2xl p-5 shadow-md border border-[#f85606]/10">
+                <h2 className="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">
+                  <Bookmark size={20} className="text-[#f85606]" />
+                  সেভ করা প্রোফাইল
+                </h2>
+                <div className="space-y-2">
+                  {savedProfiles.map((prof) => (
+                    <div key={prof.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-xl">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-full bg-gradient-to-br from-pink-100 to-rose-100 flex items-center justify-center text-xl">
+                          {prof.gender === 'male' ? '👨' : '👩'}
+                        </div>
+                        <div>
+                          <p className="font-medium text-sm">{prof.name}</p>
+                          <p className="text-xs text-gray-400">{prof.age} বছর • {prof.district}</p>
+                        </div>
+                      </div>
+                      <button onClick={() => handleViewMatrimonyProfile(prof.id)} className="text-[#f85606] text-xs font-semibold">
+                        দেখুন →
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* পাত্র-পাত্রী পেমেন্ট হিস্ট্রি */}
+            <div className="bg-white/80 backdrop-blur-sm rounded-2xl p-5 shadow-md border border-[#f85606]/10">
+              <h2 className="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">
+                <CreditCard size={20} className="text-[#f85606]" />
+                পেমেন্ট হিস্ট্রি
+              </h2>
+              {matrimonyPayments.length === 0 ? (
+                <p className="text-center text-gray-400 py-2">কোনো পেমেন্ট নেই</p>
+              ) : (
+                <div className="space-y-2">
+                  {matrimonyPayments.map((pay) => (
+                    <div key={pay.id} className="flex justify-between items-center border-b border-gray-100 py-2">
+                      <div>
+                        <p className="font-medium text-sm">{pay.profileName}</p>
+                        <p className="text-xs text-gray-400">
+                          {pay.type === 'profile_unlock' ? '🔓 প্রোফাইল আনলক' : 
+                           pay.type === 'premium' ? '👑 প্রিমিয়াম' : '⭐ ফিচার্ড'} • {pay.date}
+                        </p>
+                      </div>
+                      <p className="font-bold text-[#f85606]">{pay.amount} ৳</p>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
         )}
 
         {/* নিলাম ট্যাব */}
@@ -374,91 +560,45 @@ export default function MyAccountPage() {
             <div className="flex justify-between items-center mb-4">
               <h2 className="text-lg font-bold text-gray-800 flex items-center gap-2">
                 <Gavel size={20} className="text-[#f85606]" />
-                <span className="bg-gradient-to-r from-[#f85606] to-orange-500 bg-clip-text text-transparent">
-                  আমার নিলাম ({myAuctions.length})
-                </span>
+                <span>আমার নিলাম ({myAuctions.length})</span>
               </h2>
               <Link href="/auction/create">
-                <button className="bg-gradient-to-r from-[#f85606] to-orange-500 text-white px-4 py-2 rounded-xl text-sm font-semibold flex items-center gap-2 hover:shadow-lg transition active:scale-95">
+                <button className="bg-gradient-to-r from-[#f85606] to-orange-500 text-white px-4 py-2 rounded-xl text-sm font-semibold flex items-center gap-2">
                   <Plus size={16} /> নতুন নিলাম
                 </button>
               </Link>
             </div>
 
             {myAuctions.length === 0 ? (
-              <div className="text-center py-8">
-                <Gavel size={48} className="mx-auto text-gray-300 mb-3" />
-                <p className="text-gray-400">কোনো নিলাম নেই</p>
-              </div>
+              <p className="text-center text-gray-400 py-4">কোনো নিলাম নেই</p>
             ) : (
               <div className="space-y-3">
                 {myAuctions.map((auction) => {
                   const timeInfo = getTimeLeft(auction.endTime);
                   return (
-                    <div key={auction.id} className="border border-gray-200 rounded-xl p-4 hover:shadow-lg transition-all duration-200 bg-white relative">
-                      <div className="absolute top-3 right-3 z-10">
-                        {auction.status === 'active' && (
-                          <span className="bg-green-100 text-green-700 text-[10px] px-2 py-1 rounded-full font-semibold flex items-center gap-1">
-                            <span className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse" /> সক্রিয়
-                          </span>
-                        )}
-                        {auction.status === 'ended' && auction.isWinner && (
-                          <span className="bg-yellow-100 text-yellow-700 text-[10px] px-2 py-1 rounded-full font-semibold flex items-center gap-1">
-                            <Award size={10} /> আপনি জিতেছেন!
-                          </span>
-                        )}
-                      </div>
-
+                    <div key={auction.id} className="border border-gray-200 rounded-xl p-4 hover:shadow-md transition bg-white">
                       <div className="flex gap-4">
-                        <div className="w-20 h-20 bg-gradient-to-br from-orange-50 to-orange-100 rounded-xl flex items-center justify-center text-4xl shadow-sm">
+                        <div className="w-16 h-16 bg-gradient-to-br from-orange-50 to-orange-100 rounded-xl flex items-center justify-center text-3xl">
                           {auction.image}
                         </div>
                         <div className="flex-1">
-                          <h3 className="font-bold text-gray-800 line-clamp-1 pr-20">{auction.title}</h3>
+                          <h3 className="font-bold text-gray-800">{auction.title}</h3>
                           <div className="flex items-center gap-3 mt-1">
-                            <div><span className="text-[10px] text-gray-400">বর্তমান দাম</span><p className="font-bold text-[#f85606]">৳{auction.currentPrice.toLocaleString()}</p></div>
-                            <div className="w-px h-6 bg-gray-200" />
-                            <div><span className="text-[10px] text-gray-400">বিড</span><p className="font-semibold text-gray-700">{auction.totalBids} টি</p></div>
+                            <span className="text-sm font-bold text-[#f85606]">৳{auction.currentPrice.toLocaleString()}</span>
+                            <span className="text-xs text-gray-400">{auction.totalBids} বিড</span>
                           </div>
-                          <div className="mt-2 flex items-center gap-2">
+                          <div className="flex items-center gap-2 mt-1">
                             <Clock size={12} className={timeInfo.isEnded ? "text-red-500" : "text-green-500"} />
-                            <span className={`text-xs font-medium ${timeInfo.isEnded ? "text-red-500" : "text-green-600"}`}>{timeInfo.text}</span>
+                            <span className={`text-xs ${timeInfo.isEnded ? "text-red-500" : "text-green-600"}`}>{timeInfo.text}</span>
                           </div>
                         </div>
                       </div>
-
-                      <div className="flex gap-2 mt-3 pt-3 border-t border-gray-100">
-                        <button onClick={() => handleViewAuction(auction.id)} className="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-700 py-2 rounded-lg text-xs font-medium flex items-center justify-center gap-1 transition active:scale-95">
-                          <Eye size={12} /> দেখুন
-                        </button>
-                        <button onClick={() => handleViewBids(auction.id)} className="flex-1 bg-blue-50 hover:bg-blue-100 text-blue-700 py-2 rounded-lg text-xs font-medium flex items-center justify-center gap-1 transition active:scale-95">
-                          <Users size={12} /> বিড ({auction.totalBids})
-                        </button>
+                      <div className="flex gap-2 mt-3">
+                        <button onClick={() => handleViewAuction(auction.id)} className="flex-1 bg-gray-100 text-gray-700 py-2 rounded-lg text-xs">দেখুন</button>
+                        <button onClick={() => handleViewBids(auction.id)} className="flex-1 bg-blue-50 text-blue-700 py-2 rounded-lg text-xs">বিড</button>
                         {auction.status === 'active' && (
-                          <button onClick={() => handleEditAuction(auction.id)} className="flex-1 bg-orange-50 hover:bg-orange-100 text-orange-700 py-2 rounded-lg text-xs font-medium flex items-center justify-center gap-1 transition active:scale-95">
-                            <Edit2 size={12} /> এডিট
-                          </button>
+                          <button onClick={() => handleEditAuction(auction.id)} className="flex-1 bg-orange-50 text-orange-700 py-2 rounded-lg text-xs">এডিট</button>
                         )}
-                        {auction.status === 'ended' && auction.isWinner && (
-                          <button onClick={() => handlePayNow(auction)} className="flex-1 bg-gradient-to-r from-[#f85606] to-orange-500 text-white py-2 rounded-lg text-xs font-medium flex items-center justify-center gap-1 transition active:scale-95">
-                            <CreditCard size={12} /> পেমেন্ট
-                          </button>
-                        )}
-                        <div className="relative">
-                          <button onClick={() => setShowActionMenu(showActionMenu === auction.id ? null : auction.id)} className="w-8 h-8 bg-gray-100 hover:bg-gray-200 rounded-lg flex items-center justify-center transition">
-                            <MoreVertical size={14} />
-                          </button>
-                          {showActionMenu === auction.id && (
-                            <div className="absolute right-0 bottom-full mb-1 bg-white rounded-xl shadow-xl border border-gray-200 py-1 z-30 min-w-[140px]">
-                              <button onClick={() => { navigator.clipboard.writeText(`${window.location.origin}/auction/${auction.id}`); alert("লিংক কপি হয়েছে!"); setShowActionMenu(null); }} className="w-full px-4 py-2 text-left text-xs hover:bg-gray-50 flex items-center gap-2">
-                                <Copy size={12} /> লিংক কপি
-                              </button>
-                              <button onClick={() => { setShowActionMenu(null); setShowDeleteConfirm(auction.id); }} className="w-full px-4 py-2 text-left text-xs hover:bg-red-50 text-red-600 flex items-center gap-2">
-                                <Trash2 size={12} /> ডিলিট
-                              </button>
-                            </div>
-                          )}
-                        </div>
                       </div>
                     </div>
                   );
@@ -472,37 +612,20 @@ export default function MyAccountPage() {
         {activeTab === 'featured' && (
           <div className="bg-white/80 backdrop-blur-sm rounded-2xl p-5 shadow-md border border-[#f85606]/10">
             <h2 className="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">
-              <Crown size={20} className="text-[#f85606]" /> 
-              <span className="bg-gradient-to-r from-[#f85606] to-orange-500 bg-clip-text text-transparent">ফিচার্ড পোস্ট</span>
+              <Crown size={20} className="text-[#f85606]" /> ফিচার্ড পোস্ট
             </h2>
-            {featuredPosts.length === 0 ? (
-              <p className="text-center text-gray-400 py-4">কোনো ফিচার্ড পোস্ট নেই</p>
-            ) : (
-              <div className="space-y-3">
-                {featuredPosts.map((post) => (
-                  <div key={post.postId} className="border border-[#f85606]/20 rounded-xl p-3 hover:shadow-md transition">
-                    <div className="flex justify-between items-start">
-                      <div>
-                        <p className="font-semibold text-gray-800">{post.postTitle}</p>
-                        <p className="text-xs text-gray-400"><Eye size={12} className="inline" /> {post.views} ভিউ</p>
-                      </div>
-                      <span className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded-full">সক্রিয়</span>
-                    </div>
-                    <div className="mt-2 flex justify-between items-center">
-                      <p className="text-xs text-gray-500"><Clock size={12} className="inline" /> {getDaysLeft(post.endDate)} দিন বাকি</p>
-                      <div className="flex gap-2">
-                        <button onClick={() => setShowExtendModal(post.postId)} className="text-xs text-blue-600 font-semibold hover:underline flex items-center gap-1">
-                          <RefreshCw size={10} /> সময় বাড়ান
-                        </button>
-                        <button onClick={() => router.push(`/post/${post.postId}`)} className="text-xs text-[#f85606] font-semibold hover:underline">
-                          বিস্তারিত
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                ))}
+            {featuredPosts.map((post) => (
+              <div key={post.postId} className="border rounded-xl p-3 mb-2">
+                <div className="flex justify-between">
+                  <span className="font-medium">{post.postTitle}</span>
+                  <span className="text-xs text-gray-400">{post.views} ভিউ</span>
+                </div>
+                <div className="flex justify-between items-center mt-2">
+                  <span className="text-xs text-gray-500">{getDaysLeft(post.endDate)} দিন বাকি</span>
+                  <button onClick={() => setShowExtendModal(post.postId)} className="text-xs text-blue-600">সময় বাড়ান</button>
+                </div>
               </div>
-            )}
+            ))}
           </div>
         )}
 
@@ -510,29 +633,22 @@ export default function MyAccountPage() {
         {activeTab === 'payments' && (
           <div className="bg-white/80 backdrop-blur-sm rounded-2xl p-5 shadow-md border border-[#f85606]/10">
             <h2 className="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">
-              <CreditCard size={20} className="text-[#f85606]" />
-              <span className="bg-gradient-to-r from-[#f85606] to-orange-500 bg-clip-text text-transparent">পেমেন্ট হিস্ট্রি</span>
+              <CreditCard size={20} className="text-[#f85606]" /> পেমেন্ট হিস্ট্রি
             </h2>
-            {payments.length === 0 ? (
-              <p className="text-center text-gray-400 py-4">কোনো পেমেন্ট নেই</p>
-            ) : (
-              <div className="space-y-2">
-                {payments.map((payment) => (
-                  <div key={payment.id} className="flex justify-between items-center border-b border-gray-100 py-2 hover:bg-orange-50/50 p-2 rounded-lg transition">
-                    <div>
-                      <p className="font-semibold text-sm">
-                        {payment.type === 'featured' && '⭐ ফিচার্ড লিস্টিং'}
-                        {payment.type === 'document' && '📄 ডকুমেন্ট সার্ভিস'}
-                        {payment.type === 'bid' && '🔨 বিড ফি'}
-                      </p>
-                      {payment.postTitle && <p className="text-xs text-gray-400">{payment.postTitle}</p>}
-                      <p className="text-xs text-gray-400">{payment.date}</p>
-                    </div>
-                    <p className="font-bold text-[#f85606]">{payment.amount} ৳</p>
-                  </div>
-                ))}
+            {payments.map((payment) => (
+              <div key={payment.id} className="flex justify-between items-center border-b py-2">
+                <div>
+                  <p className="font-medium text-sm">
+                    {payment.type === 'featured' && '⭐ ফিচার্ড'}
+                    {payment.type === 'matrimony' && '💑 পাত্র-পাত্রী'}
+                    {payment.type === 'bid' && '🔨 বিড'}
+                  </p>
+                  {payment.postTitle && <p className="text-xs text-gray-400">{payment.postTitle}</p>}
+                  <p className="text-xs text-gray-400">{payment.date}</p>
+                </div>
+                <p className="font-bold text-[#f85606]">{payment.amount} ৳</p>
               </div>
-            )}
+            ))}
           </div>
         )}
 
@@ -540,84 +656,51 @@ export default function MyAccountPage() {
         {activeTab === 'documents' && (
           <div className="bg-white/80 backdrop-blur-sm rounded-2xl p-5 shadow-md border border-[#f85606]/10">
             <h2 className="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">
-              <FileText size={20} className="text-[#f85606]" />
-              <span className="bg-gradient-to-r from-[#f85606] to-orange-500 bg-clip-text text-transparent">ডকুমেন্ট রিকোয়েস্ট</span>
+              <FileText size={20} className="text-[#f85606]" /> ডকুমেন্ট
             </h2>
-            {documentRequests.length === 0 ? (
-              <p className="text-center text-gray-400 py-4">কোনো ডকুমেন্ট রিকোয়েস্ট নেই</p>
-            ) : (
-              <div className="space-y-3">
-                {documentRequests.map((doc) => (
-                  <div key={doc.id} className="border border-[#f85606]/20 rounded-xl p-3 hover:shadow-md transition">
-                    <div className="flex justify-between items-start">
-                      <div><p className="font-semibold text-gray-800">{doc.postTitle}</p><p className="text-xs text-gray-400">{doc.createdAt}</p></div>
-                      <span className={`text-xs px-2 py-1 rounded-full ${doc.status === 'released' ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'}`}>
-                        {doc.status === 'released' ? 'রিলিজড' : 'পেন্ডিং'}
-                      </span>
-                    </div>
-                    <div className="mt-2 flex justify-between items-center">
-                      <p className="text-sm text-gray-600">ফি: <span className="font-bold text-[#f85606]">{doc.fee} ৳</span></p>
-                      {doc.status === 'released' ? (
-                        <button onClick={() => router.push(`/documents/download?id=${doc.id}`)} className="text-sm bg-gradient-to-r from-blue-500 to-blue-600 text-white px-4 py-1.5 rounded-lg font-semibold active:scale-95 transition">
-                          ডাউনলোড
-                        </button>
-                      ) : (
-                        <button onClick={() => router.push(`/documents/payment?id=${doc.id}&amount=${doc.fee}`)} className="text-sm bg-gradient-to-r from-[#f85606] to-orange-500 text-white px-4 py-1.5 rounded-lg font-semibold active:scale-95 transition">
-                          পেমেন্ট করুন
-                        </button>
-                      )}
-                    </div>
-                  </div>
-                ))}
+            {documentRequests.map((doc) => (
+              <div key={doc.id} className="border rounded-xl p-3 mb-2">
+                <div className="flex justify-between">
+                  <span className="font-medium">{doc.postTitle}</span>
+                  <span className={`text-xs px-2 py-1 rounded-full ${doc.status === 'released' ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'}`}>
+                    {doc.status === 'released' ? 'রিলিজড' : 'পেন্ডিং'}
+                  </span>
+                </div>
+                <div className="flex justify-between items-center mt-2">
+                  <span className="text-sm text-gray-600">ফি: {doc.fee} ৳</span>
+                  {doc.status === 'released' ? (
+                    <button className="text-sm bg-blue-500 text-white px-3 py-1 rounded-lg">ডাউনলোড</button>
+                  ) : (
+                    <button className="text-sm bg-[#f85606] text-white px-3 py-1 rounded-lg">পেমেন্ট</button>
+                  )}
+                </div>
               </div>
-            )}
+            ))}
           </div>
         )}
 
         {/* লগআউট বাটন */}
-        <button onClick={handleLogout} className="w-full bg-white/80 backdrop-blur-sm rounded-2xl p-4 flex items-center gap-4 text-red-600 shadow-md hover:shadow-xl transition-all duration-200 group border border-red-100 active:scale-[0.99]">
-          <div className="w-12 h-12 rounded-xl bg-red-50 flex items-center justify-center group-hover:scale-110 transition-transform">
+        <button onClick={handleLogout} className="w-full bg-white/80 backdrop-blur-sm rounded-2xl p-4 flex items-center gap-4 text-red-600 shadow-md hover:shadow-xl transition-all duration-200 group border border-red-100">
+          <div className="w-12 h-12 rounded-xl bg-red-50 flex items-center justify-center">
             <LogOut size={20} className="text-red-500" />
           </div>
           <span className="font-semibold">লগ আউট</span>
-          <ChevronRight size={18} className="ml-auto text-gray-400 group-hover:text-red-600 group-hover:translate-x-1 transition" />
         </button>
       </div>
 
       {/* এডিট প্রোফাইল মডাল */}
       {showEditModal && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={() => setShowEditModal(false)}>
-          <div className="bg-white rounded-2xl max-w-md w-full max-h-[90vh] overflow-y-auto shadow-2xl" onClick={e => e.stopPropagation()}>
-            <div className="sticky top-0 bg-gradient-to-r from-[#f85606] to-orange-500 text-white p-4 flex justify-between items-center">
-              <h3 className="text-lg font-bold">প্রোফাইল এডিট করুন</h3>
-              <button onClick={() => setShowEditModal(false)} className="text-white/80 hover:text-white"><X size={20} /></button>
-            </div>
-            <div className="p-5 space-y-4">
-              <div><label className="block text-sm font-semibold text-gray-700 mb-2">পূর্ণ নাম</label><input type="text" value={profile.name} onChange={(e) => setProfile({...profile, name: e.target.value})} className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#f85606]" /></div>
-              <div><label className="block text-sm font-semibold text-gray-700 mb-2">ইমেইল</label><input type="email" value={profile.email} onChange={(e) => setProfile({...profile, email: e.target.value})} className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#f85606]" /></div>
-              <div><label className="block text-sm font-semibold text-gray-700 mb-2">ফোন নম্বর</label><input type="tel" value={profile.phone} onChange={(e) => setProfile({...profile, phone: e.target.value})} className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#f85606]" /></div>
-              <div><label className="block text-sm font-semibold text-gray-700 mb-2">অঞ্চল</label><input type="text" value={profile.location} onChange={(e) => setProfile({...profile, location: e.target.value})} className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#f85606]" /></div>
-              <div><label className="block text-sm font-semibold text-gray-700 mb-2">বায়ো</label><textarea rows={3} value={profile.bio} onChange={(e) => setProfile({...profile, bio: e.target.value})} className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#f85606]" /></div>
-              <button onClick={handleProfileUpdate} className="w-full bg-gradient-to-r from-[#f85606] to-orange-500 text-white py-3 rounded-xl font-semibold flex items-center justify-center gap-2 shadow-md active:scale-95 transition">
-                <CheckCircle size={18} /> সংরক্ষণ করুন
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* ডিলিট কনফার্মেশন মডাল */}
-      {showDeleteConfirm && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl max-w-sm w-full p-6 shadow-2xl">
-            <div className="text-center">
-              <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4"><AlertCircle size={32} className="text-red-500" /></div>
-              <h3 className="text-lg font-bold text-gray-800 mb-2">নিলাম ডিলিট করবেন?</h3>
-              <p className="text-sm text-gray-500 mb-6">এই নিলামটি স্থায়ীভাবে ডিলিট হয়ে যাবে।</p>
-              <div className="flex gap-3">
-                <button onClick={() => setShowDeleteConfirm(null)} className="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-700 py-3 rounded-xl font-semibold">বাতিল</button>
-                <button onClick={() => handleDeleteAuction(showDeleteConfirm)} className="flex-1 bg-red-500 hover:bg-red-600 text-white py-3 rounded-xl font-semibold">ডিলিট করুন</button>
-              </div>
+          <div className="bg-white rounded-2xl max-w-md w-full p-6">
+            <h3 className="text-lg font-bold mb-4">প্রোফাইল এডিট</h3>
+            <div className="space-y-3">
+              <input type="text" value={profile.name} onChange={(e) => setProfile({...profile, name: e.target.value})} className="w-full p-3 border rounded-xl" placeholder="নাম" />
+              <input type="email" value={profile.email} onChange={(e) => setProfile({...profile, email: e.target.value})} className="w-full p-3 border rounded-xl" placeholder="ইমেইল" />
+              <input type="tel" value={profile.phone} onChange={(e) => setProfile({...profile, phone: e.target.value})} className="w-full p-3 border rounded-xl" placeholder="ফোন" />
+            </div>
+            <div className="flex gap-3 mt-4">
+              <button onClick={handleProfileUpdate} className="flex-1 bg-[#f85606] text-white py-3 rounded-xl">সংরক্ষণ</button>
+              <button onClick={() => setShowEditModal(false)} className="flex-1 bg-gray-200 py-3 rounded-xl">বাতিল</button>
             </div>
           </div>
         </div>
@@ -626,14 +709,16 @@ export default function MyAccountPage() {
       {/* ফিচার্ড এক্সটেন্ড মডাল */}
       {showExtendModal && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl max-w-sm w-full p-6 shadow-2xl">
-            <h3 className="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2"><Calendar size={18} className="text-[#f85606]" /> ফিচার্ড সময় বাড়ান</h3>
-            <div className="space-y-4">
-              <div><label className="block text-sm font-semibold text-gray-700 mb-2">কত দিন বাড়াবেন?</label><select value={extendDays} onChange={(e) => setExtendDays(Number(e.target.value))} className="w-full p-3 border rounded-xl"><option value={7}>৭ দিন (১০০ ৳)</option><option value={15}>১৫ দিন (১৮০ ৳)</option><option value={30}>৩০ দিন (৩০০ ৳)</option></select></div>
-              <div className="flex gap-3">
-                <button onClick={() => setShowExtendModal(null)} className="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-700 py-3 rounded-xl font-semibold">বাতিল</button>
-                <button onClick={() => handleExtendFeatured(showExtendModal, extendDays)} className="flex-1 bg-gradient-to-r from-[#f85606] to-orange-500 text-white py-3 rounded-xl font-semibold">সংরক্ষণ</button>
-              </div>
+          <div className="bg-white rounded-2xl max-w-sm w-full p-6">
+            <h3 className="text-lg font-bold mb-4">ফিচার্ড সময় বাড়ান</h3>
+            <select value={extendDays} onChange={(e) => setExtendDays(Number(e.target.value))} className="w-full p-3 border rounded-xl mb-4">
+              <option value={7}>৭ দিন (১০০ ৳)</option>
+              <option value={15}>১৫ দিন (১৮০ ৳)</option>
+              <option value={30}>৩০ দিন (৩০০ ৳)</option>
+            </select>
+            <div className="flex gap-3">
+              <button onClick={() => handleExtendFeatured(showExtendModal, extendDays)} className="flex-1 bg-[#f85606] text-white py-3 rounded-xl">সংরক্ষণ</button>
+              <button onClick={() => setShowExtendModal(null)} className="flex-1 bg-gray-200 py-3 rounded-xl">বাতিল</button>
             </div>
           </div>
         </div>
@@ -642,7 +727,7 @@ export default function MyAccountPage() {
       {/* আপলোডিং ইন্ডিকেটর */}
       {isUploading && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center">
-          <div className="bg-white rounded-2xl p-6 text-center shadow-2xl">
+          <div className="bg-white rounded-2xl p-6 text-center">
             <div className="animate-spin rounded-full h-12 w-12 border-4 border-[#f85606] border-t-transparent mx-auto mb-4" />
             <p className="text-gray-600">ছবি আপলোড হচ্ছে...</p>
           </div>
