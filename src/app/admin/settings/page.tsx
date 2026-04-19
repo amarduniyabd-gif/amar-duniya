@@ -2,279 +2,675 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import AdminSidebar from "@/components/AdminSidebar";
-import { Menu, X, Save, DollarSign, Percent, Clock, Shield, 
+import { 
+  Menu, X, Save, DollarSign, Percent, Clock, Shield, 
   CreditCard, Bell, Globe, Save as SaveIcon, Star, FileText, Gavel,
   Mail, Phone, MapPin, Users, Package, TrendingUp, Award,
   Smartphone, Laptop, Shirt, Car, Home, Settings as SettingsIcon,
   Zap, AlertCircle, CheckCircle, XCircle, RefreshCw, Eye,
-  Lock, UserCheck, Database, Cloud, Wifi, Moon, Sun } from "lucide-react";
+  Lock, UserCheck, Database, Cloud, Wifi, Moon, Sun,
+  Heart, Gem, Crown, Sparkles, Tag, Calendar, Ban, Trash2,
+  Plus, Minus, Edit2, ChevronDown, ChevronUp, Copy, ExternalLink
+} from "lucide-react";
 
-type AdminSettings = {
+// ============ টাইপ ডেফিনিশন ============
+type PaymentSettings = {
+  // পাত্র-পাত্রী
+  matrimonyProfileUnlock: number;
+  matrimonyPremium: number;
+  matrimonyBoost: number;
+  
+  // পোস্ট
+  featuredPost7Days: number;
+  featuredPost15Days: number;
+  featuredPost30Days: number;
+  urgentPost: number;
+  
+  // নিলাম
+  auctionCommission: number; // শতাংশে
+  
+  // ডকুমেন্ট
+  documentServiceFee: number;
+  
+  // সাধারণ
+  currency: string;
+  taxRate: number;
+};
+
+type GeneralSettings = {
   siteName: string;
-  siteLogo: string;
+  siteDescription: string;
+  siteKeywords: string;
   siteEmail: string;
   sitePhone: string;
   siteAddress: string;
-  siteDescription: string;
-  siteKeywords: string;
-  siteCurrency: string;
-  siteTimezone: string;
-  featuredPrice: number;
-  featuredDays: number;
-  documentCommission: number;
-  documentMinFee: number;
-  bidFee: number;
-  auctionCommission: number;
-  auctionMinBid: number;
-  emailNotification: boolean;
-  smsNotification: boolean;
-  pushNotification: boolean;
-  adminEmail: string;
-  adminPhone: string;
-  paymentGateway: 'sslcommerz' | 'stripe' | 'bkash';
-  sslStoreId: string;
-  sslStorePassword: string;
-  sslMode: 'sandbox' | 'live';
-  stripePublishableKey: string;
-  stripeSecretKey: string;
-  bkashUsername: string;
-  bkashPassword: string;
-  twoFactorRequired: boolean;
-  emailVerification: boolean;
-  adminApproval: boolean;
-  maxLoginAttempts: number;
-  sessionTimeout: number;
-  cacheDuration: number;
-  itemsPerPage: number;
-  enableCDN: boolean;
-  enableAnalytics: boolean;
-  facebook: string;
-  instagram: string;
-  twitter: string;
-  youtube: string;
-  whatsapp: string;
+  facebookUrl: string;
+  youtubeUrl: string;
+  instagramUrl: string;
+  whatsappNumber: string;
+  maintenanceMode: boolean;
+  registrationEnabled: boolean;
+  autoApprovePosts: boolean;
+  maxPostsPerUser: number;
+  maxImagesPerPost: number;
 };
 
-export default function AdminSettings() {
+type NotificationSettings = {
+  emailOnNewUser: boolean;
+  emailOnNewPost: boolean;
+  emailOnNewBid: boolean;
+  emailOnPayment: boolean;
+  emailOnReport: boolean;
+  pushOnNewMessage: boolean;
+  pushOnBidUpdate: boolean;
+  smsOnPayment: boolean;
+};
+
+type SecuritySettings = {
+  maxLoginAttempts: number;
+  sessionTimeout: number; // মিনিটে
+  twoFactorRequired: boolean;
+  ipWhitelist: string[];
+  bannedWords: string[];
+  requireEmailVerification: boolean;
+  requirePhoneVerification: boolean;
+};
+
+// ============ মেইন কম্পোনেন্ট ============
+export default function AdminSettingsPage() {
   const router = useRouter();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
-  const [activeTab, setActiveTab] = useState("general");
-  const [saved, setSaved] = useState(false);
-  const [saving, setSaving] = useState(false);
-  const [showTestModal, setShowTestModal] = useState(false);
-  const [testEmail, setTestEmail] = useState("");
-  const [backupStatus, setBackupStatus] = useState<{ lastBackup: string; size: string } | null>(null);
-
-  const [settings, setSettings] = useState<AdminSettings>({
-    siteName: "আমার দুনিয়া",
-    siteLogo: "",
-    siteEmail: "info@amarduniya.com",
-    sitePhone: "০১৭XXXXXXXX",
-    siteAddress: "কুষ্টিয়া, বাংলাদেশ",
-    siteDescription: "বাংলাদেশের সর্ববৃহৎ মার্কেটপ্লেস",
-    siteKeywords: "মার্কেটপ্লেস, অনলাইন শপিং, কেনাকাটা",
-    siteCurrency: "BDT",
-    siteTimezone: "Asia/Dhaka",
-    featuredPrice: 100,
-    featuredDays: 7,
-    documentCommission: 2,
-    documentMinFee: 50,
-    bidFee: 2,
+  const [mounted, setMounted] = useState(false);
+  const [activeTab, setActiveTab] = useState<'general' | 'payment' | 'notification' | 'security' | 'performance' | 'social'>('general');
+  const [successMessage, setSuccessMessage] = useState("");
+  const [errorMessage, setErrorMessage] = useState("");
+  const [isSaving, setIsSaving] = useState(false);
+  
+  // ============ পেমেন্ট সেটিংস ============
+  const [paymentSettings, setPaymentSettings] = useState<PaymentSettings>({
+    matrimonyProfileUnlock: 500,
+    matrimonyPremium: 1000,
+    matrimonyBoost: 200,
+    featuredPost7Days: 100,
+    featuredPost15Days: 180,
+    featuredPost30Days: 300,
+    urgentPost: 50,
     auctionCommission: 2,
-    auctionMinBid: 1000,
-    emailNotification: true,
-    smsNotification: false,
-    pushNotification: true,
-    adminEmail: "admin@amarduniya.com",
-    adminPhone: "০১৯XXXXXXXX",
-    paymentGateway: "sslcommerz",
-    sslStoreId: "",
-    sslStorePassword: "",
-    sslMode: "sandbox",
-    stripePublishableKey: "",
-    stripeSecretKey: "",
-    bkashUsername: "",
-    bkashPassword: "",
-    twoFactorRequired: false,
-    emailVerification: true,
-    adminApproval: false,
-    maxLoginAttempts: 5,
-    sessionTimeout: 60,
-    cacheDuration: 300,
-    itemsPerPage: 20,
-    enableCDN: true,
-    enableAnalytics: true,
-    facebook: "",
-    instagram: "",
-    twitter: "",
-    youtube: "",
-    whatsapp: "",
+    documentServiceFee: 1500,
+    currency: "BDT",
+    taxRate: 0,
   });
 
+  // ============ সাধারণ সেটিংস ============
+  const [generalSettings, setGeneralSettings] = useState<GeneralSettings>({
+    siteName: "আমার দুনিয়া",
+    siteDescription: "বাংলাদেশের সর্ববৃহৎ মার্কেটপ্লেস - পণ্য কিনুন ও বিক্রি করুন",
+    siteKeywords: "মার্কেটপ্লেস, অনলাইন শপিং, পণ্য কেনাকাটা, বাংলাদেশ",
+    siteEmail: "support@amarduniya.com",
+    sitePhone: "017XXXXXXXX",
+    siteAddress: "ঢাকা, বাংলাদেশ",
+    facebookUrl: "https://facebook.com/amarduniya",
+    youtubeUrl: "",
+    instagramUrl: "",
+    whatsappNumber: "017XXXXXXXX",
+    maintenanceMode: false,
+    registrationEnabled: true,
+    autoApprovePosts: false,
+    maxPostsPerUser: 50,
+    maxImagesPerPost: 6,
+  });
+
+  // ============ নোটিফিকেশন সেটিংস ============
+  const [notificationSettings, setNotificationSettings] = useState<NotificationSettings>({
+    emailOnNewUser: true,
+    emailOnNewPost: true,
+    emailOnNewBid: true,
+    emailOnPayment: true,
+    emailOnReport: true,
+    pushOnNewMessage: true,
+    pushOnBidUpdate: true,
+    smsOnPayment: false,
+  });
+
+  // ============ সিকিউরিটি সেটিংস ============
+  const [securitySettings, setSecuritySettings] = useState<SecuritySettings>({
+    maxLoginAttempts: 5,
+    sessionTimeout: 60,
+    twoFactorRequired: false,
+    ipWhitelist: [],
+    bannedWords: ["গালি", "অশ্লীল"],
+    requireEmailVerification: true,
+    requirePhoneVerification: false,
+  });
+
+  // ============ নতুন IP/শব্দ যোগের জন্য ============
+  const [newIp, setNewIp] = useState("");
+  const [newBannedWord, setNewBannedWord] = useState("");
+
   useEffect(() => {
+    setMounted(true);
     const adminLoggedIn = localStorage.getItem("adminLoggedIn");
     if (adminLoggedIn !== "true") router.push("/admin/login");
     else setIsLoggedIn(true);
-  }, []);
+    
+    // লোকাল স্টোরেজ থেকে সেটিংস লোড
+    const savedPayment = localStorage.getItem("adminPaymentSettings");
+    if (savedPayment) setPaymentSettings(JSON.parse(savedPayment));
+    
+    const savedGeneral = localStorage.getItem("adminGeneralSettings");
+    if (savedGeneral) setGeneralSettings(JSON.parse(savedGeneral));
+  }, [router]);
 
   useEffect(() => {
-    const savedSettings = localStorage.getItem("adminSettings");
-    if (savedSettings) {
-      try {
-        setSettings(JSON.parse(savedSettings));
-      } catch (e) {}
+    if (successMessage) {
+      const timer = setTimeout(() => setSuccessMessage(""), 3000);
+      return () => clearTimeout(timer);
     }
-  }, []);
+  }, [successMessage]);
 
-  const handleLogout = () => { localStorage.removeItem("adminLoggedIn"); router.push("/admin/login"); };
-
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
-    const { name, value, type } = e.target;
-    if (type === "checkbox") {
-      const checked = (e.target as HTMLInputElement).checked;
-      setSettings({ ...settings, [name]: checked });
-    } else {
-      setSettings({ ...settings, [name]: value });
-    }
-  };
-
-  const handleSave = () => {
-    setSaving(true);
-    localStorage.setItem("adminSettings", JSON.stringify(settings));
+  // ============ সেভ হ্যান্ডলার ============
+  const handleSaveAll = () => {
+    setIsSaving(true);
+    
     setTimeout(() => {
-      setSaving(false);
-      setSaved(true);
-      setTimeout(() => setSaved(false), 3000);
-    }, 1000);
+      localStorage.setItem("adminPaymentSettings", JSON.stringify(paymentSettings));
+      localStorage.setItem("adminGeneralSettings", JSON.stringify(generalSettings));
+      localStorage.setItem("adminNotificationSettings", JSON.stringify(notificationSettings));
+      localStorage.setItem("adminSecuritySettings", JSON.stringify(securitySettings));
+      
+      setSuccessMessage("✅ সব সেটিংস সফলভাবে সংরক্ষণ করা হয়েছে!");
+      setIsSaving(false);
+    }, 500);
   };
 
-  const handleBackup = () => {
-    const backup = { date: new Date().toISOString(), settings: settings, version: "1.0.0" };
-    const dataStr = JSON.stringify(backup, null, 2);
-    const blob = new Blob([dataStr], { type: "application/json" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `amarduniya-backup-${new Date().toISOString().split("T")[0]}.json`;
-    a.click();
-    URL.revokeObjectURL(url);
-    setBackupStatus({ lastBackup: new Date().toLocaleString(), size: `${(dataStr.length / 1024).toFixed(1)} KB` });
-  };
-
-  const handleRestore = () => {
-    const input = document.createElement("input");
-    input.type = "file";
-    input.accept = "application/json";
-    input.onchange = (e) => {
-      const file = (e.target as HTMLInputElement).files?.[0];
-      if (file) {
-        const reader = new FileReader();
-        reader.onload = (event) => {
-          try {
-            const restored = JSON.parse(event.target?.result as string);
-            if (restored.settings) {
-              setSettings(restored.settings);
-              alert("সেটিংস রিস্টোর করা হয়েছে!");
-            }
-          } catch (error) {
-            alert("ইনভ্যালিড ব্যাকআপ ফাইল!");
-          }
-        };
-        reader.readAsText(file);
-      }
-    };
-    input.click();
-  };
-
-  const handleTestEmail = () => {
-    if (testEmail) {
-      alert(`টেস্ট ইমেইল পাঠানো হয়েছে: ${testEmail}`);
-      setTestEmail("");
-      setShowTestModal(false);
+  const handleResetToDefault = () => {
+    if (confirm("সব সেটিংস ডিফল্টে রিসেট করবেন?")) {
+      setPaymentSettings({
+        matrimonyProfileUnlock: 500,
+        matrimonyPremium: 1000,
+        matrimonyBoost: 200,
+        featuredPost7Days: 100,
+        featuredPost15Days: 180,
+        featuredPost30Days: 300,
+        urgentPost: 50,
+        auctionCommission: 2,
+        documentServiceFee: 1500,
+        currency: "BDT",
+        taxRate: 0,
+      });
+      setSuccessMessage("✅ পেমেন্ট সেটিংস ডিফল্টে রিসেট করা হয়েছে!");
     }
   };
 
-  const tabs = [
-    { id: "general", label: "সাধারণ", icon: <Globe size={16} /> },
-    { id: "pricing", label: "মূল্য নির্ধারণ", icon: <DollarSign size={16} /> },
-    { id: "payment", label: "পেমেন্ট", icon: <CreditCard size={16} /> },
-    { id: "notification", label: "নোটিফিকেশন", icon: <Bell size={16} /> },
-    { id: "security", label: "নিরাপত্তা", icon: <Shield size={16} /> },
-    { id: "performance", label: "পারফরম্যান্স", icon: <Zap size={16} /> },
-    { id: "social", label: "সোশ্যাল", icon: <Users size={16} /> },
-  ];
+  const handleAddIp = () => {
+    if (newIp && !securitySettings.ipWhitelist.includes(newIp)) {
+      setSecuritySettings({
+        ...securitySettings,
+        ipWhitelist: [...securitySettings.ipWhitelist, newIp]
+      });
+      setNewIp("");
+    }
+  };
 
-  if (!isLoggedIn) return null;
+  const handleRemoveIp = (ip: string) => {
+    setSecuritySettings({
+      ...securitySettings,
+      ipWhitelist: securitySettings.ipWhitelist.filter(i => i !== ip)
+    });
+  };
+
+  const handleAddBannedWord = () => {
+    if (newBannedWord && !securitySettings.bannedWords.includes(newBannedWord)) {
+      setSecuritySettings({
+        ...securitySettings,
+        bannedWords: [...securitySettings.bannedWords, newBannedWord]
+      });
+      setNewBannedWord("");
+    }
+  };
+
+  const handleRemoveBannedWord = (word: string) => {
+    setSecuritySettings({
+      ...securitySettings,
+      bannedWords: securitySettings.bannedWords.filter(w => w !== word)
+    });
+  };
+
+  if (!mounted || !isLoggedIn) return null;
 
   return (
     <div className="min-h-screen bg-gray-100">
-      {/* মোবাইল টগল বাটন */}
-      <button onClick={() => setSidebarOpen(!sidebarOpen)} className="md:hidden fixed top-4 left-4 z-50 bg-[#f85606] text-white p-2 rounded-lg shadow-lg">
+      {/* মোবাইল টগল */}
+      <button onClick={() => setSidebarOpen(!sidebarOpen)} className="md:hidden fixed top-4 left-4 z-50 bg-[#f85606] text-white p-3 rounded-xl shadow-lg">
         {sidebarOpen ? <X size={20} /> : <Menu size={20} />}
       </button>
 
-      {/* ডেস্কটপ সাইডবার */}
-      <div className="fixed inset-y-0 left-0 z-40 w-64 hidden md:block">
+      <div className="fixed inset-y-0 left-0 z-40 w-72 hidden md:block">
         <AdminSidebar />
       </div>
 
-      {/* মোবাইল সাইডবার ওভারলে */}
-      {sidebarOpen && <div className="fixed inset-0 bg-black/50 z-30 md:hidden" onClick={() => setSidebarOpen(false)} />}
-
-      {/* মোবাইল সাইডবার */}
-      <div className={`fixed inset-y-0 left-0 z-40 w-64 transform transition-transform duration-300 md:hidden ${sidebarOpen ? "translate-x-0" : "-translate-x-full"}`}>
+      {sidebarOpen && <div className="fixed inset-0 bg-black/50 z-30 md:hidden backdrop-blur-sm" onClick={() => setSidebarOpen(false)} />}
+      <div className={`fixed inset-y-0 left-0 z-40 w-72 transform transition-transform duration-300 md:hidden ${sidebarOpen ? "translate-x-0" : "-translate-x-full"}`}>
         <AdminSidebar />
       </div>
 
-      {/* মেন কন্টেন্ট */}
-      <div className="md:ml-64">
+      <div className="md:ml-72">
+        {/* হেডার */}
         <div className="bg-white shadow-sm px-6 py-4 sticky top-0 z-30 flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <h1 className="text-xl font-bold text-gray-800">সেটিংস</h1>
-          </div>
-          <div className="flex gap-2">
-            <button onClick={handleBackup} className="bg-gray-100 text-gray-700 px-3 py-2 rounded-xl text-sm font-semibold flex items-center gap-1"><SaveIcon size={14} /> ব্যাকআপ</button>
-            <button onClick={handleRestore} className="bg-gray-100 text-gray-700 px-3 py-2 rounded-xl text-sm font-semibold flex items-center gap-1"><RefreshCw size={14} /> রিস্টোর</button>
-            <button onClick={handleSave} disabled={saving} className="bg-[#f85606] text-white px-4 py-2 rounded-xl text-sm font-semibold flex items-center gap-2">{saving ? <RefreshCw size={16} className="animate-spin" /> : <SaveIcon size={16} />}{saving ? "সংরক্ষণ হচ্ছে..." : "সংরক্ষণ করুন"}</button>
+          <h1 className="text-xl font-bold text-gray-800 flex items-center gap-2">
+            <SettingsIcon size={20} className="text-[#f85606]" />
+            অ্যাডমিন সেটিংস
+          </h1>
+          <div className="flex items-center gap-3">
+            <button onClick={handleResetToDefault} className="px-4 py-2 bg-gray-100 text-gray-700 rounded-xl text-sm font-medium flex items-center gap-2 hover:bg-gray-200 transition">
+              <RefreshCw size={16} /> ডিফল্ট
+            </button>
+            <button onClick={handleSaveAll} disabled={isSaving} className="px-4 py-2 bg-[#f85606] text-white rounded-xl text-sm font-semibold flex items-center gap-2 hover:bg-orange-600 transition disabled:opacity-50">
+              <Save size={16} /> {isSaving ? "সেভ হচ্ছে..." : "সব সেভ করুন"}
+            </button>
           </div>
         </div>
-        {saved && <div className="fixed top-20 right-6 bg-green-500 text-white px-4 py-2 rounded-lg shadow-lg z-50 animate-in slide-in-from-top">✅ সেটিংস সংরক্ষণ করা হয়েছে!</div>}
+
+        {/* সাকসেস মেসেজ */}
+        {successMessage && (
+          <div className="fixed top-20 right-6 bg-green-500 text-white px-4 py-2 rounded-lg shadow-lg z-50 animate-in slide-in-from-top">
+            <CheckCircle size={16} className="inline mr-2" />{successMessage}
+          </div>
+        )}
 
         <div className="p-6">
-          {/* ট্যাব মেনু */}
-          <div className="flex gap-2 mb-6 overflow-x-auto pb-1">{tabs.map((tab) => (<button key={tab.id} onClick={() => setActiveTab(tab.id)} className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium transition whitespace-nowrap ${activeTab === tab.id ? "bg-[#f85606] text-white shadow-md" : "bg-white text-gray-600 hover:bg-gray-100"}`}>{tab.icon}{tab.label}</button>))}</div>
+          {/* ট্যাব */}
+          <div className="flex gap-2 mb-6 overflow-x-auto pb-2">
+            {[
+              { id: 'general', label: 'সাধারণ', icon: <Globe size={16} /> },
+              { id: 'payment', label: 'পেমেন্ট', icon: <DollarSign size={16} /> },
+              { id: 'notification', label: 'নোটিফিকেশন', icon: <Bell size={16} /> },
+              { id: 'security', label: 'নিরাপত্তা', icon: <Shield size={16} /> },
+              { id: 'performance', label: 'পারফরম্যান্স', icon: <Zap size={16} /> },
+              { id: 'social', label: 'সোশ্যাল', icon: <Users size={16} /> },
+            ].map(tab => (
+              <button
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id as any)}
+                className={`px-4 py-2 rounded-xl text-sm font-medium whitespace-nowrap transition flex items-center gap-2 ${
+                  activeTab === tab.id 
+                    ? 'bg-[#f85606] text-white shadow-md' 
+                    : 'bg-white text-gray-600 hover:bg-gray-100'
+                }`}
+              >
+                {tab.icon} {tab.label}
+              </button>
+            ))}
+          </div>
 
-          <div className="bg-white rounded-xl shadow-sm p-6">
-            
-            {/* সাধারণ সেটিংস */}
-            {activeTab === "general" && (<div className="space-y-4"><div className="grid grid-cols-1 md:grid-cols-2 gap-4"><div><label className="block text-sm font-semibold text-gray-700 mb-2">সাইটের নাম</label><input type="text" name="siteName" value={settings.siteName} onChange={handleChange} className="w-full p-3 border border-gray-200 rounded-xl" /></div><div><label className="block text-sm font-semibold text-gray-700 mb-2">সাইটের ইমেইল</label><input type="email" name="siteEmail" value={settings.siteEmail} onChange={handleChange} className="w-full p-3 border border-gray-200 rounded-xl" /></div></div><div className="grid grid-cols-1 md:grid-cols-2 gap-4"><div><label className="block text-sm font-semibold text-gray-700 mb-2">ফোন নম্বর</label><input type="tel" name="sitePhone" value={settings.sitePhone} onChange={handleChange} className="w-full p-3 border border-gray-200 rounded-xl" /></div><div><label className="block text-sm font-semibold text-gray-700 mb-2">ঠিকানা</label><input type="text" name="siteAddress" value={settings.siteAddress} onChange={handleChange} className="w-full p-3 border border-gray-200 rounded-xl" /></div></div><div><label className="block text-sm font-semibold text-gray-700 mb-2">সাইটের বিবরণ</label><textarea name="siteDescription" value={settings.siteDescription} onChange={handleChange} rows={3} className="w-full p-3 border border-gray-200 rounded-xl" /></div><div className="grid grid-cols-1 md:grid-cols-2 gap-4"><div><label className="block text-sm font-semibold text-gray-700 mb-2">মুদ্রা</label><select name="siteCurrency" value={settings.siteCurrency} onChange={handleChange} className="w-full p-3 border border-gray-200 rounded-xl"><option value="BDT">BDT (৳)</option><option value="USD">USD ($)</option></select></div><div><label className="block text-sm font-semibold text-gray-700 mb-2">টাইমজোন</label><select name="siteTimezone" value={settings.siteTimezone} onChange={handleChange} className="w-full p-3 border border-gray-200 rounded-xl"><option value="Asia/Dhaka">Asia/Dhaka</option><option value="Asia/Kolkata">Asia/Kolkata</option></select></div></div></div>)}
-            
-            {/* মূল্য নির্ধারণ */}
-            {activeTab === "pricing" && (<div className="space-y-4"><div className="bg-orange-50 rounded-xl p-4"><div className="flex items-center gap-3 mb-3"><Star size={20} className="text-orange-600" /><h3 className="font-semibold">ফিচার্ড লিস্টিং</h3></div><div className="grid grid-cols-2 gap-4"><div><label className="block text-sm text-gray-600 mb-1">মূল্য (৳)</label><input type="number" name="featuredPrice" value={settings.featuredPrice} onChange={handleChange} className="w-full p-2 border rounded-lg" /></div><div><label className="block text-sm text-gray-600 mb-1">মেয়াদ (দিন)</label><input type="number" name="featuredDays" value={settings.featuredDays} onChange={handleChange} className="w-full p-2 border rounded-lg" /></div></div></div><div className="bg-blue-50 rounded-xl p-4"><div className="flex items-center gap-3 mb-3"><FileText size={20} className="text-blue-600" /><h3 className="font-semibold">ডকুমেন্ট সার্ভিস</h3></div><div className="grid grid-cols-2 gap-4"><div><label className="block text-sm text-gray-600 mb-1">কমিশন (%)</label><input type="number" name="documentCommission" value={settings.documentCommission} onChange={handleChange} className="w-full p-2 border rounded-lg" /></div><div><label className="block text-sm text-gray-600 mb-1">ন্যূনতম চার্জ (৳)</label><input type="number" name="documentMinFee" value={settings.documentMinFee} onChange={handleChange} className="w-full p-2 border rounded-lg" /></div></div></div><div className="bg-purple-50 rounded-xl p-4"><div className="flex items-center gap-3 mb-3"><Gavel size={20} className="text-purple-600" /><h3 className="font-semibold">নিলাম</h3></div><div className="grid grid-cols-2 gap-4"><div><label className="block text-sm text-gray-600 mb-1">বিড ফি (৳)</label><input type="number" name="bidFee" value={settings.bidFee} onChange={handleChange} className="w-full p-2 border rounded-lg" /></div><div><label className="block text-sm text-gray-600 mb-1">জিতলে কমিশন (%)</label><input type="number" name="auctionCommission" value={settings.auctionCommission} onChange={handleChange} className="w-full p-2 border rounded-lg" /></div><div><label className="block text-sm text-gray-600 mb-1">ন্যূনতম বিড (৳)</label><input type="number" name="auctionMinBid" value={settings.auctionMinBid} onChange={handleChange} className="w-full p-2 border rounded-lg" /></div></div></div></div>)}
-            
-            {/* পেমেন্ট সেটিংস */}
-            {activeTab === "payment" && (<div className="space-y-4"><div className="bg-gray-50 rounded-xl p-4"><h3 className="font-semibold mb-3">পেমেন্ট গেটওয়ে</h3><div className="flex gap-4 mb-4"><label className="flex items-center gap-2"><input type="radio" name="paymentGateway" value="sslcommerz" checked={settings.paymentGateway === "sslcommerz"} onChange={handleChange} className="w-4 h-4" /><span>SSLCommerz</span></label><label className="flex items-center gap-2"><input type="radio" name="paymentGateway" value="stripe" checked={settings.paymentGateway === "stripe"} onChange={handleChange} className="w-4 h-4" /><span>Stripe</span></label><label className="flex items-center gap-2"><input type="radio" name="paymentGateway" value="bkash" checked={settings.paymentGateway === "bkash"} onChange={handleChange} className="w-4 h-4" /><span>bKash</span></label></div>{settings.paymentGateway === "sslcommerz" && (<div className="space-y-3"><input type="text" name="sslStoreId" value={settings.sslStoreId} onChange={handleChange} placeholder="স্টোর আইডি" className="w-full p-2 border rounded-lg" /><input type="password" name="sslStorePassword" value={settings.sslStorePassword} onChange={handleChange} placeholder="স্টোর পাসওয়ার্ড" className="w-full p-2 border rounded-lg" /><select name="sslMode" value={settings.sslMode} onChange={handleChange} className="w-full p-2 border rounded-lg"><option value="sandbox">স্যান্ডবক্স (টেস্ট)</option><option value="live">লাইভ</option></select></div>)}</div></div>)}
-            
-            {/* নোটিফিকেশন সেটিংস */}
-            {activeTab === "notification" && (<div className="space-y-4"><div className="bg-gray-50 rounded-xl p-4"><label className="flex items-center justify-between cursor-pointer"><div><span className="font-medium">ইমেইল নোটিফিকেশন</span><p className="text-xs text-gray-400">নতুন পোস্ট, পেমেন্ট ইমেইলে পাবেন</p></div><div className="relative"><input type="checkbox" name="emailNotification" checked={settings.emailNotification} onChange={handleChange} className="sr-only peer" /><div className="w-11 h-6 bg-gray-200 rounded-full peer peer-checked:bg-[#f85606] peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all"></div></div></label></div><div className="bg-gray-50 rounded-xl p-4"><label className="flex items-center justify-between cursor-pointer"><div><span className="font-medium">এসএমএস নোটিফিকেশন</span><p className="text-xs text-gray-400">OTP ও গুরুত্বপূর্ণ আপডেট এসএমএস পাবেন</p></div><div className="relative"><input type="checkbox" name="smsNotification" checked={settings.smsNotification} onChange={handleChange} className="sr-only peer" /><div className="w-11 h-6 bg-gray-200 rounded-full peer peer-checked:bg-[#f85606] peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all"></div></div></label></div><div className="bg-gray-50 rounded-xl p-4"><label className="flex items-center justify-between cursor-pointer"><div><span className="font-medium">পুশ নোটিফিকেশন</span><p className="text-xs text-gray-400">ব্রাউজারে পুশ নোটিফিকেশন পাবেন</p></div><div className="relative"><input type="checkbox" name="pushNotification" checked={settings.pushNotification} onChange={handleChange} className="sr-only peer" /><div className="w-11 h-6 bg-gray-200 rounded-full peer peer-checked:bg-[#f85606] peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all"></div></div></label></div><div className="grid grid-cols-2 gap-4"><div><label className="block text-sm font-semibold text-gray-700 mb-2">অ্যাডমিন ইমেইল</label><input type="email" name="adminEmail" value={settings.adminEmail} onChange={handleChange} className="w-full p-3 border rounded-xl" /></div><div><label className="block text-sm font-semibold text-gray-700 mb-2">অ্যাডমিন ফোন</label><input type="tel" name="adminPhone" value={settings.adminPhone} onChange={handleChange} className="w-full p-3 border rounded-xl" /></div></div><button onClick={() => setShowTestModal(true)} className="text-sm text-[#f85606] flex items-center gap-1"><Mail size={14} /> টেস্ট ইমেইল পাঠান</button></div>)}
-            
-            {/* নিরাপত্তা সেটিংস */}
-            {activeTab === "security" && (<div className="space-y-4"><div className="bg-gray-50 rounded-xl p-4"><label className="flex items-center justify-between cursor-pointer"><div><span className="font-medium">টু-ফ্যাক্টর অথেনটিকেশন</span><p className="text-xs text-gray-400">অ্যাডমিন লগইনে 2FA প্রয়োজন</p></div><div className="relative"><input type="checkbox" name="twoFactorRequired" checked={settings.twoFactorRequired} onChange={handleChange} className="sr-only peer" /><div className="w-11 h-6 bg-gray-200 rounded-full peer peer-checked:bg-[#f85606] peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all"></div></div></label></div><div className="bg-gray-50 rounded-xl p-4"><label className="flex items-center justify-between cursor-pointer"><div><span className="font-medium">ইমেইল ভেরিফিকেশন</span><p className="text-xs text-gray-400">ইউজার রেজিস্ট্রেশনে ইমেইল ভেরিফাই প্রয়োজন</p></div><div className="relative"><input type="checkbox" name="emailVerification" checked={settings.emailVerification} onChange={handleChange} className="sr-only peer" /><div className="w-11 h-6 bg-gray-200 rounded-full peer peer-checked:bg-[#f85606] peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all"></div></div></label></div><div className="bg-gray-50 rounded-xl p-4"><label className="flex items-center justify-between cursor-pointer"><div><span className="font-medium">অ্যাডমিন অ্যাপ্রুভাল</span><p className="text-xs text-gray-400">নতুন সেলার অ্যাপ্রুভ করতে হবে</p></div><div className="relative"><input type="checkbox" name="adminApproval" checked={settings.adminApproval} onChange={handleChange} className="sr-only peer" /><div className="w-11 h-6 bg-gray-200 rounded-full peer peer-checked:bg-[#f85606] peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all"></div></div></label></div><div className="grid grid-cols-2 gap-4"><div><label className="block text-sm font-semibold text-gray-700 mb-2">সর্বোচ্চ লগইন প্রচেষ্টা</label><input type="number" name="maxLoginAttempts" value={settings.maxLoginAttempts} onChange={handleChange} className="w-full p-3 border rounded-xl" /></div><div><label className="block text-sm font-semibold text-gray-700 mb-2">সেশন টাইমআউট (মিনিট)</label><input type="number" name="sessionTimeout" value={settings.sessionTimeout} onChange={handleChange} className="w-full p-3 border rounded-xl" /></div></div></div>)}
-            
-            {/* পারফরম্যান্স সেটিংস */}
-            {activeTab === "performance" && (<div className="space-y-4"><div className="bg-gray-50 rounded-xl p-4"><label className="flex items-center justify-between cursor-pointer"><div><span className="font-medium">সিডিএন সক্রিয় করুন</span><p className="text-xs text-gray-400">কন্টেন্ট ডেলিভারি নেটওয়ার্ক ব্যবহার করুন</p></div><div className="relative"><input type="checkbox" name="enableCDN" checked={settings.enableCDN} onChange={handleChange} className="sr-only peer" /><div className="w-11 h-6 bg-gray-200 rounded-full peer peer-checked:bg-[#f85606] peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all"></div></div></label></div><div className="bg-gray-50 rounded-xl p-4"><label className="flex items-center justify-between cursor-pointer"><div><span className="font-medium">অ্যানালিটিক্স সক্রিয় করুন</span><p className="text-xs text-gray-400">ভিজিটর ট্র্যাকিং ও রিপোর্ট</p></div><div className="relative"><input type="checkbox" name="enableAnalytics" checked={settings.enableAnalytics} onChange={handleChange} className="sr-only peer" /><div className="w-11 h-6 bg-gray-200 rounded-full peer peer-checked:bg-[#f85606] peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all"></div></div></label></div><div className="grid grid-cols-2 gap-4"><div><label className="block text-sm font-semibold text-gray-700 mb-2">ক্যাশ ডিউরেশন (সেকেন্ড)</label><input type="number" name="cacheDuration" value={settings.cacheDuration} onChange={handleChange} className="w-full p-3 border rounded-xl" /></div><div><label className="block text-sm font-semibold text-gray-700 mb-2">প্রতি পৃষ্ঠায় আইটেম</label><input type="number" name="itemsPerPage" value={settings.itemsPerPage} onChange={handleChange} className="w-full p-3 border rounded-xl" /></div></div></div>)}
-            
-            {/* সোশ্যাল সেটিংস */}
-            {activeTab === "social" && (<div className="space-y-4"><div className="grid grid-cols-1 gap-4"><div><label className="block text-sm font-semibold text-gray-700 mb-2">ফেসবুক</label><input type="url" name="facebook" value={settings.facebook} onChange={handleChange} placeholder="https://facebook.com/yourpage" className="w-full p-3 border rounded-xl" /></div><div><label className="block text-sm font-semibold text-gray-700 mb-2">ইনস্টাগ্রাম</label><input type="url" name="instagram" value={settings.instagram} onChange={handleChange} placeholder="https://instagram.com/yourpage" className="w-full p-3 border rounded-xl" /></div><div><label className="block text-sm font-semibold text-gray-700 mb-2">টুইটার</label><input type="url" name="twitter" value={settings.twitter} onChange={handleChange} placeholder="https://twitter.com/yourpage" className="w-full p-3 border rounded-xl" /></div><div><label className="block text-sm font-semibold text-gray-700 mb-2">ইউটিউব</label><input type="url" name="youtube" value={settings.youtube} onChange={handleChange} placeholder="https://youtube.com/yourchannel" className="w-full p-3 border rounded-xl" /></div><div><label className="block text-sm font-semibold text-gray-700 mb-2">হোয়াটসঅ্যাপ</label><input type="text" name="whatsapp" value={settings.whatsapp} onChange={handleChange} placeholder="+8801XXXXXXXXX" className="w-full p-3 border rounded-xl" /></div></div></div>)}
+          {/* ============ সাধারণ সেটিংস ============ */}
+          {activeTab === 'general' && (
+            <div className="bg-white rounded-2xl shadow-sm p-6 space-y-6">
+              <h2 className="text-lg font-bold text-gray-800 flex items-center gap-2 border-b pb-3">
+                <Globe size={20} className="text-[#f85606]" /> সাধারণ সেটিংস
+              </h2>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">সাইটের নাম</label>
+                  <input type="text" value={generalSettings.siteName} onChange={(e) => setGeneralSettings({...generalSettings, siteName: e.target.value})} className="w-full p-3 border rounded-xl" />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">সাইটের ইমেইল</label>
+                  <input type="email" value={generalSettings.siteEmail} onChange={(e) => setGeneralSettings({...generalSettings, siteEmail: e.target.value})} className="w-full p-3 border rounded-xl" />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">সাইটের ফোন</label>
+                  <input type="tel" value={generalSettings.sitePhone} onChange={(e) => setGeneralSettings({...generalSettings, sitePhone: e.target.value})} className="w-full p-3 border rounded-xl" />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">ঠিকানা</label>
+                  <input type="text" value={generalSettings.siteAddress} onChange={(e) => setGeneralSettings({...generalSettings, siteAddress: e.target.value})} className="w-full p-3 border rounded-xl" />
+                </div>
+                <div className="md:col-span-2">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">সাইটের বিবরণ</label>
+                  <textarea value={generalSettings.siteDescription} onChange={(e) => setGeneralSettings({...generalSettings, siteDescription: e.target.value})} rows={2} className="w-full p-3 border rounded-xl" />
+                </div>
+                <div className="md:col-span-2">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">কিওয়ার্ড (কমা দিয়ে আলাদা)</label>
+                  <input type="text" value={generalSettings.siteKeywords} onChange={(e) => setGeneralSettings({...generalSettings, siteKeywords: e.target.value})} className="w-full p-3 border rounded-xl" />
+                </div>
+              </div>
 
+              <h3 className="font-semibold text-gray-800 mt-4">সিস্টেম কন্ট্রোল</h3>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <label className="flex items-center gap-3 p-3 bg-gray-50 rounded-xl">
+                  <input type="checkbox" checked={generalSettings.maintenanceMode} onChange={(e) => setGeneralSettings({...generalSettings, maintenanceMode: e.target.checked})} className="w-4 h-4" />
+                  <div><span className="font-medium">মেইনটেনেন্স মোড</span><p className="text-xs text-gray-400">সাইট বন্ধ রাখুন</p></div>
+                </label>
+                <label className="flex items-center gap-3 p-3 bg-gray-50 rounded-xl">
+                  <input type="checkbox" checked={generalSettings.registrationEnabled} onChange={(e) => setGeneralSettings({...generalSettings, registrationEnabled: e.target.checked})} className="w-4 h-4" />
+                  <div><span className="font-medium">রেজিস্ট্রেশন চালু</span><p className="text-xs text-gray-400">নতুন ইউজার রেজিস্টার করতে পারবে</p></div>
+                </label>
+                <label className="flex items-center gap-3 p-3 bg-gray-50 rounded-xl">
+                  <input type="checkbox" checked={generalSettings.autoApprovePosts} onChange={(e) => setGeneralSettings({...generalSettings, autoApprovePosts: e.target.checked})} className="w-4 h-4" />
+                  <div><span className="font-medium">অটো অ্যাপ্রুভ পোস্ট</span><p className="text-xs text-gray-400">পোস্ট অটোমেটিক অ্যাপ্রুভ হবে</p></div>
+                </label>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">সর্বোচ্চ পোস্ট/ইউজার</label>
+                  <input type="number" value={generalSettings.maxPostsPerUser} onChange={(e) => setGeneralSettings({...generalSettings, maxPostsPerUser: parseInt(e.target.value)})} className="w-full p-3 border rounded-xl" />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">সর্বোচ্চ ছবি/পোস্ট</label>
+                  <input type="number" value={generalSettings.maxImagesPerPost} onChange={(e) => setGeneralSettings({...generalSettings, maxImagesPerPost: parseInt(e.target.value)})} className="w-full p-3 border rounded-xl" />
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* ============ পেমেন্ট সেটিংস ============ */}
+          {activeTab === 'payment' && (
+            <div className="bg-white rounded-2xl shadow-sm p-6 space-y-6">
+              <h2 className="text-lg font-bold text-gray-800 flex items-center gap-2 border-b pb-3">
+                <DollarSign size={20} className="text-[#f85606]" /> পেমেন্ট সেটিংস
+              </h2>
+
+              {/* পাত্র-পাত্রী */}
+              <div className="bg-pink-50 rounded-xl p-4 border border-pink-200">
+                <h3 className="font-bold text-gray-800 flex items-center gap-2 mb-4">
+                  <Heart size={18} className="text-pink-600" /> পাত্র-পাত্রী পেমেন্ট
+                </h3>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">প্রোফাইল আনলক ফি (৳)</label>
+                    <div className="flex items-center">
+                      <button onClick={() => setPaymentSettings({...paymentSettings, matrimonyProfileUnlock: Math.max(0, paymentSettings.matrimonyProfileUnlock - 50)})} className="p-3 bg-gray-100 rounded-l-xl"><Minus size={16} /></button>
+                      <input type="number" value={paymentSettings.matrimonyProfileUnlock} onChange={(e) => setPaymentSettings({...paymentSettings, matrimonyProfileUnlock: parseInt(e.target.value)})} className="w-full p-3 border-y text-center" />
+                      <button onClick={() => setPaymentSettings({...paymentSettings, matrimonyProfileUnlock: paymentSettings.matrimonyProfileUnlock + 50})} className="p-3 bg-gray-100 rounded-r-xl"><Plus size={16} /></button>
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">প্রিমিয়াম ফি (৳)</label>
+                    <div className="flex items-center">
+                      <button onClick={() => setPaymentSettings({...paymentSettings, matrimonyPremium: Math.max(0, paymentSettings.matrimonyPremium - 100)})} className="p-3 bg-gray-100 rounded-l-xl"><Minus size={16} /></button>
+                      <input type="number" value={paymentSettings.matrimonyPremium} onChange={(e) => setPaymentSettings({...paymentSettings, matrimonyPremium: parseInt(e.target.value)})} className="w-full p-3 border-y text-center" />
+                      <button onClick={() => setPaymentSettings({...paymentSettings, matrimonyPremium: paymentSettings.matrimonyPremium + 100})} className="p-3 bg-gray-100 rounded-r-xl"><Plus size={16} /></button>
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">প্রোফাইল বুস্ট ফি (৳)</label>
+                    <div className="flex items-center">
+                      <button onClick={() => setPaymentSettings({...paymentSettings, matrimonyBoost: Math.max(0, paymentSettings.matrimonyBoost - 25)})} className="p-3 bg-gray-100 rounded-l-xl"><Minus size={16} /></button>
+                      <input type="number" value={paymentSettings.matrimonyBoost} onChange={(e) => setPaymentSettings({...paymentSettings, matrimonyBoost: parseInt(e.target.value)})} className="w-full p-3 border-y text-center" />
+                      <button onClick={() => setPaymentSettings({...paymentSettings, matrimonyBoost: paymentSettings.matrimonyBoost + 25})} className="p-3 bg-gray-100 rounded-r-xl"><Plus size={16} /></button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* ফিচার্ড পোস্ট */}
+              <div className="bg-blue-50 rounded-xl p-4 border border-blue-200">
+                <h3 className="font-bold text-gray-800 flex items-center gap-2 mb-4">
+                  <Crown size={18} className="text-blue-600" /> ফিচার্ড পোস্ট পেমেন্ট
+                </h3>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">৭ দিন (৳)</label>
+                    <div className="flex items-center">
+                      <button onClick={() => setPaymentSettings({...paymentSettings, featuredPost7Days: Math.max(0, paymentSettings.featuredPost7Days - 25)})} className="p-3 bg-gray-100 rounded-l-xl"><Minus size={16} /></button>
+                      <input type="number" value={paymentSettings.featuredPost7Days} onChange={(e) => setPaymentSettings({...paymentSettings, featuredPost7Days: parseInt(e.target.value)})} className="w-full p-3 border-y text-center" />
+                      <button onClick={() => setPaymentSettings({...paymentSettings, featuredPost7Days: paymentSettings.featuredPost7Days + 25})} className="p-3 bg-gray-100 rounded-r-xl"><Plus size={16} /></button>
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">১৫ দিন (৳)</label>
+                    <div className="flex items-center">
+                      <button onClick={() => setPaymentSettings({...paymentSettings, featuredPost15Days: Math.max(0, paymentSettings.featuredPost15Days - 25)})} className="p-3 bg-gray-100 rounded-l-xl"><Minus size={16} /></button>
+                      <input type="number" value={paymentSettings.featuredPost15Days} onChange={(e) => setPaymentSettings({...paymentSettings, featuredPost15Days: parseInt(e.target.value)})} className="w-full p-3 border-y text-center" />
+                      <button onClick={() => setPaymentSettings({...paymentSettings, featuredPost15Days: paymentSettings.featuredPost15Days + 25})} className="p-3 bg-gray-100 rounded-r-xl"><Plus size={16} /></button>
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">৩০ দিন (৳)</label>
+                    <div className="flex items-center">
+                      <button onClick={() => setPaymentSettings({...paymentSettings, featuredPost30Days: Math.max(0, paymentSettings.featuredPost30Days - 50)})} className="p-3 bg-gray-100 rounded-l-xl"><Minus size={16} /></button>
+                      <input type="number" value={paymentSettings.featuredPost30Days} onChange={(e) => setPaymentSettings({...paymentSettings, featuredPost30Days: parseInt(e.target.value)})} className="w-full p-3 border-y text-center" />
+                      <button onClick={() => setPaymentSettings({...paymentSettings, featuredPost30Days: paymentSettings.featuredPost30Days + 50})} className="p-3 bg-gray-100 rounded-r-xl"><Plus size={16} /></button>
+                    </div>
+                  </div>
+                </div>
+                <div className="mt-3">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">জরুরি পোস্ট ফি (৳)</label>
+                  <div className="flex items-center max-w-[200px]">
+                    <button onClick={() => setPaymentSettings({...paymentSettings, urgentPost: Math.max(0, paymentSettings.urgentPost - 10)})} className="p-3 bg-gray-100 rounded-l-xl"><Minus size={16} /></button>
+                    <input type="number" value={paymentSettings.urgentPost} onChange={(e) => setPaymentSettings({...paymentSettings, urgentPost: parseInt(e.target.value)})} className="w-full p-3 border-y text-center" />
+                    <button onClick={() => setPaymentSettings({...paymentSettings, urgentPost: paymentSettings.urgentPost + 10})} className="p-3 bg-gray-100 rounded-r-xl"><Plus size={16} /></button>
+                  </div>
+                </div>
+              </div>
+
+              {/* নিলাম ও ডকুমেন্ট */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="bg-purple-50 rounded-xl p-4 border border-purple-200">
+                  <h3 className="font-bold text-gray-800 flex items-center gap-2 mb-4">
+                    <Gavel size={18} className="text-purple-600" /> নিলাম কমিশন
+                  </h3>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">কমিশন (%)</label>
+                    <div className="flex items-center max-w-[200px]">
+                      <button onClick={() => setPaymentSettings({...paymentSettings, auctionCommission: Math.max(0, paymentSettings.auctionCommission - 0.5)})} className="p-3 bg-gray-100 rounded-l-xl"><Minus size={16} /></button>
+                      <input type="number" step="0.5" value={paymentSettings.auctionCommission} onChange={(e) => setPaymentSettings({...paymentSettings, auctionCommission: parseFloat(e.target.value)})} className="w-full p-3 border-y text-center" />
+                      <button onClick={() => setPaymentSettings({...paymentSettings, auctionCommission: paymentSettings.auctionCommission + 0.5})} className="p-3 bg-gray-100 rounded-r-xl"><Plus size={16} /></button>
+                    </div>
+                  </div>
+                </div>
+                <div className="bg-green-50 rounded-xl p-4 border border-green-200">
+                  <h3 className="font-bold text-gray-800 flex items-center gap-2 mb-4">
+                    <FileText size={18} className="text-green-600" /> ডকুমেন্ট ফি
+                  </h3>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">ডকুমেন্ট সার্ভিস ফি (৳)</label>
+                    <div className="flex items-center max-w-[200px]">
+                      <button onClick={() => setPaymentSettings({...paymentSettings, documentServiceFee: Math.max(0, paymentSettings.documentServiceFee - 100)})} className="p-3 bg-gray-100 rounded-l-xl"><Minus size={16} /></button>
+                      <input type="number" value={paymentSettings.documentServiceFee} onChange={(e) => setPaymentSettings({...paymentSettings, documentServiceFee: parseInt(e.target.value)})} className="w-full p-3 border-y text-center" />
+                      <button onClick={() => setPaymentSettings({...paymentSettings, documentServiceFee: paymentSettings.documentServiceFee + 100})} className="p-3 bg-gray-100 rounded-r-xl"><Plus size={16} /></button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* ট্যাক্স ও কারেন্সি */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">কারেন্সি</label>
+                  <select value={paymentSettings.currency} onChange={(e) => setPaymentSettings({...paymentSettings, currency: e.target.value})} className="w-full p-3 border rounded-xl">
+                    <option value="BDT">BDT (৳)</option>
+                    <option value="USD">USD ($)</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">ট্যাক্স (%)</label>
+                  <input type="number" value={paymentSettings.taxRate} onChange={(e) => setPaymentSettings({...paymentSettings, taxRate: parseInt(e.target.value)})} className="w-full p-3 border rounded-xl" />
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* ============ নোটিফিকেশন সেটিংস ============ */}
+          {activeTab === 'notification' && (
+            <div className="bg-white rounded-2xl shadow-sm p-6 space-y-6">
+              <h2 className="text-lg font-bold text-gray-800 flex items-center gap-2 border-b pb-3">
+                <Bell size={20} className="text-[#f85606]" /> নোটিফিকেশন সেটিংস
+              </h2>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <label className="flex items-center justify-between p-4 bg-gray-50 rounded-xl">
+                  <div><span className="font-medium">নতুন ইউজার রেজিস্ট্রেশন</span><p className="text-xs text-gray-400">ইমেইল নোটিফিকেশন</p></div>
+                  <input type="checkbox" checked={notificationSettings.emailOnNewUser} onChange={(e) => setNotificationSettings({...notificationSettings, emailOnNewUser: e.target.checked})} className="w-4 h-4" />
+                </label>
+                <label className="flex items-center justify-between p-4 bg-gray-50 rounded-xl">
+                  <div><span className="font-medium">নতুন পোস্ট জমা</span><p className="text-xs text-gray-400">ইমেইল নোটিফিকেশন</p></div>
+                  <input type="checkbox" checked={notificationSettings.emailOnNewPost} onChange={(e) => setNotificationSettings({...notificationSettings, emailOnNewPost: e.target.checked})} className="w-4 h-4" />
+                </label>
+                <label className="flex items-center justify-between p-4 bg-gray-50 rounded-xl">
+                  <div><span className="font-medium">নতুন বিড</span><p className="text-xs text-gray-400">ইমেইল নোটিফিকেশন</p></div>
+                  <input type="checkbox" checked={notificationSettings.emailOnNewBid} onChange={(e) => setNotificationSettings({...notificationSettings, emailOnNewBid: e.target.checked})} className="w-4 h-4" />
+                </label>
+                <label className="flex items-center justify-between p-4 bg-gray-50 rounded-xl">
+                  <div><span className="font-medium">পেমেন্ট সফল</span><p className="text-xs text-gray-400">ইমেইল নোটিফিকেশন</p></div>
+                  <input type="checkbox" checked={notificationSettings.emailOnPayment} onChange={(e) => setNotificationSettings({...notificationSettings, emailOnPayment: e.target.checked})} className="w-4 h-4" />
+                </label>
+                <label className="flex items-center justify-between p-4 bg-gray-50 rounded-xl">
+                  <div><span className="font-medium">রিপোর্ট জমা</span><p className="text-xs text-gray-400">ইমেইল নোটিফিকেশন</p></div>
+                  <input type="checkbox" checked={notificationSettings.emailOnReport} onChange={(e) => setNotificationSettings({...notificationSettings, emailOnReport: e.target.checked})} className="w-4 h-4" />
+                </label>
+                <label className="flex items-center justify-between p-4 bg-gray-50 rounded-xl">
+                  <div><span className="font-medium">নতুন মেসেজ</span><p className="text-xs text-gray-400">পুশ নোটিফিকেশন</p></div>
+                  <input type="checkbox" checked={notificationSettings.pushOnNewMessage} onChange={(e) => setNotificationSettings({...notificationSettings, pushOnNewMessage: e.target.checked})} className="w-4 h-4" />
+                </label>
+                <label className="flex items-center justify-between p-4 bg-gray-50 rounded-xl">
+                  <div><span className="font-medium">বিড আপডেট</span><p className="text-xs text-gray-400">পুশ নোটিফিকেশন</p></div>
+                  <input type="checkbox" checked={notificationSettings.pushOnBidUpdate} onChange={(e) => setNotificationSettings({...notificationSettings, pushOnBidUpdate: e.target.checked})} className="w-4 h-4" />
+                </label>
+                <label className="flex items-center justify-between p-4 bg-gray-50 rounded-xl">
+                  <div><span className="font-medium">পেমেন্ট সফল</span><p className="text-xs text-gray-400">SMS নোটিফিকেশন</p></div>
+                  <input type="checkbox" checked={notificationSettings.smsOnPayment} onChange={(e) => setNotificationSettings({...notificationSettings, smsOnPayment: e.target.checked})} className="w-4 h-4" />
+                </label>
+              </div>
+            </div>
+          )}
+
+          {/* ============ সিকিউরিটি সেটিংস ============ */}
+          {activeTab === 'security' && (
+            <div className="bg-white rounded-2xl shadow-sm p-6 space-y-6">
+              <h2 className="text-lg font-bold text-gray-800 flex items-center gap-2 border-b pb-3">
+                <Shield size={20} className="text-[#f85606]" /> নিরাপত্তা সেটিংস
+              </h2>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">সর্বোচ্চ লগইন অ্যাটেম্পট</label>
+                  <input type="number" value={securitySettings.maxLoginAttempts} onChange={(e) => setSecuritySettings({...securitySettings, maxLoginAttempts: parseInt(e.target.value)})} className="w-full p-3 border rounded-xl" />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">সেশন টাইমআউট (মিনিট)</label>
+                  <input type="number" value={securitySettings.sessionTimeout} onChange={(e) => setSecuritySettings({...securitySettings, sessionTimeout: parseInt(e.target.value)})} className="w-full p-3 border rounded-xl" />
+                </div>
+              </div>
+
+              <div className="space-y-3">
+                <label className="flex items-center gap-3 p-3 bg-gray-50 rounded-xl">
+                  <input type="checkbox" checked={securitySettings.twoFactorRequired} onChange={(e) => setSecuritySettings({...securitySettings, twoFactorRequired: e.target.checked})} className="w-4 h-4" />
+                  <div><span className="font-medium">টু-ফ্যাক্টর অথেনটিকেশন বাধ্যতামূলক</span><p className="text-xs text-gray-400">সকল ইউজারের জন্য 2FA চালু করুন</p></div>
+                </label>
+                <label className="flex items-center gap-3 p-3 bg-gray-50 rounded-xl">
+                  <input type="checkbox" checked={securitySettings.requireEmailVerification} onChange={(e) => setSecuritySettings({...securitySettings, requireEmailVerification: e.target.checked})} className="w-4 h-4" />
+                  <div><span className="font-medium">ইমেইল ভেরিফিকেশন বাধ্যতামূলক</span></div>
+                </label>
+                <label className="flex items-center gap-3 p-3 bg-gray-50 rounded-xl">
+                  <input type="checkbox" checked={securitySettings.requirePhoneVerification} onChange={(e) => setSecuritySettings({...securitySettings, requirePhoneVerification: e.target.checked})} className="w-4 h-4" />
+                  <div><span className="font-medium">ফোন ভেরিফিকেশন বাধ্যতামূলক</span></div>
+                </label>
+              </div>
+
+              {/* IP হোয়াইটলিস্ট */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">IP হোয়াইটলিস্ট</label>
+                <div className="flex gap-2 mb-2">
+                  <input type="text" value={newIp} onChange={(e) => setNewIp(e.target.value)} placeholder="192.168.1.1" className="flex-1 p-3 border rounded-xl" />
+                  <button onClick={handleAddIp} className="bg-[#f85606] text-white px-4 py-3 rounded-xl">যোগ করুন</button>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  {securitySettings.ipWhitelist.map(ip => (
+                    <span key={ip} className="bg-gray-100 px-3 py-1 rounded-full text-sm flex items-center gap-2">
+                      {ip} <button onClick={() => handleRemoveIp(ip)}><X size={14} className="text-red-500" /></button>
+                    </span>
+                  ))}
+                </div>
+              </div>
+
+              {/* ব্যান শব্দ */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">ব্যান করা শব্দ</label>
+                <div className="flex gap-2 mb-2">
+                  <input type="text" value={newBannedWord} onChange={(e) => setNewBannedWord(e.target.value)} placeholder="শব্দ লিখুন" className="flex-1 p-3 border rounded-xl" />
+                  <button onClick={handleAddBannedWord} className="bg-[#f85606] text-white px-4 py-3 rounded-xl">যোগ করুন</button>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  {securitySettings.bannedWords.map(word => (
+                    <span key={word} className="bg-red-50 text-red-700 px-3 py-1 rounded-full text-sm flex items-center gap-2">
+                      {word} <button onClick={() => handleRemoveBannedWord(word)}><X size={14} className="text-red-500" /></button>
+                    </span>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* ============ পারফরম্যান্স সেটিংস ============ */}
+          {activeTab === 'performance' && (
+            <div className="bg-white rounded-2xl shadow-sm p-6 space-y-6">
+              <h2 className="text-lg font-bold text-gray-800 flex items-center gap-2 border-b pb-3">
+                <Zap size={20} className="text-[#f85606]" /> পারফরম্যান্স সেটিংস
+              </h2>
+              
+              <div className="bg-blue-50 rounded-xl p-4 text-center">
+                <p className="text-sm text-blue-700">🚀 সুপারসনিক স্পিড অপটিমাইজেশন সক্রিয় আছে!</p>
+                <p className="text-xs text-blue-600 mt-1">Turbopack • Cache Components • PPR • Image Optimization</p>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="bg-gray-50 rounded-xl p-4">
+                  <p className="text-sm font-medium">ক্যাশ স্ট্যাটাস</p>
+                  <p className="text-2xl font-bold text-green-600">সক্রিয়</p>
+                </div>
+                <div className="bg-gray-50 rounded-xl p-4">
+                  <p className="text-sm font-medium">CDN স্ট্যাটাস</p>
+                  <p className="text-2xl font-bold text-green-600">Vercel Edge</p>
+                </div>
+              </div>
+
+              <button className="w-full bg-yellow-500 text-white py-3 rounded-xl font-semibold flex items-center justify-center gap-2">
+                <RefreshCw size={18} /> ক্যাশ ক্লিয়ার করুন
+              </button>
+            </div>
+          )}
+
+          {/* ============ সোশ্যাল সেটিংস ============ */}
+          {activeTab === 'social' && (
+            <div className="bg-white rounded-2xl shadow-sm p-6 space-y-6">
+              <h2 className="text-lg font-bold text-gray-800 flex items-center gap-2 border-b pb-3">
+                <Users size={20} className="text-[#f85606]" /> সোশ্যাল মিডিয়া লিংক
+              </h2>
+              
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Facebook URL</label>
+                  <input type="url" value={generalSettings.facebookUrl} onChange={(e) => setGeneralSettings({...generalSettings, facebookUrl: e.target.value})} className="w-full p-3 border rounded-xl" />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">YouTube URL</label>
+                  <input type="url" value={generalSettings.youtubeUrl} onChange={(e) => setGeneralSettings({...generalSettings, youtubeUrl: e.target.value})} className="w-full p-3 border rounded-xl" />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Instagram URL</label>
+                  <input type="url" value={generalSettings.instagramUrl} onChange={(e) => setGeneralSettings({...generalSettings, instagramUrl: e.target.value})} className="w-full p-3 border rounded-xl" />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">WhatsApp নম্বর</label>
+                  <input type="tel" value={generalSettings.whatsappNumber} onChange={(e) => setGeneralSettings({...generalSettings, whatsappNumber: e.target.value})} className="w-full p-3 border rounded-xl" />
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* সেভ বাটন */}
+          <div className="mt-6 flex gap-3">
+            <button onClick={handleSaveAll} disabled={isSaving} className="flex-1 bg-[#f85606] text-white py-3 rounded-xl font-semibold flex items-center justify-center gap-2 hover:bg-orange-600 transition disabled:opacity-50">
+              <Save size={18} /> {isSaving ? "সেভ হচ্ছে..." : "সব সেটিংস সংরক্ষণ করুন"}
+            </button>
           </div>
         </div>
       </div>
-
-      {/* টেস্ট ইমেইল মডাল */}
-      {showTestModal && (<div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4"><div className="bg-white rounded-2xl max-w-md w-full p-5"><h3 className="text-lg font-bold mb-4">টেস্ট ইমেইল পাঠান</h3><input type="email" value={testEmail} onChange={(e) => setTestEmail(e.target.value)} placeholder="ইমেইল ঠিকানা" className="w-full p-3 border rounded-xl mb-4" /><div className="flex gap-2"><button onClick={handleTestEmail} className="flex-1 bg-[#f85606] text-white py-2 rounded-lg">পাঠান</button><button onClick={() => setShowTestModal(false)} className="flex-1 bg-gray-200 py-2 rounded-lg">বাতিল</button></div></div></div>)}
-
     </div>
   );
 }
