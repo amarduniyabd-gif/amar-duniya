@@ -2,9 +2,10 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { 
-  Phone, Mail, MapPin, X, ExternalLink, Sparkles,
-  Clock, Eye, Share2, Heart, TrendingUp, Gift,
-  ChevronRight, Download, Calendar, Tag
+  Phone, Mail, MapPin, X, Sparkles,
+  Clock, Eye, TrendingUp, Gift, Tag,
+  Store, Package, Shirt, Coffee, Smartphone,
+  ShoppingBag, AlertCircle
 } from "lucide-react";
 import Lottie from "lottie-react";
 
@@ -22,19 +23,34 @@ type OfferBanner = {
   discountCode?: string;
   priority: 'high' | 'medium' | 'low';
   views: number;
-  clicks: number;
   status: 'active' | 'inactive';
 };
 
-// Lottie অ্যানিমেশন ডাটা (ইম্পোর্ট বা URL)
+// প্রোডাক্ট টাইপ
+type Product = {
+  id: number;
+  title: string;
+  price: number;
+  originalPrice?: number;
+  image: string;
+  shopName: string;
+  location: string;
+  discount?: number;
+  soldCount?: number;
+};
+
+// Lottie অ্যানিমেশন
 const offerAnimationUrl = "https://assets10.lottiefiles.com/packages/lf20_5ngs2ksb.json";
+const loadingAnimationUrl = "https://assets3.lottiefiles.com/packages/lf20_p8bfn5to.json";
 
 export default function OfferZonePage() {
   const [selectedBanner, setSelectedBanner] = useState<OfferBanner | null>(null);
   const [banners, setBanners] = useState<OfferBanner[]>([]);
+  const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [filterPriority, setFilterPriority] = useState<'all' | 'high' | 'medium' | 'low'>('all');
   const [animationData, setAnimationData] = useState(null);
+  const [loadingAnimData, setLoadingAnimData] = useState(null);
 
   // Lottie অ্যানিমেশন লোড
   useEffect(() => {
@@ -42,36 +58,62 @@ export default function OfferZonePage() {
       .then(res => res.json())
       .then(data => setAnimationData(data))
       .catch(err => console.log('Animation load failed:', err));
+      
+    fetch(loadingAnimationUrl)
+      .then(res => res.json())
+      .then(data => setLoadingAnimData(data))
+      .catch(err => console.log('Loading animation failed:', err));
   }, []);
 
-  // ব্যানার লোড
+  // ডামি প্রোডাক্ট জেনারেটর
+  const generateProducts = (): Product[] => {
+    const shops = ["আলিফ ইলেকট্রনিক্স", "কুষ্টিয়া ফ্যাশন", "দেশি বাজার", "মোবাইল হাট", "হোম স্টোর", "গিফট শপ"];
+    const locations = ["কুষ্টিয়া", "কুমারখালী", "খোকসা", "মিরপুর", "ভেড়ামারা", "দৌলতপুর"];
+    const images = ["📱", "💻", "👕", "👗", "🛋️", "🎁", "⌚", "👟", "👜", "📺", "🎮", "📷"];
+    const titles = ["iPhone 15 Pro", "Samsung TV", "Nike Shoes", "Leather Bag", "Smart Watch", 
+                    "Headphones", "Gaming Chair", "Camera", "Laptop", "Tablet", "Speaker", "Router"];
+    
+    return Array(12).fill(null).map((_, i) => ({
+      id: i + 1,
+      title: titles[i],
+      price: Math.floor(Math.random() * 50000) + 500,
+      originalPrice: Math.random() > 0.5 ? Math.floor(Math.random() * 70000) + 1000 : undefined,
+      image: images[i],
+      shopName: shops[Math.floor(Math.random() * shops.length)],
+      location: locations[Math.floor(Math.random() * locations.length)],
+      discount: Math.random() > 0.3 ? Math.floor(Math.random() * 50) + 10 : undefined,
+      soldCount: Math.floor(Math.random() * 500),
+    }));
+  };
+
+  // ব্যানার ও প্রোডাক্ট লোড
   useEffect(() => {
     const savedBanners = localStorage.getItem("offerBanners");
     if (savedBanners) {
       const activeBanners = JSON.parse(savedBanners).filter((b: OfferBanner) => b.status === 'active');
       setBanners(activeBanners);
     } else {
-      // ডিফল্ট ডামি ব্যানার
-      const defaultBanners: OfferBanner[] = Array(20).fill(null).map((_, i) => ({
+      const defaultBanners: OfferBanner[] = Array(8).fill(null).map((_, i) => ({
         id: i + 1,
-        title: `স্পেশাল অফার ${i + 1}`,
-        description: `${50 - i}% পর্যন্ত ছাড়`,
+        title: `কুষ্টিয়া স্পেশাল ${i + 1}`,
+        description: `${50 - i * 5}% পর্যন্ত ছাড়`,
         image: "🎁",
         contactName: "অফার টিম",
         contactPhone: "017XXXXXXXX",
         contactEmail: "offer@amarduniya.com",
-        contactLocation: "ঢাকা, বাংলাদেশ",
-        offerDetails: `সব পণ্যে বিশেষ ছাড়! ${i + 1} দিনের জন্য।`,
+        contactLocation: "কুষ্টিয়া",
+        offerDetails: `কুষ্টিয়ার জন্য বিশেষ ছাড়!`,
         validUntil: new Date(Date.now() + (i + 1) * 86400000).toISOString(),
-        discountCode: `OFFER${i + 1}`,
-        priority: i < 5 ? 'high' : i < 10 ? 'medium' : 'low',
-        views: Math.floor(Math.random() * 1000),
-        clicks: Math.floor(Math.random() * 500),
+        discountCode: `KUSHTIA${i + 1}`,
+        priority: i < 3 ? 'high' : i < 6 ? 'medium' : 'low',
+        views: Math.floor(Math.random() * 500),
         status: 'active',
       }));
       setBanners(defaultBanners);
       localStorage.setItem("offerBanners", JSON.stringify(defaultBanners));
     }
+    
+    setProducts(generateProducts());
     setLoading(false);
   }, []);
 
@@ -81,7 +123,6 @@ export default function OfferZonePage() {
 
   const handleBannerClick = (banner: OfferBanner) => {
     setSelectedBanner(banner);
-    // ভিউ আপডেট
     const updatedBanners = banners.map(b => 
       b.id === banner.id ? { ...b, views: b.views + 1 } : b
     );
@@ -89,20 +130,12 @@ export default function OfferZonePage() {
     localStorage.setItem("offerBanners", JSON.stringify(updatedBanners));
   };
 
-  const handleCall = (phone: string) => {
-    window.location.href = `tel:${phone}`;
-  };
-
-  const handleWhatsApp = (phone: string) => {
-    window.open(`https://wa.me/${phone.replace(/[^0-9]/g, '')}`, '_blank');
-  };
-
   const getPriorityColor = (priority: string) => {
     switch(priority) {
-      case 'high': return 'border-red-500 bg-red-50';
-      case 'medium': return 'border-yellow-500 bg-yellow-50';
-      case 'low': return 'border-green-500 bg-green-50';
-      default: return 'border-gray-200 bg-white';
+      case 'high': return 'border-l-4 border-l-red-500 bg-gradient-to-r from-red-50 to-white';
+      case 'medium': return 'border-l-4 border-l-orange-500 bg-gradient-to-r from-orange-50 to-white';
+      case 'low': return 'border-l-4 border-l-green-500 bg-gradient-to-r from-green-50 to-white';
+      default: return 'border-l-4 border-l-gray-300 bg-white';
     }
   };
 
@@ -115,180 +148,223 @@ export default function OfferZonePage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-orange-50 to-amber-50">
-        <div className="text-center">
-          {animationData && (
-            <Lottie animationData={animationData} loop={true} style={{ width: 150, height: 150 }} />
-          )}
-          <p className="text-gray-500 mt-4">অফার লোড হচ্ছে...</p>
-        </div>
+      <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-b from-orange-50 to-amber-50">
+        {loadingAnimData && (
+          <Lottie animationData={loadingAnimData} loop={true} style={{ width: 200, height: 200 }} />
+        )}
+        <p className="text-gray-500 mt-2 animate-pulse">অফার লোড হচ্ছে...</p>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-orange-50 via-white to-amber-50">
-      {/* হিরো সেকশন - Lottie সহ */}
-      <div className="relative bg-gradient-to-r from-[#f85606] via-orange-500 to-[#f85606] text-white overflow-hidden">
-        <div className="absolute inset-0 bg-black/10"></div>
-        <div className="absolute top-0 right-0 w-96 h-96 bg-white/10 rounded-full blur-3xl"></div>
-        <div className="absolute bottom-0 left-0 w-96 h-96 bg-white/5 rounded-full blur-3xl"></div>
-        
-        <div className="relative max-w-6xl mx-auto px-4 py-12">
-          <div className="flex flex-col md:flex-row items-center justify-between gap-8">
-            <div className="text-center md:text-left">
-              <div className="inline-flex items-center gap-2 bg-white/20 backdrop-blur-sm rounded-full px-4 py-1.5 mb-4 border border-white/30">
-                <Sparkles size={16} />
-                <span className="text-sm font-semibold">সেরা ডিল</span>
-              </div>
-              <h1 className="text-4xl md:text-6xl font-bold mb-3">
-                🎁 অফার জোন
-              </h1>
-              <p className="text-lg opacity-90 mb-6">
-                সেরা ডিল ও বিশেষ ছাড় - শুধু আপনার জন্য
-              </p>
-              <div className="flex flex-wrap gap-4 justify-center md:justify-start">
-                <div className="flex items-center gap-2 text-sm">
-                  <Tag size={16} /> ৫০% পর্যন্ত ছাড়
-                </div>
-                <div className="flex items-center gap-2 text-sm">
-                  <Clock size={16} /> সীমিত সময়ের অফার
-                </div>
-                <div className="flex items-center gap-2 text-sm">
-                  <Gift size={16} /> ফ্রি ডেলিভারি
-                </div>
+    <div className="min-h-screen bg-gray-50">
+      {/* হিরো সেকশন - কমপ্যাক্ট */}
+      <div className="relative bg-gradient-to-r from-[#f85606] to-orange-500 text-white overflow-hidden">
+        <div className="absolute -top-20 -right-20 w-64 h-64 bg-white/10 rounded-full blur-2xl"></div>
+        <div className="relative max-w-6xl mx-auto px-4 py-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              {animationData && (
+                <Lottie animationData={animationData} loop={true} style={{ width: 50, height: 50 }} />
+              )}
+              <div>
+                <h1 className="text-xl font-bold flex items-center gap-1">
+                  <Gift size={20} /> অফার জোন
+                </h1>
+                <p className="text-xs opacity-90">কুষ্টিয়ার সেরা ডিল</p>
               </div>
             </div>
-            
-            {/* Lottie Animation */}
-            <div className="w-48 h-48 md:w-64 md:h-64">
-              {animationData && (
-                <Lottie animationData={animationData} loop={true} />
-              )}
+            <div className="flex items-center gap-3">
+              <div className="flex items-center gap-1 bg-white/20 px-2 py-1 rounded-full">
+                <Clock size={12} />
+                <span className="text-xs">সীমিত সময়</span>
+              </div>
             </div>
           </div>
         </div>
       </div>
 
-      {/* ফিল্টার */}
-      <div className="max-w-6xl mx-auto px-4 py-6">
-        <div className="flex flex-wrap items-center justify-between gap-4">
-          <h2 className="text-xl font-bold text-gray-800 flex items-center gap-2">
-            <TrendingUp size={20} className="text-[#f85606]" />
-            চলমান অফার ({filteredBanners.length})
-          </h2>
-          
-          <div className="flex gap-2">
+      {/* ফিল্টার চিপস - স্ক্রলেবল */}
+      <div className="bg-white border-b sticky top-0 z-20">
+        <div className="max-w-6xl mx-auto px-3 py-2">
+          <div className="flex gap-2 overflow-x-auto scrollbar-hide">
             {[
-              { id: 'all', label: 'সব', color: 'bg-gray-500' },
-              { id: 'high', label: 'হট ডিল', color: 'bg-red-500' },
-              { id: 'medium', label: 'জনপ্রিয়', color: 'bg-yellow-500' },
-              { id: 'low', label: 'নিয়মিত', color: 'bg-green-500' },
+              { id: 'all', label: 'সব অফার', icon: '🎯' },
+              { id: 'high', label: 'হট ডিল', icon: '🔥' },
+              { id: 'medium', label: 'জনপ্রিয়', icon: '⭐' },
+              { id: 'low', label: 'নিয়মিত', icon: '✅' },
             ].map((filter) => (
               <button
                 key={filter.id}
                 onClick={() => setFilterPriority(filter.id as any)}
-                className={`px-4 py-2 rounded-xl text-sm font-medium transition ${
+                className={`flex items-center gap-1 px-4 py-1.5 rounded-full text-sm whitespace-nowrap transition ${
                   filterPriority === filter.id
-                    ? `${filter.color} text-white`
-                    : 'bg-white text-gray-600 border hover:bg-gray-50'
+                    ? 'bg-[#f85606] text-white'
+                    : 'bg-gray-100 text-gray-600'
                 }`}
               >
-                {filter.label}
+                <span>{filter.icon}</span> {filter.label}
               </button>
             ))}
           </div>
         </div>
       </div>
 
-      {/* ব্যানার গ্রিড */}
-      <div className="max-w-6xl mx-auto px-4 pb-8">
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
-          {filteredBanners.map(banner => (
-            <div
-              key={banner.id}
-              onClick={() => handleBannerClick(banner)}
-              className={`relative bg-white rounded-xl shadow-lg hover:shadow-2xl transition-all duration-300 cursor-pointer transform hover:-translate-y-1 border-2 ${getPriorityColor(banner.priority)}`}
-            >
-              {/* প্রায়োরিটি ব্যাজ */}
-              {banner.priority === 'high' && (
-                <div className="absolute -top-2 -left-2 bg-red-500 text-white text-[10px] px-2 py-1 rounded-full z-10 animate-pulse">
-                  🔥 হট
-                </div>
-              )}
-              
-              {/* ব্যানার ইমেজ */}
-              <div className="h-32 bg-gradient-to-br from-orange-100 to-amber-100 rounded-t-xl flex items-center justify-center text-5xl">
-                {banner.image}
-              </div>
-              
-              {/* কন্টেন্ট */}
-              <div className="p-3">
-                <h3 className="font-bold text-sm text-gray-800 line-clamp-1">{banner.title}</h3>
-                <p className="text-xs text-[#f85606] font-semibold mt-1">{banner.description}</p>
-                
-                <div className="flex items-center justify-between mt-3 text-[10px] text-gray-400">
-                  <span className="flex items-center gap-1">
-                    <Eye size={10} /> {banner.views}
-                  </span>
-                  <span className="flex items-center gap-1">
-                    <Clock size={10} /> {getDaysLeft(banner.validUntil)} দিন
-                  </span>
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
-        
-        {filteredBanners.length === 0 && (
-          <div className="text-center py-16">
-            <div className="text-6xl mb-4">🎁</div>
-            <p className="text-gray-500">কোনো অফার পাওয়া যায়নি</p>
+      <div className="max-w-6xl mx-auto px-3 py-3">
+        {/* অফার ব্যানার - হরিজেন্টাল স্ক্রল (মোবাইল ফ্রেন্ডলি) */}
+        <div className="mb-4">
+          <div className="flex items-center justify-between mb-2">
+            <h2 className="text-sm font-bold text-gray-800 flex items-center gap-1">
+              <Sparkles size={14} className="text-[#f85606]" />
+              বিশেষ অফার
+            </h2>
+            <span className="text-xs text-gray-400">{filteredBanners.length} টি</span>
           </div>
-        )}
+          
+          <div className="flex gap-3 overflow-x-auto scrollbar-hide pb-2">
+            {filteredBanners.map(banner => (
+              <div
+                key={banner.id}
+                onClick={() => handleBannerClick(banner)}
+                className={`flex-shrink-0 w-64 rounded-xl shadow-md cursor-pointer transition hover:shadow-lg ${getPriorityColor(banner.priority)}`}
+              >
+                <div className="flex items-center gap-3 p-3">
+                  <div className="w-14 h-14 bg-gradient-to-br from-orange-100 to-amber-100 rounded-xl flex items-center justify-center text-2xl shadow-sm">
+                    {banner.image}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-1">
+                      <h3 className="font-semibold text-sm text-gray-800 truncate">{banner.title}</h3>
+                      {banner.priority === 'high' && <span className="text-xs">🔥</span>}
+                    </div>
+                    <p className="text-xs text-[#f85606] font-medium">{banner.description}</p>
+                    <div className="flex items-center gap-2 mt-1 text-[10px] text-gray-400">
+                      <span className="flex items-center gap-1"><Eye size={10} /> {banner.views}</span>
+                      <span className="flex items-center gap-1"><Clock size={10} /> {getDaysLeft(banner.validUntil)} দিন</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* প্রোডাক্ট গ্রিড - ৩ কলাম (Daraz স্টাইল) */}
+        <div>
+          <div className="flex items-center justify-between mb-2">
+            <h2 className="text-sm font-bold text-gray-800 flex items-center gap-1">
+              <ShoppingBag size={14} className="text-[#f85606]" />
+              ট্রেন্ডিং প্রোডাক্ট
+            </h2>
+            <Link href="/category/offer" className="text-xs text-[#f85606]">সব দেখুন →</Link>
+          </div>
+          
+          <div className="grid grid-cols-3 gap-2">
+            {products.map(product => (
+              <Link key={product.id} href={`/post/${product.id}`}>
+                <div className="bg-white rounded-lg shadow-sm border border-gray-100 overflow-hidden hover:shadow-md transition">
+                  {/* প্রোডাক্ট ইমেজ */}
+                  <div className="relative aspect-square bg-gradient-to-br from-gray-50 to-gray-100 flex items-center justify-center text-3xl">
+                    {product.image}
+                    {product.discount && (
+                      <div className="absolute top-1 left-1 bg-red-500 text-white text-[8px] font-bold px-1 py-0.5 rounded">
+                        -{product.discount}%
+                      </div>
+                    )}
+                  </div>
+                  
+                  {/* প্রোডাক্ট ইনফো */}
+                  <div className="p-1.5">
+                    <h3 className="text-[11px] font-medium text-gray-800 line-clamp-2 leading-tight">
+                      {product.title}
+                    </h3>
+                    
+                    {/* প্রাইস */}
+                    <div className="flex items-baseline gap-1 mt-0.5">
+                      <span className="text-xs font-bold text-[#f85606]">৳{product.price}</span>
+                      {product.originalPrice && (
+                        <span className="text-[8px] text-gray-400 line-through">৳{product.originalPrice}</span>
+                      )}
+                    </div>
+                    
+                    {/* শপ ইনফো */}
+                    <div className="flex items-center gap-0.5 mt-0.5 text-[7px] text-gray-400">
+                      <Store size={7} />
+                      <span className="truncate">{product.shopName}</span>
+                    </div>
+                    
+                    {/* সোল্ড + লোকেশন */}
+                    <div className="flex items-center justify-between mt-0.5 text-[7px] text-gray-400">
+                      <span>{product.location}</span>
+                      {product.soldCount && <span>{product.soldCount}+ বিক্রি</span>}
+                    </div>
+                  </div>
+                </div>
+              </Link>
+            ))}
+          </div>
+        </div>
+
+        {/* ক্যাটাগরি চিপস */}
+        <div className="mt-4">
+          <div className="flex items-center gap-2 overflow-x-auto scrollbar-hide py-1">
+            {[
+              { icon: <Smartphone size={12} />, label: "মোবাইল" },
+              { icon: <Shirt size={12} />, label: "ফ্যাশন" },
+              { icon: <Package size={12} />, label: "ইলেকট্রনিক্স" },
+              { icon: <Store size={12} />, label: "দোকান" },
+              { icon: <Coffee size={12} />, label: "খাবার" },
+            ].map((cat, i) => (
+              <button key={i} className="flex items-center gap-1 bg-white border px-3 py-1.5 rounded-full text-xs whitespace-nowrap shadow-sm">
+                {cat.icon} {cat.label}
+              </button>
+            ))}
+          </div>
+        </div>
       </div>
 
-      {/* বিস্তারিত তথ্য প্যানেল */}
+      {/* বিস্তারিত প্যানেল - মোবাইল বটম শিট */}
       {selectedBanner && (
         <div 
-          className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-end md:items-center justify-center animate-in fade-in duration-200"
+          className="fixed inset-0 bg-black/50 z-50 flex items-end md:items-center justify-center"
           onClick={() => setSelectedBanner(null)}
         >
           <div 
-            className="bg-white rounded-t-3xl md:rounded-2xl max-w-2xl w-full max-h-[85vh] overflow-y-auto shadow-2xl animate-in slide-in-from-bottom duration-300"
+            className="bg-white rounded-t-2xl md:rounded-2xl max-w-lg w-full max-h-[80vh] overflow-y-auto animate-in slide-in-from-bottom duration-200"
             onClick={e => e.stopPropagation()}
           >
-            <div className="sticky top-0 bg-gradient-to-r from-[#f85606] to-orange-500 text-white p-4 flex justify-between items-center">
-              <h3 className="font-bold text-lg flex items-center gap-2">
-                <Gift size={20} /> অফার বিস্তারিত
+            <div className="sticky top-0 bg-gradient-to-r from-[#f85606] to-orange-500 text-white p-3 flex justify-between items-center">
+              <h3 className="font-bold text-base flex items-center gap-2">
+                <Gift size={18} /> অফার বিস্তারিত
               </h3>
-              <button onClick={() => setSelectedBanner(null)} className="p-1 hover:bg-white/20 rounded-full">
-                <X size={20} />
+              <button onClick={() => setSelectedBanner(null)} className="p-1">
+                <X size={18} />
               </button>
             </div>
             
-            <div className="p-6">
-              <div className="flex items-start gap-4 mb-6">
-                <div className="w-24 h-24 bg-gradient-to-br from-orange-100 to-amber-100 rounded-2xl flex items-center justify-center text-6xl shadow-lg">
+            <div className="p-4">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-16 h-16 bg-gradient-to-br from-orange-100 to-amber-100 rounded-xl flex items-center justify-center text-4xl shadow-md">
                   {selectedBanner.image}
                 </div>
                 <div>
-                  <h2 className="text-2xl font-bold text-gray-800">{selectedBanner.title}</h2>
-                  <p className="text-[#f85606] font-semibold mt-1">{selectedBanner.description}</p>
+                  <h2 className="text-lg font-bold">{selectedBanner.title}</h2>
+                  <p className="text-[#f85606] font-medium">{selectedBanner.description}</p>
                   {selectedBanner.discountCode && (
-                    <div className="mt-2 inline-flex items-center gap-2 bg-gray-100 px-3 py-1.5 rounded-lg">
-                      <Tag size={14} className="text-[#f85606]" />
-                      <span className="font-mono font-bold">{selectedBanner.discountCode}</span>
+                    <div className="mt-1 inline-flex items-center gap-1 bg-gray-100 px-2 py-0.5 rounded">
+                      <Tag size={12} className="text-[#f85606]" />
+                      <span className="font-mono text-xs font-bold">{selectedBanner.discountCode}</span>
                     </div>
                   )}
                 </div>
               </div>
               
-              <p className="text-gray-600 mb-4">{selectedBanner.offerDetails}</p>
+              <p className="text-sm text-gray-600 mb-3">{selectedBanner.offerDetails}</p>
               
-              <div className="bg-gray-50 rounded-xl p-4 mb-4">
-                <h4 className="font-semibold text-gray-800 mb-3">যোগাযোগ</h4>
-                <div className="space-y-2">
+              <div className="bg-gray-50 rounded-xl p-3 mb-3">
+                <h4 className="font-semibold text-sm mb-2">যোগাযোগ</h4>
+                <div className="space-y-1.5">
                   <p className="flex items-center gap-2 text-sm">
                     <Phone size={14} className="text-[#f85606]" />
                     {selectedBanner.contactName} - {selectedBanner.contactPhone}
@@ -301,32 +377,33 @@ export default function OfferZonePage() {
                     <MapPin size={14} className="text-[#f85606]" />
                     {selectedBanner.contactLocation}
                   </p>
-                  <p className="flex items-center gap-2 text-sm">
-                    <Calendar size={14} className="text-[#f85606]" />
-                    মেয়াদ: {new Date(selectedBanner.validUntil).toLocaleDateString('bn-BD')} 
-                    ({getDaysLeft(selectedBanner.validUntil)} দিন বাকি)
-                  </p>
                 </div>
               </div>
               
-              <div className="flex gap-3">
-                <button 
-                  onClick={() => handleCall(selectedBanner.contactPhone)}
-                  className="flex-1 bg-[#f85606] text-white py-3 rounded-xl font-semibold flex items-center justify-center gap-2"
-                >
-                  <Phone size={18} /> কল করুন
-                </button>
-                <button 
-                  onClick={() => handleWhatsApp(selectedBanner.contactPhone)}
-                  className="flex-1 bg-green-500 text-white py-3 rounded-xl font-semibold flex items-center justify-center gap-2"
-                >
-                  <ExternalLink size={18} /> হোয়াটসঅ্যাপ
-                </button>
+              <div className="flex gap-2">
+                <a href={`tel:${selectedBanner.contactPhone}`} className="flex-1 bg-[#f85606] text-white py-2.5 rounded-xl font-semibold text-sm flex items-center justify-center gap-1">
+                  <Phone size={16} /> কল
+                </a>
+                <a href={`https://wa.me/${selectedBanner.contactPhone.replace(/[^0-9]/g, '')}`} target="_blank" className="flex-1 bg-green-500 text-white py-2.5 rounded-xl font-semibold text-sm flex items-center justify-center gap-1">
+                  <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M12 0C5.373 0 0 5.373 0 12c0 2.122.55 4.115 1.515 5.85L0 24l6.33-1.655A11.94 11.94 0 0012 24c6.627 0 12-5.373 12-12S18.627 0 12 0z"/></svg>
+                  হোয়াটসঅ্যাপ
+                </a>
               </div>
             </div>
           </div>
         </div>
       )}
+
+      {/* CSS for hiding scrollbar */}
+      <style jsx>{`
+        .scrollbar-hide::-webkit-scrollbar {
+          display: none;
+        }
+        .scrollbar-hide {
+          -ms-overflow-style: none;
+          scrollbar-width: none;
+        }
+      `}</style>
     </div>
   );
 }
