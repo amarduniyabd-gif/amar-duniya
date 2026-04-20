@@ -4,16 +4,17 @@ import Link from "next/link";
 import { 
   Phone, Mail, MapPin, X, Sparkles,
   Clock, Eye, TrendingUp, Gift, Tag,
-  Store, Package, Shirt, Coffee, Smartphone,
-  ShoppingBag, AlertCircle
+  Store, AlertCircle, Megaphone, BadgeCheck
 } from "lucide-react";
 import Lottie from "lottie-react";
 
 type OfferBanner = {
   id: number;
-  title: string;
+  shopName: string;
+  offerTitle: string;
   description: string;
-  image: string;
+  bannerColor: string;
+  shopLogo: string;
   contactName: string;
   contactPhone: string;
   contactEmail: string;
@@ -26,100 +27,92 @@ type OfferBanner = {
   status: 'active' | 'inactive';
 };
 
-// প্রোডাক্ট টাইপ
-type Product = {
-  id: number;
-  title: string;
-  price: number;
-  originalPrice?: number;
-  image: string;
-  shopName: string;
-  location: string;
-  discount?: number;
-  soldCount?: number;
-};
-
 // Lottie অ্যানিমেশন
 const offerAnimationUrl = "https://assets10.lottiefiles.com/packages/lf20_5ngs2ksb.json";
-const loadingAnimationUrl = "https://assets3.lottiefiles.com/packages/lf20_p8bfn5to.json";
 
 export default function OfferZonePage() {
   const [selectedBanner, setSelectedBanner] = useState<OfferBanner | null>(null);
   const [banners, setBanners] = useState<OfferBanner[]>([]);
-  const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
-  const [filterPriority, setFilterPriority] = useState<'all' | 'high' | 'medium' | 'low'>('all');
   const [animationData, setAnimationData] = useState(null);
-  const [loadingAnimData, setLoadingAnimData] = useState(null);
 
-  // Lottie অ্যানিমেশন লোড
+  // Lottie লোড
   useEffect(() => {
     fetch(offerAnimationUrl)
       .then(res => res.json())
       .then(data => setAnimationData(data))
       .catch(err => console.log('Animation load failed:', err));
-      
-    fetch(loadingAnimationUrl)
-      .then(res => res.json())
-      .then(data => setLoadingAnimData(data))
-      .catch(err => console.log('Loading animation failed:', err));
   }, []);
 
-  // ডামি প্রোডাক্ট জেনারেটর
-  const generateProducts = (): Product[] => {
-    const shops = ["আলিফ ইলেকট্রনিক্স", "কুষ্টিয়া ফ্যাশন", "দেশি বাজার", "মোবাইল হাট", "হোম স্টোর", "গিফট শপ"];
-    const locations = ["কুষ্টিয়া", "কুমারখালী", "খোকসা", "মিরপুর", "ভেড়ামারা", "দৌলতপুর"];
-    const images = ["📱", "💻", "👕", "👗", "🛋️", "🎁", "⌚", "👟", "👜", "📺", "🎮", "📷"];
-    const titles = ["iPhone 15 Pro", "Samsung TV", "Nike Shoes", "Leather Bag", "Smart Watch", 
-                    "Headphones", "Gaming Chair", "Camera", "Laptop", "Tablet", "Speaker", "Router"];
-    
-    return Array(12).fill(null).map((_, i) => ({
-      id: i + 1,
-      title: titles[i],
-      price: Math.floor(Math.random() * 50000) + 500,
-      originalPrice: Math.random() > 0.5 ? Math.floor(Math.random() * 70000) + 1000 : undefined,
-      image: images[i],
-      shopName: shops[Math.floor(Math.random() * shops.length)],
-      location: locations[Math.floor(Math.random() * locations.length)],
-      discount: Math.random() > 0.3 ? Math.floor(Math.random() * 50) + 10 : undefined,
-      soldCount: Math.floor(Math.random() * 500),
-    }));
-  };
-
-  // ব্যানার ও প্রোডাক্ট লোড
+  // ব্যানার লোড
   useEffect(() => {
     const savedBanners = localStorage.getItem("offerBanners");
     if (savedBanners) {
       const activeBanners = JSON.parse(savedBanners).filter((b: OfferBanner) => b.status === 'active');
       setBanners(activeBanners);
     } else {
-      const defaultBanners: OfferBanner[] = Array(8).fill(null).map((_, i) => ({
-        id: i + 1,
-        title: `কুষ্টিয়া স্পেশাল ${i + 1}`,
-        description: `${50 - i * 5}% পর্যন্ত ছাড়`,
-        image: "🎁",
-        contactName: "অফার টিম",
-        contactPhone: "017XXXXXXXX",
-        contactEmail: "offer@amarduniya.com",
-        contactLocation: "কুষ্টিয়া",
-        offerDetails: `কুষ্টিয়ার জন্য বিশেষ ছাড়!`,
-        validUntil: new Date(Date.now() + (i + 1) * 86400000).toISOString(),
-        discountCode: `KUSHTIA${i + 1}`,
-        priority: i < 3 ? 'high' : i < 6 ? 'medium' : 'low',
-        views: Math.floor(Math.random() * 500),
-        status: 'active',
-      }));
+      // ডিফল্ট দোকানের ব্যানার
+      const defaultBanners: OfferBanner[] = [
+        {
+          id: 1, shopName: "আলিফ ইলেকট্রনিক্স", offerTitle: "বছরের সেরা ছাড়", 
+          description: "সব পণ্যে ৫০% পর্যন্ত", bannerColor: "from-blue-600 to-cyan-500",
+          shopLogo: "📱", contactName: "আলিফ", contactPhone: "017XXXXXXXX",
+          contactEmail: "alif@shop.com", contactLocation: "কুষ্টিয়া শহর",
+          offerDetails: "ইলেকট্রনিক্স পণ্যে বিশেষ ছাড়! iPhone, Samsung, TV, AC সব পণ্যে।",
+          validUntil: new Date(Date.now() + 7 * 86400000).toISOString(),
+          discountCode: "ALIF50", priority: 'high', views: 450, status: 'active',
+        },
+        {
+          id: 2, shopName: "কুষ্টিয়া ফ্যাশন হাউস", offerTitle: "ঈদ স্পেশাল অফার", 
+          description: "সব পোশাকে ৩০% ছাড়", bannerColor: "from-pink-600 to-rose-500",
+          shopLogo: "👗", contactName: "রহিমা", contactPhone: "018XXXXXXXX",
+          contactEmail: "fashion@shop.com", contactLocation: "কুষ্টিয়া বাজার",
+          offerDetails: "শাড়ি, থ্রি-পিস, শার্ট, প্যান্ট সহ সব পোশাকে ছাড়!",
+          validUntil: new Date(Date.now() + 5 * 86400000).toISOString(),
+          priority: 'high', views: 320, status: 'active',
+        },
+        {
+          id: 3, shopName: "দেশি বাজার", offerTitle: "নিত্যপ্রয়োজনীয় সাশ্রয়", 
+          description: "৫-২০% পর্যন্ত ছাড়", bannerColor: "from-green-600 to-emerald-500",
+          shopLogo: "🛒", contactName: "করিম", contactPhone: "019XXXXXXXX",
+          contactEmail: "bazar@shop.com", contactLocation: "কুষ্টিয়া সদর",
+          offerDetails: "চাল, ডাল, তেল, চিনি সহ সব নিত্যপ্রয়োজনীয় পণ্যে ছাড়!",
+          validUntil: new Date(Date.now() + 10 * 86400000).toISOString(),
+          priority: 'medium', views: 280, status: 'active',
+        },
+        {
+          id: 4, shopName: "মোবাইল হাট", offerTitle: "স্মার্টফোন ফেস্ট", 
+          description: "ফ্রি accessories", bannerColor: "from-purple-600 to-violet-500",
+          shopLogo: "📲", contactName: "সোহেল", contactPhone: "016XXXXXXXX",
+          contactEmail: "mobile@shop.com", contactLocation: "কুষ্টিয়া মোবাইল মার্কেট",
+          offerDetails: "যেকোনো স্মার্টফোন কিনলে ফ্রি charger, earphone ও cover!",
+          validUntil: new Date(Date.now() + 3 * 86400000).toISOString(),
+          discountCode: "MOBILE10", priority: 'high', views: 510, status: 'active',
+        },
+        {
+          id: 5, shopName: "হোম স্টোর", offerTitle: "গৃহসজ্জায় ছাড়", 
+          description: "২০-৪০% মূল্যছাড়", bannerColor: "from-amber-600 to-orange-500",
+          shopLogo: "🏠", contactName: "রাশেদ", contactPhone: "015XXXXXXXX",
+          contactEmail: "home@shop.com", contactLocation: "কুষ্টিয়া স্টেশন রোড",
+          offerDetails: "ফার্নিচার, পর্দা, বেডশীট সহ সব গৃহসজ্জা পণ্যে ছাড়!",
+          validUntil: new Date(Date.now() + 15 * 86400000).toISOString(),
+          priority: 'medium', views: 190, status: 'active',
+        },
+        {
+          id: 6, shopName: "গিফট শপ", offerTitle: "উপহার সামগ্রী", 
+          description: "কিনুন ১ পাবেন ১ ফ্রি", bannerColor: "from-red-600 to-pink-500",
+          shopLogo: "🎁", contactName: "নাদিয়া", contactPhone: "017XXXXXXXX",
+          contactEmail: "gift@shop.com", contactLocation: "কুষ্টিয়া কলেজ রোড",
+          offerDetails: "সব ধরনের গিফট আইটেমে Buy 1 Get 1 Free!",
+          validUntil: new Date(Date.now() + 7 * 86400000).toISOString(),
+          priority: 'high', views: 620, status: 'active',
+        },
+      ];
       setBanners(defaultBanners);
       localStorage.setItem("offerBanners", JSON.stringify(defaultBanners));
     }
-    
-    setProducts(generateProducts());
     setLoading(false);
   }, []);
-
-  const filteredBanners = filterPriority === 'all' 
-    ? banners 
-    : banners.filter(b => b.priority === filterPriority);
 
   const handleBannerClick = (banner: OfferBanner) => {
     setSelectedBanner(banner);
@@ -128,15 +121,6 @@ export default function OfferZonePage() {
     );
     setBanners(updatedBanners);
     localStorage.setItem("offerBanners", JSON.stringify(updatedBanners));
-  };
-
-  const getPriorityColor = (priority: string) => {
-    switch(priority) {
-      case 'high': return 'border-l-4 border-l-red-500 bg-gradient-to-r from-red-50 to-white';
-      case 'medium': return 'border-l-4 border-l-orange-500 bg-gradient-to-r from-orange-50 to-white';
-      case 'low': return 'border-l-4 border-l-green-500 bg-gradient-to-r from-green-50 to-white';
-      default: return 'border-l-4 border-l-gray-300 bg-white';
-    }
   };
 
   const getDaysLeft = (validUntil: string) => {
@@ -148,223 +132,133 @@ export default function OfferZonePage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-b from-orange-50 to-amber-50">
-        {loadingAnimData && (
-          <Lottie animationData={loadingAnimData} loop={true} style={{ width: 200, height: 200 }} />
-        )}
-        <p className="text-gray-500 mt-2 animate-pulse">অফার লোড হচ্ছে...</p>
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-orange-50 to-amber-50">
+        <div className="text-center">
+          {animationData && <Lottie animationData={animationData} loop={true} style={{ width: 100, height: 100 }} />}
+          <p className="text-gray-500 mt-2">দোকানের অফার লোড হচ্ছে...</p>
+        </div>
       </div>
     );
   }
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* হিরো সেকশন - কমপ্যাক্ট */}
-      <div className="relative bg-gradient-to-r from-[#f85606] to-orange-500 text-white overflow-hidden">
-        <div className="absolute -top-20 -right-20 w-64 h-64 bg-white/10 rounded-full blur-2xl"></div>
-        <div className="relative max-w-6xl mx-auto px-4 py-4">
+      {/* হেডার - সাইনবোর্ড স্টাইল */}
+      <div className="bg-gradient-to-r from-[#f85606] to-orange-500 text-white sticky top-0 z-30 shadow-lg">
+        <div className="max-w-6xl mx-auto px-4 py-3">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              {animationData && (
-                <Lottie animationData={animationData} loop={true} style={{ width: 50, height: 50 }} />
-              )}
+              <Megaphone size={24} className="animate-pulse" />
               <div>
-                <h1 className="text-xl font-bold flex items-center gap-1">
-                  <Gift size={20} /> অফার জোন
-                </h1>
-                <p className="text-xs opacity-90">কুষ্টিয়ার সেরা ডিল</p>
+                <h1 className="text-xl font-black tracking-wide">অফার জোন</h1>
+                <p className="text-xs opacity-90">কুষ্টিয়ার দোকানগুলোর সেরা অফার</p>
               </div>
             </div>
-            <div className="flex items-center gap-3">
-              <div className="flex items-center gap-1 bg-white/20 px-2 py-1 rounded-full">
-                <Clock size={12} />
-                <span className="text-xs">সীমিত সময়</span>
-              </div>
-            </div>
+            {animationData && (
+              <Lottie animationData={animationData} loop={true} style={{ width: 50, height: 50 }} />
+            )}
           </div>
         </div>
       </div>
 
-      {/* ফিল্টার চিপস - স্ক্রলেবল */}
-      <div className="bg-white border-b sticky top-0 z-20">
-        <div className="max-w-6xl mx-auto px-3 py-2">
-          <div className="flex gap-2 overflow-x-auto scrollbar-hide">
-            {[
-              { id: 'all', label: 'সব অফার', icon: '🎯' },
-              { id: 'high', label: 'হট ডিল', icon: '🔥' },
-              { id: 'medium', label: 'জনপ্রিয়', icon: '⭐' },
-              { id: 'low', label: 'নিয়মিত', icon: '✅' },
-            ].map((filter) => (
-              <button
-                key={filter.id}
-                onClick={() => setFilterPriority(filter.id as any)}
-                className={`flex items-center gap-1 px-4 py-1.5 rounded-full text-sm whitespace-nowrap transition ${
-                  filterPriority === filter.id
-                    ? 'bg-[#f85606] text-white'
-                    : 'bg-gray-100 text-gray-600'
-                }`}
-              >
-                <span>{filter.icon}</span> {filter.label}
-              </button>
-            ))}
-          </div>
-        </div>
-      </div>
-
-      <div className="max-w-6xl mx-auto px-3 py-3">
-        {/* অফার ব্যানার - হরিজেন্টাল স্ক্রল (মোবাইল ফ্রেন্ডলি) */}
-        <div className="mb-4">
-          <div className="flex items-center justify-between mb-2">
-            <h2 className="text-sm font-bold text-gray-800 flex items-center gap-1">
-              <Sparkles size={14} className="text-[#f85606]" />
-              বিশেষ অফার
-            </h2>
-            <span className="text-xs text-gray-400">{filteredBanners.length} টি</span>
-          </div>
-          
-          <div className="flex gap-3 overflow-x-auto scrollbar-hide pb-2">
-            {filteredBanners.map(banner => (
-              <div
-                key={banner.id}
-                onClick={() => handleBannerClick(banner)}
-                className={`flex-shrink-0 w-64 rounded-xl shadow-md cursor-pointer transition hover:shadow-lg ${getPriorityColor(banner.priority)}`}
-              >
-                <div className="flex items-center gap-3 p-3">
-                  <div className="w-14 h-14 bg-gradient-to-br from-orange-100 to-amber-100 rounded-xl flex items-center justify-center text-2xl shadow-sm">
-                    {banner.image}
+      {/* ব্যানার গ্রিড - সাইনবোর্ড স্টাইল */}
+      <div className="max-w-6xl mx-auto px-3 py-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          {banners.map(banner => (
+            <div
+              key={banner.id}
+              onClick={() => handleBannerClick(banner)}
+              className={`relative bg-gradient-to-r ${banner.bannerColor} rounded-2xl shadow-xl cursor-pointer transform hover:scale-[1.02] transition-all duration-300 overflow-hidden`}
+            >
+              {/* সাইনবোর্ড ইফেক্ট - বর্ডার */}
+              <div className="absolute inset-0 border-4 border-white/30 rounded-2xl pointer-events-none"></div>
+              
+              {/* LED লাইট ইফেক্ট */}
+              <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-yellow-300 via-white to-yellow-300 animate-pulse"></div>
+              
+              <div className="relative p-5 text-white">
+                {/* দোকানের নাম - বড় করে */}
+                <div className="flex items-center gap-3 mb-3">
+                  <div className="w-14 h-14 bg-white/20 backdrop-blur-sm rounded-2xl flex items-center justify-center text-3xl shadow-inner border border-white/30">
+                    {banner.shopLogo}
                   </div>
-                  <div className="flex-1 min-w-0">
+                  <div className="flex-1">
                     <div className="flex items-center gap-1">
-                      <h3 className="font-semibold text-sm text-gray-800 truncate">{banner.title}</h3>
-                      {banner.priority === 'high' && <span className="text-xs">🔥</span>}
+                      <Store size={16} className="opacity-80" />
+                      <h2 className="text-lg font-black tracking-wide">{banner.shopName}</h2>
+                      {banner.priority === 'high' && <BadgeCheck size={16} className="text-yellow-300" />}
                     </div>
-                    <p className="text-xs text-[#f85606] font-medium">{banner.description}</p>
-                    <div className="flex items-center gap-2 mt-1 text-[10px] text-gray-400">
-                      <span className="flex items-center gap-1"><Eye size={10} /> {banner.views}</span>
-                      <span className="flex items-center gap-1"><Clock size={10} /> {getDaysLeft(banner.validUntil)} দিন</span>
-                    </div>
+                    <p className="text-sm opacity-90 flex items-center gap-1">
+                      <MapPin size={12} /> {banner.contactLocation}
+                    </p>
+                  </div>
+                </div>
+                
+                {/* অফার টাইটেল - সাইনবোর্ডের মূল লেখা */}
+                <div className="bg-black/20 backdrop-blur-sm rounded-xl p-4 text-center border border-white/20">
+                  <p className="text-2xl font-black tracking-wider drop-shadow-lg">{banner.offerTitle}</p>
+                  <p className="text-lg font-bold mt-1">{banner.description}</p>
+                </div>
+                
+                {/* ফুটার */}
+                <div className="flex items-center justify-between mt-3 text-xs opacity-80">
+                  <div className="flex items-center gap-2">
+                    <span className="flex items-center gap-1"><Eye size={12} /> {banner.views}</span>
+                    <span className="flex items-center gap-1"><Clock size={12} /> {getDaysLeft(banner.validUntil)} দিন বাকি</span>
+                  </div>
+                  <div className="flex items-center gap-1 bg-white/20 px-3 py-1 rounded-full">
+                    <Tag size={12} />
+                    <span className="font-mono font-bold">{banner.discountCode || "অফার"}</span>
                   </div>
                 </div>
               </div>
-            ))}
-          </div>
-        </div>
-
-        {/* প্রোডাক্ট গ্রিড - ৩ কলাম (Daraz স্টাইল) */}
-        <div>
-          <div className="flex items-center justify-between mb-2">
-            <h2 className="text-sm font-bold text-gray-800 flex items-center gap-1">
-              <ShoppingBag size={14} className="text-[#f85606]" />
-              ট্রেন্ডিং প্রোডাক্ট
-            </h2>
-            <Link href="/category/offer" className="text-xs text-[#f85606]">সব দেখুন →</Link>
-          </div>
-          
-          <div className="grid grid-cols-3 gap-2">
-            {products.map(product => (
-              <Link key={product.id} href={`/post/${product.id}`}>
-                <div className="bg-white rounded-lg shadow-sm border border-gray-100 overflow-hidden hover:shadow-md transition">
-                  {/* প্রোডাক্ট ইমেজ */}
-                  <div className="relative aspect-square bg-gradient-to-br from-gray-50 to-gray-100 flex items-center justify-center text-3xl">
-                    {product.image}
-                    {product.discount && (
-                      <div className="absolute top-1 left-1 bg-red-500 text-white text-[8px] font-bold px-1 py-0.5 rounded">
-                        -{product.discount}%
-                      </div>
-                    )}
-                  </div>
-                  
-                  {/* প্রোডাক্ট ইনফো */}
-                  <div className="p-1.5">
-                    <h3 className="text-[11px] font-medium text-gray-800 line-clamp-2 leading-tight">
-                      {product.title}
-                    </h3>
-                    
-                    {/* প্রাইস */}
-                    <div className="flex items-baseline gap-1 mt-0.5">
-                      <span className="text-xs font-bold text-[#f85606]">৳{product.price}</span>
-                      {product.originalPrice && (
-                        <span className="text-[8px] text-gray-400 line-through">৳{product.originalPrice}</span>
-                      )}
-                    </div>
-                    
-                    {/* শপ ইনফো */}
-                    <div className="flex items-center gap-0.5 mt-0.5 text-[7px] text-gray-400">
-                      <Store size={7} />
-                      <span className="truncate">{product.shopName}</span>
-                    </div>
-                    
-                    {/* সোল্ড + লোকেশন */}
-                    <div className="flex items-center justify-between mt-0.5 text-[7px] text-gray-400">
-                      <span>{product.location}</span>
-                      {product.soldCount && <span>{product.soldCount}+ বিক্রি</span>}
-                    </div>
+              
+              {/* হট ডিল ব্যাজ */}
+              {banner.priority === 'high' && (
+                <div className="absolute -top-2 -right-2 z-10">
+                  <div className="bg-red-500 text-white text-xs font-bold px-3 py-1 rounded-full shadow-lg animate-bounce border-2 border-white">
+                    🔥 হট ডিল
                   </div>
                 </div>
-              </Link>
-            ))}
-          </div>
-        </div>
-
-        {/* ক্যাটাগরি চিপস */}
-        <div className="mt-4">
-          <div className="flex items-center gap-2 overflow-x-auto scrollbar-hide py-1">
-            {[
-              { icon: <Smartphone size={12} />, label: "মোবাইল" },
-              { icon: <Shirt size={12} />, label: "ফ্যাশন" },
-              { icon: <Package size={12} />, label: "ইলেকট্রনিক্স" },
-              { icon: <Store size={12} />, label: "দোকান" },
-              { icon: <Coffee size={12} />, label: "খাবার" },
-            ].map((cat, i) => (
-              <button key={i} className="flex items-center gap-1 bg-white border px-3 py-1.5 rounded-full text-xs whitespace-nowrap shadow-sm">
-                {cat.icon} {cat.label}
-              </button>
-            ))}
-          </div>
+              )}
+            </div>
+          ))}
         </div>
       </div>
 
-      {/* বিস্তারিত প্যানেল - মোবাইল বটম শিট */}
+      {/* বিস্তারিত মডাল - দোকানের ফুল ইনফো */}
       {selectedBanner && (
         <div 
-          className="fixed inset-0 bg-black/50 z-50 flex items-end md:items-center justify-center"
+          className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-end md:items-center justify-center"
           onClick={() => setSelectedBanner(null)}
         >
           <div 
-            className="bg-white rounded-t-2xl md:rounded-2xl max-w-lg w-full max-h-[80vh] overflow-y-auto animate-in slide-in-from-bottom duration-200"
+            className="bg-white rounded-t-3xl md:rounded-2xl max-w-lg w-full max-h-[85vh] overflow-y-auto animate-in slide-in-from-bottom duration-200"
             onClick={e => e.stopPropagation()}
           >
-            <div className="sticky top-0 bg-gradient-to-r from-[#f85606] to-orange-500 text-white p-3 flex justify-between items-center">
-              <h3 className="font-bold text-base flex items-center gap-2">
-                <Gift size={18} /> অফার বিস্তারিত
-              </h3>
-              <button onClick={() => setSelectedBanner(null)} className="p-1">
-                <X size={18} />
-              </button>
-            </div>
-            
-            <div className="p-4">
-              <div className="flex items-center gap-3 mb-4">
-                <div className="w-16 h-16 bg-gradient-to-br from-orange-100 to-amber-100 rounded-xl flex items-center justify-center text-4xl shadow-md">
-                  {selectedBanner.image}
+            {/* দোকানের ব্যানার */}
+            <div className={`bg-gradient-to-r ${selectedBanner.bannerColor} text-white p-5 rounded-t-3xl md:rounded-t-2xl`}>
+              <div className="flex items-center gap-4">
+                <div className="w-20 h-20 bg-white/20 backdrop-blur-sm rounded-2xl flex items-center justify-center text-5xl border-2 border-white/30">
+                  {selectedBanner.shopLogo}
                 </div>
                 <div>
-                  <h2 className="text-lg font-bold">{selectedBanner.title}</h2>
-                  <p className="text-[#f85606] font-medium">{selectedBanner.description}</p>
-                  {selectedBanner.discountCode && (
-                    <div className="mt-1 inline-flex items-center gap-1 bg-gray-100 px-2 py-0.5 rounded">
-                      <Tag size={12} className="text-[#f85606]" />
-                      <span className="font-mono text-xs font-bold">{selectedBanner.discountCode}</span>
-                    </div>
-                  )}
+                  <h2 className="text-2xl font-black">{selectedBanner.shopName}</h2>
+                  <p className="opacity-90 text-sm flex items-center gap-1"><MapPin size={14} /> {selectedBanner.contactLocation}</p>
                 </div>
               </div>
+              <div className="mt-4 bg-black/20 backdrop-blur-sm rounded-xl p-3 text-center">
+                <p className="text-xl font-black">{selectedBanner.offerTitle}</p>
+                <p className="text-lg font-bold">{selectedBanner.description}</p>
+              </div>
+            </div>
+            
+            <div className="p-5">
+              <p className="text-gray-600 mb-4">{selectedBanner.offerDetails}</p>
               
-              <p className="text-sm text-gray-600 mb-3">{selectedBanner.offerDetails}</p>
-              
-              <div className="bg-gray-50 rounded-xl p-3 mb-3">
-                <h4 className="font-semibold text-sm mb-2">যোগাযোগ</h4>
-                <div className="space-y-1.5">
+              <div className="bg-gray-50 rounded-xl p-4 mb-4">
+                <h4 className="font-semibold text-gray-800 mb-3">📞 যোগাযোগ</h4>
+                <div className="space-y-2">
                   <p className="flex items-center gap-2 text-sm">
                     <Phone size={14} className="text-[#f85606]" />
                     {selectedBanner.contactName} - {selectedBanner.contactPhone}
@@ -374,36 +268,35 @@ export default function OfferZonePage() {
                     {selectedBanner.contactEmail}
                   </p>
                   <p className="flex items-center gap-2 text-sm">
-                    <MapPin size={14} className="text-[#f85606]" />
-                    {selectedBanner.contactLocation}
+                    <Clock size={14} className="text-[#f85606]" />
+                    মেয়াদ: {getDaysLeft(selectedBanner.validUntil)} দিন বাকি
                   </p>
+                  {selectedBanner.discountCode && (
+                    <p className="flex items-center gap-2 text-sm">
+                      <Tag size={14} className="text-[#f85606]" />
+                      কোড: <span className="font-mono font-bold">{selectedBanner.discountCode}</span>
+                    </p>
+                  )}
                 </div>
               </div>
               
               <div className="flex gap-2">
-                <a href={`tel:${selectedBanner.contactPhone}`} className="flex-1 bg-[#f85606] text-white py-2.5 rounded-xl font-semibold text-sm flex items-center justify-center gap-1">
-                  <Phone size={16} /> কল
+                <a href={`tel:${selectedBanner.contactPhone}`} className="flex-1 bg-[#f85606] text-white py-3 rounded-xl font-semibold flex items-center justify-center gap-2">
+                  <Phone size={18} /> কল করুন
                 </a>
-                <a href={`https://wa.me/${selectedBanner.contactPhone.replace(/[^0-9]/g, '')}`} target="_blank" className="flex-1 bg-green-500 text-white py-2.5 rounded-xl font-semibold text-sm flex items-center justify-center gap-1">
-                  <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M12 0C5.373 0 0 5.373 0 12c0 2.122.55 4.115 1.515 5.85L0 24l6.33-1.655A11.94 11.94 0 0012 24c6.627 0 12-5.373 12-12S18.627 0 12 0z"/></svg>
+                <a href={`https://wa.me/${selectedBanner.contactPhone.replace(/[^0-9]/g, '')}`} target="_blank" className="flex-1 bg-green-500 text-white py-3 rounded-xl font-semibold flex items-center justify-center gap-2">
+                  <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24"><path d="M12 0C5.373 0 0 5.373 0 12c0 2.122.55 4.115 1.515 5.85L0 24l6.33-1.655A11.94 11.94 0 0012 24c6.627 0 12-5.373 12-12S18.627 0 12 0z"/></svg>
                   হোয়াটসঅ্যাপ
                 </a>
               </div>
+              
+              <button onClick={() => setSelectedBanner(null)} className="w-full mt-3 bg-gray-200 text-gray-700 py-3 rounded-xl font-semibold">
+                বন্ধ করুন
+              </button>
             </div>
           </div>
         </div>
       )}
-
-      {/* CSS for hiding scrollbar */}
-      <style jsx>{`
-        .scrollbar-hide::-webkit-scrollbar {
-          display: none;
-        }
-        .scrollbar-hide {
-          -ms-overflow-style: none;
-          scrollbar-width: none;
-        }
-      `}</style>
     </div>
   );
 }
