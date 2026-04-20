@@ -446,22 +446,77 @@ export default function PostAdPage() {
           </div>
 
           {/* ডেলিভারি অপশন */}
-          <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-xl p-5 border border-[#f85606]/20">
-            <label className="flex items-center gap-2 text-sm font-semibold text-gray-700 mb-2">
-              <Truck size={16} className="text-[#f85606]" />
-              ডেলিভারি অপশন
-            </label>
-            <div className="flex gap-6">
-              <label className="flex items-center gap-2 cursor-pointer">
-                <input type="radio" name="delivery" value="pickup" checked={formData.delivery === "pickup"} onChange={handleChange} className="w-4 h-4 text-[#f85606]" />
-                <span className="text-sm">হাতে হাতে নিবেন</span>
-              </label>
-              <label className="flex items-center gap-2 cursor-pointer">
-                <input type="radio" name="delivery" value="delivery" checked={formData.delivery === "delivery"} onChange={handleChange} className="w-4 h-4 text-[#f85606]" />
-                <span className="text-sm">হোম ডেলিভারি চাই</span>
-              </label>
-            </div>
-          </div>
+<div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-xl p-5 border border-[#f85606]/20">
+  <label className="flex items-center gap-2 text-sm font-semibold text-gray-700 mb-2">
+    <Truck size={16} className="text-[#f85606]" />
+    ডেলিভারি অপশন
+  </label>
+  <div className="space-y-3">
+    <label className="flex items-center gap-2 cursor-pointer">
+      <input
+        type="radio"
+        name="delivery"
+        value="pickup"
+        checked={formData.delivery === "pickup"}
+        onChange={handleChange}
+        className="w-4 h-4 text-[#f85606]"
+      />
+      <span className="text-sm">🤝 হাতে হাতে নিবেন</span>
+    </label>
+    <label className="flex items-center gap-2 cursor-pointer">
+      <input
+        type="radio"
+        name="delivery"
+        value="delivery"
+        checked={formData.delivery === "delivery"}
+        onChange={handleChange}
+        className="w-4 h-4 text-[#f85606]"
+      />
+      <span className="text-sm">🏠 হোম ডেলিভারি চাই</span>
+    </label>
+    <label className="flex items-center gap-2 cursor-pointer">
+      <input
+        type="radio"
+        name="delivery"
+        value="amar_duniya_delivery"
+        checked={formData.delivery === "amar_duniya_delivery"}
+        onChange={handleChange}
+        className="w-4 h-4 text-[#f85606]"
+      />
+      <div className="flex items-center gap-2">
+        <span className="text-sm font-semibold bg-gradient-to-r from-[#f85606] to-orange-500 bg-clip-text text-transparent">
+          🚚 আমার দুনিয়া ডেলিভারি সার্ভিস
+        </span>
+        <span className="bg-gradient-to-r from-[#f85606] to-orange-500 text-white text-[10px] px-2 py-0.5 rounded-full">
+          নিরাপদ ও দ্রুত
+        </span>
+      </div>
+    </label>
+  </div>
+  
+  {/* নির্বাচিত ডেলিভারি অনুযায়ী তথ্য */}
+  {formData.delivery === "amar_duniya_delivery" && (
+    <div className="mt-4 p-4 bg-gradient-to-r from-orange-50 to-amber-50 rounded-xl border border-[#f85606]/20">
+      <div className="flex items-start gap-3">
+        <div className="w-8 h-8 bg-[#f85606] rounded-full flex items-center justify-center">
+          <Shield size={14} className="text-white" />
+        </div>
+        <div>
+          <p className="text-sm font-semibold text-gray-800">আমার দুনিয়া ডেলিভারি সার্ভিস</p>
+          <p className="text-xs text-gray-600 mt-1">
+            ✓ আমাদের প্রতিনিধি আপনার পণ্য সংগ্রহ করে ক্রেতার কাছে পৌঁছে দিবে
+          </p>
+          <p className="text-xs text-gray-600 mt-1">
+            ✓ পেমেন্ট সুরক্ষিত থাকবে (ক্রেতা পণ্য পেয়ে পেমেন্ট করবে)
+          </p>
+          <p className="text-xs text-[#f85606] font-semibold mt-2">
+            ডেলিভারি চার্জ: পণ্যের মূল্যের উপর নির্ভর করে (ন্যূনতম ১০০ টাকা)
+          </p>
+        </div>
+      </div>
+    </div>
+  )}
+</div>
 
           {/* যোগাযোগ ও লোকেশন */}
           <div className="grid grid-cols-2 gap-4">
