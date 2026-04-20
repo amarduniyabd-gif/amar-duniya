@@ -4,9 +4,9 @@ import { useRouter } from "next/navigation";
 import { 
   ArrowLeft, Camera, Trash2, User, MapPin, Briefcase, 
   Heart, Shield, Sparkles, Upload, FileText,
-  Baby, HeartCrack, Phone, Mail, Crown, Award
+  Baby, HeartCrack, Phone, Mail, Crown, Award,
+  EyeOff, Info, CheckCircle, AlertTriangle, Clock, Users
 } from "lucide-react";
-
 // WebP কম্প্রেশন
 const compressImageToWebP = (file: File): Promise<File> => {
   return new Promise((resolve) => {
@@ -49,18 +49,29 @@ const compressImageToWebP = (file: File): Promise<File> => {
   });
 };
 
+// বাংলাদেশের জেলা
+const bangladeshDistricts = [
+  "ঢাকা", "চট্টগ্রাম", "খুলনা", "রাজশাহী", "সিলেট", "বরিশাল", "রংপুর", "ময়মনসিংহ",
+  "গাজীপুর", "নারায়ণগঞ্জ", "কুমিল্লা", "বগুড়া", "যশোর", "কুষ্টিয়া"
+];
+
 export default function CreateMatrimonyProfilePage() {
   const router = useRouter();
   const [images, setImages] = useState<File[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showPhoneInfo, setShowPhoneInfo] = useState(false);
+  const [profileType, setProfileType] = useState<'free' | 'premium'>('free');
   const [formData, setFormData] = useState({
-    name: "", age: "", gender: "male", religion: "",
+    name: "", age: "", gender: "male", religion: "ইসলাম",
     village: "", district: "",
     profession: "", education: "", expectedIncome: "",
     height: "", weight: "", bloodGroup: "", complexion: "",
     maritalStatus: "unmarried", hasChildren: false, childrenCount: "",
     remarryWilling: "yes", phone: "", email: "", about: "", familyStatus: "",
     hobbies: "",
+    // 🆕 নতুন ফিল্ড
+    fatherName: "", motherName: "", siblings: "",
+    prayerTime: "", smoking: "no", occupationType: "job",
   });
 
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -94,6 +105,13 @@ export default function CreateMatrimonyProfilePage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // ভ্যালিডেশন
+    if (!formData.name || !formData.age) {
+      alert("নাম এবং বয়স আবশ্যক!");
+      return;
+    }
+    
     setIsSubmitting(true);
     setTimeout(() => {
       setIsSubmitting(false);
@@ -113,9 +131,51 @@ export default function CreateMatrimonyProfilePage() {
             </button>
             <div>
               <h1 className="text-2xl font-bold">নতুন প্রোফাইল তৈরি করুন</h1>
-              <p className="text-sm opacity-90">আপনার তথ্য গোপন রাখা হবে</p>
+              <p className="text-sm opacity-90 flex items-center gap-1">
+                <Shield size={12} /> আপনার তথ্য গোপন রাখা হবে
+              </p>
             </div>
           </div>
+        </div>
+
+        {/* 🆕 প্রোফাইল টাইপ সিলেকশন */}
+        <div className="bg-white rounded-2xl shadow-lg p-5 mb-5">
+          <h2 className="font-bold text-gray-800 mb-4 flex items-center gap-2">
+            <Crown size={18} className="text-[#f85606]" /> প্রোফাইল টাইপ
+          </h2>
+          <div className="grid grid-cols-2 gap-3">
+            <button
+              type="button"
+              onClick={() => setProfileType('free')}
+              className={`p-4 rounded-xl border-2 transition-all ${
+                profileType === 'free' 
+                  ? 'border-[#f85606] bg-orange-50' 
+                  : 'border-gray-200 bg-white'
+              }`}
+            >
+              <div className="text-2xl mb-2">🆓</div>
+              <p className="font-semibold">ফ্রি</p>
+              <p className="text-xs text-gray-500">বেসিক ফিচার</p>
+            </button>
+            <button
+              type="button"
+              onClick={() => setProfileType('premium')}
+              className={`p-4 rounded-xl border-2 transition-all ${
+                profileType === 'premium' 
+                  ? 'border-[#f85606] bg-orange-50' 
+                  : 'border-gray-200 bg-white'
+              }`}
+            >
+              <div className="text-2xl mb-2">👑</div>
+              <p className="font-semibold">প্রিমিয়াম</p>
+              <p className="text-xs text-gray-500">১০০০ টাকা/মাস</p>
+            </button>
+          </div>
+          {profileType === 'premium' && (
+            <div className="mt-3 p-3 bg-amber-50 rounded-xl text-xs text-amber-700">
+              <CheckCircle size={12} className="inline mr-1" /> টপ প্রায়োরিটি • বেশি ভিউ • ভেরিফাইড ব্যাজ
+            </div>
+          )}
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-5">
@@ -125,6 +185,7 @@ export default function CreateMatrimonyProfilePage() {
             <label className="flex items-center gap-2 text-sm font-semibold text-gray-700 mb-3">
               <Camera size={18} className="text-[#f85606]" />
               প্রোফাইল ছবি <span className="text-xs text-gray-400">(সর্বোচ্চ ৩টি, WebP)</span>
+              <span className="text-red-500">*</span>
             </label>
             <div className="flex flex-wrap gap-3">
               {images.map((img, idx) => (
@@ -143,35 +204,69 @@ export default function CreateMatrimonyProfilePage() {
                 </label>
               )}
             </div>
+            {images.length === 0 && (
+              <p className="text-xs text-red-500 mt-2 flex items-center gap-1">
+                <AlertTriangle size={12} /> অন্তত একটি ছবি আবশ্যক
+              </p>
+            )}
           </div>
 
           {/* প্রাথমিক তথ্য */}
           <div className="bg-white rounded-2xl shadow-lg p-5">
-            <h2 className="font-bold text-gray-800 mb-4 flex items-center gap-2"><User size={18} className="text-[#f85606]" /> প্রাথমিক তথ্য</h2>
+            <h2 className="font-bold text-gray-800 mb-4 flex items-center gap-2">
+              <User size={18} className="text-[#f85606]" /> প্রাথমিক তথ্য
+            </h2>
             <div className="grid grid-cols-2 gap-3">
-              <input type="text" name="name" placeholder="পূর্ণ নাম" onChange={handleChange} className="p-3 bg-gray-50 border rounded-xl" required />
-              <input type="number" name="age" placeholder="বয়স" onChange={handleChange} className="p-3 bg-gray-50 border rounded-xl" required />
+              <input type="text" name="name" placeholder="পূর্ণ নাম *" onChange={handleChange} className="p-3 bg-gray-50 border rounded-xl" required />
+              <input type="number" name="age" placeholder="বয়স *" onChange={handleChange} className="p-3 bg-gray-50 border rounded-xl" required />
               <select name="gender" onChange={handleChange} className="p-3 bg-gray-50 border rounded-xl">
                 <option value="male">পুরুষ</option>
                 <option value="female">মহিলা</option>
               </select>
-              <input type="text" name="religion" placeholder="ধর্ম" onChange={handleChange} className="p-3 bg-gray-50 border rounded-xl" />
+              <input type="text" name="religion" value={formData.religion} placeholder="ধর্ম" onChange={handleChange} className="p-3 bg-gray-50 border rounded-xl" />
+            </div>
+          </div>
+
+          {/* 🆕 পরিবারের তথ্য */}
+          <div className="bg-white rounded-2xl shadow-lg p-5">
+            <h2 className="font-bold text-gray-800 mb-4 flex items-center gap-2">
+              <Users size={18} className="text-[#f85606]" /> পরিবারের তথ্য (ঐচ্ছিক)
+            </h2>
+            <div className="grid grid-cols-2 gap-3">
+              <input type="text" name="fatherName" placeholder="পিতার নাম" onChange={handleChange} className="p-3 bg-gray-50 border rounded-xl" />
+              <input type="text" name="motherName" placeholder="মাতার নাম" onChange={handleChange} className="p-3 bg-gray-50 border rounded-xl" />
+              <input type="text" name="siblings" placeholder="ভাই-বোন কতজন" onChange={handleChange} className="p-3 bg-gray-50 border rounded-xl" />
             </div>
           </div>
 
           {/* ঠিকানা */}
           <div className="bg-white rounded-2xl shadow-lg p-5">
-            <h2 className="font-bold text-gray-800 mb-4 flex items-center gap-2"><MapPin size={18} className="text-[#f85606]" /> ঠিকানা</h2>
+            <h2 className="font-bold text-gray-800 mb-4 flex items-center gap-2">
+              <MapPin size={18} className="text-[#f85606]" /> ঠিকানা
+            </h2>
             <div className="grid grid-cols-2 gap-3">
               <input type="text" name="village" placeholder="গ্রাম/থানা" onChange={handleChange} className="p-3 bg-gray-50 border rounded-xl" />
-              <input type="text" name="district" placeholder="জেলা" onChange={handleChange} className="p-3 bg-gray-50 border rounded-xl" />
+              <select name="district" onChange={handleChange} className="p-3 bg-gray-50 border rounded-xl">
+                <option value="">জেলা সিলেক্ট করুন</option>
+                {bangladeshDistricts.map(d => (
+                  <option key={d} value={d}>{d}</option>
+                ))}
+              </select>
             </div>
           </div>
 
           {/* পেশা */}
           <div className="bg-white rounded-2xl shadow-lg p-5">
-            <h2 className="font-bold text-gray-800 mb-4 flex items-center gap-2"><Briefcase size={18} className="text-[#f85606]" /> পেশাগত তথ্য</h2>
+            <h2 className="font-bold text-gray-800 mb-4 flex items-center gap-2">
+              <Briefcase size={18} className="text-[#f85606]" /> পেশাগত তথ্য
+            </h2>
             <div className="space-y-3">
+              <select name="occupationType" onChange={handleChange} className="w-full p-3 bg-gray-50 border rounded-xl">
+                <option value="job">চাকরিজীবী</option>
+                <option value="business">ব্যবসায়ী</option>
+                <option value="student">শিক্ষার্থী</option>
+                <option value="other">অন্যান্য</option>
+              </select>
               <input type="text" name="profession" placeholder="পেশা" onChange={handleChange} className="w-full p-3 bg-gray-50 border rounded-xl" />
               <input type="text" name="education" placeholder="শিক্ষাগত যোগ্যতা" onChange={handleChange} className="w-full p-3 bg-gray-50 border rounded-xl" />
               <input type="text" name="expectedIncome" placeholder="আশানুরূপ আয় (মাসিক)" onChange={handleChange} className="w-full p-3 bg-gray-50 border rounded-xl" />
@@ -180,12 +275,25 @@ export default function CreateMatrimonyProfilePage() {
 
           {/* ব্যক্তিগত তথ্য */}
           <div className="bg-white rounded-2xl shadow-lg p-5">
-            <h2 className="font-bold text-gray-800 mb-4 flex items-center gap-2"><Heart size={18} className="text-[#f85606]" /> ব্যক্তিগত তথ্য</h2>
+            <h2 className="font-bold text-gray-800 mb-4 flex items-center gap-2">
+              <Heart size={18} className="text-[#f85606]" /> ব্যক্তিগত তথ্য
+            </h2>
             <div className="grid grid-cols-2 gap-3">
               <input type="text" name="height" placeholder="উচ্চতা (৫'৪'')" onChange={handleChange} className="p-3 bg-gray-50 border rounded-xl" />
-              <input type="text" name="weight" placeholder="ওজন" onChange={handleChange} className="p-3 bg-gray-50 border rounded-xl" />
+              <input type="text" name="weight" placeholder="ওজন (কেজি)" onChange={handleChange} className="p-3 bg-gray-50 border rounded-xl" />
               <input type="text" name="bloodGroup" placeholder="ব্লাড গ্রুপ" onChange={handleChange} className="p-3 bg-gray-50 border rounded-xl" />
               <input type="text" name="complexion" placeholder="গায়ের রং" onChange={handleChange} className="p-3 bg-gray-50 border rounded-xl" />
+              <select name="prayerTime" onChange={handleChange} className="p-3 bg-gray-50 border rounded-xl">
+                <option value="">নামাজ পড়েন?</option>
+                <option value="regular">নিয়মিত</option>
+                <option value="sometimes">মাঝে মাঝে</option>
+                <option value="no">না</option>
+              </select>
+              <select name="smoking" onChange={handleChange} className="p-3 bg-gray-50 border rounded-xl">
+                <option value="no">ধূমপান করি না</option>
+                <option value="yes">ধূমপান করি</option>
+                <option value="sometimes">মাঝে মাঝে</option>
+              </select>
               <input type="text" name="familyStatus" placeholder="পারিবারিক অবস্থা" onChange={handleChange} className="col-span-2 p-3 bg-gray-50 border rounded-xl" />
               <textarea name="hobbies" placeholder="আগ্রহ (কমা দিয়ে আলাদা করুন)" onChange={handleChange} className="col-span-2 p-3 bg-gray-50 border rounded-xl" rows={2} />
             </div>
@@ -193,15 +301,22 @@ export default function CreateMatrimonyProfilePage() {
 
           {/* বিবাহ সংক্রান্ত */}
           <div className="bg-gradient-to-r from-pink-50 to-rose-50 rounded-2xl shadow-lg p-5">
-            <h2 className="font-bold text-gray-800 mb-4 flex items-center gap-2"><HeartCrack size={18} className="text-[#f85606]" /> বিবাহ সংক্রান্ত তথ্য</h2>
+            <h2 className="font-bold text-gray-800 mb-4 flex items-center gap-2">
+              <HeartCrack size={18} className="text-[#f85606]" /> বিবাহ সংক্রান্ত তথ্য
+            </h2>
             <div className="space-y-3">
               <select name="maritalStatus" onChange={handleChange} className="w-full p-3 bg-white border rounded-xl">
                 <option value="unmarried">অবিবাহিত</option>
                 <option value="divorced">ডিভোর্সড</option>
                 <option value="widowed">বিধবা/বিধুর</option>
               </select>
-              <label className="flex items-center gap-2"><input type="checkbox" name="hasChildren" onChange={handleChange} className="w-4 h-4" /> <span>সন্তান আছে</span></label>
-              {formData.hasChildren && <input type="number" name="childrenCount" placeholder="কয়টি সন্তান?" onChange={handleChange} className="w-full p-3 bg-white border rounded-xl" />}
+              <label className="flex items-center gap-2">
+                <input type="checkbox" name="hasChildren" onChange={handleChange} className="w-4 h-4" /> 
+                <span>সন্তান আছে</span>
+              </label>
+              {formData.hasChildren && (
+                <input type="number" name="childrenCount" placeholder="কয়টি সন্তান?" onChange={handleChange} className="w-full p-3 bg-white border rounded-xl" />
+              )}
               <select name="remarryWilling" onChange={handleChange} className="w-full p-3 bg-white border rounded-xl">
                 <option value="yes">পুনরায় বিয়ে করতে চান</option>
                 <option value="no">পুনরায় বিয়ে করতে চান না</option>
@@ -210,31 +325,122 @@ export default function CreateMatrimonyProfilePage() {
             </div>
           </div>
 
-          {/* যোগাযোগ */}
+          {/* যোগাযোগ - 🆕 মোবাইল নাম্বার ঐচ্ছিক */}
           <div className="bg-white rounded-2xl shadow-lg p-5">
-            <h2 className="font-bold text-gray-800 mb-4 flex items-center gap-2"><Phone size={18} className="text-[#f85606]" /> যোগাযোগ</h2>
-            <div className="grid grid-cols-2 gap-3">
-              <input type="tel" name="phone" placeholder="মোবাইল নম্বর" onChange={handleChange} className="p-3 bg-gray-50 border rounded-xl" />
-              <input type="email" name="email" placeholder="ইমেইল" onChange={handleChange} className="p-3 bg-gray-50 border rounded-xl" />
+            <div className="flex items-center justify-between mb-2">
+              <h2 className="font-bold text-gray-800 flex items-center gap-2">
+                <Phone size={18} className="text-[#f85606]" /> যোগাযোগ
+              </h2>
+              <button 
+                type="button" 
+                onClick={() => setShowPhoneInfo(!showPhoneInfo)}
+                className="text-gray-400 hover:text-[#f85606] transition"
+              >
+                <Info size={16} />
+              </button>
             </div>
+            
+            {showPhoneInfo && (
+              <div className="mb-3 p-3 bg-blue-50 rounded-xl text-xs text-blue-700">
+                <p className="flex items-center gap-1">
+                  <EyeOff size={12} /> আপনার ফোন নাম্বার শুধু পেমেন্ট করা ইউজাররাই দেখতে পারবে।
+                </p>
+                <p className="flex items-center gap-1 mt-1">
+                  <Clock size={12} /> নাম্বার না দিলে ইমেইলের মাধ্যমে যোগাযোগ করতে হবে।
+                </p>
+              </div>
+            )}
+            
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-xs text-gray-500 mb-1">
+                  মোবাইল নম্বর <span className="text-gray-400">(ঐচ্ছিক)</span>
+                </label>
+                <input 
+                  type="tel" 
+                  name="phone" 
+                  value={formData.phone}
+                  onChange={handleChange}
+                  placeholder="০১XXXXXXXXX" 
+                  className="w-full p-3 bg-gray-50 border rounded-xl" 
+                />
+                <p className="text-[10px] text-gray-400 mt-1">
+                  ✓ না দিলেও প্রোফাইল তৈরি হবে
+                </p>
+              </div>
+              <div>
+                <label className="block text-xs text-gray-500 mb-1">
+                  ইমেইল <span className="text-gray-400">(ঐচ্ছিক)</span>
+                </label>
+                <input 
+                  type="email" 
+                  name="email" 
+                  value={formData.email}
+                  onChange={handleChange}
+                  placeholder="your@email.com" 
+                  className="w-full p-3 bg-gray-50 border rounded-xl" 
+                />
+              </div>
+            </div>
+            
+            {!formData.phone && !formData.email && (
+              <p className="text-xs text-amber-600 mt-2 flex items-center gap-1">
+                <AlertTriangle size={12} /> ফোন বা ইমেইল যেকোনো একটি দেওয়ার পরামর্শ দেওয়া হচ্ছে
+              </p>
+            )}
           </div>
 
           {/* নিজের সম্পর্কে */}
           <div className="bg-white rounded-2xl shadow-lg p-5">
-            <label className="flex items-center gap-2 text-sm font-semibold text-gray-700 mb-2"><FileText size={18} className="text-[#f85606]" /> নিজের সম্পর্কে</label>
-            <textarea name="about" onChange={handleChange} rows={4} className="w-full p-3 bg-gray-50 border rounded-xl" placeholder="নিজের সম্পর্কে একটু বলুন..." />
+            <label className="flex items-center gap-2 text-sm font-semibold text-gray-700 mb-2">
+              <FileText size={18} className="text-[#f85606]" /> নিজের সম্পর্কে
+            </label>
+            <textarea 
+              name="about" 
+              value={formData.about}
+              onChange={handleChange} 
+              rows={4} 
+              className="w-full p-3 bg-gray-50 border rounded-xl" 
+              placeholder="নিজের সম্পর্কে একটু বলুন... আপনার ব্যক্তিত্ব, পছন্দ-অপছন্দ, জীবনযাপন ইত্যাদি"
+            />
+            <p className="text-[10px] text-gray-400 mt-1">
+              {formData.about.length} / 500 অক্ষর
+            </p>
           </div>
 
           {/* গোপনীয়তা */}
           <div className="bg-blue-50 rounded-2xl p-4">
             <div className="flex items-start gap-3">
               <Shield size={18} className="text-blue-600 mt-0.5" />
-              <div><p className="text-sm font-semibold text-blue-800">গোপনীয়তা সুরক্ষিত</p><p className="text-xs text-blue-700">আপনার তথ্য সম্পূর্ণ গোপন রাখা হবে। ছবি ও ব্যক্তিগত তথ্য দেখতে ৫০০ টাকা পেমেন্ট করতে হবে।</p></div>
+              <div>
+                <p className="text-sm font-semibold text-blue-800">গোপনীয়তা সুরক্ষিত</p>
+                <p className="text-xs text-blue-700">
+                  আপনার তথ্য সম্পূর্ণ গোপন রাখা হবে। ছবি ও ব্যক্তিগত তথ্য দেখতে ৫০০ টাকা পেমেন্ট করতে হবে।
+                </p>
+              </div>
             </div>
           </div>
 
-          <button type="submit" disabled={isSubmitting} className="w-full bg-gradient-to-r from-[#f85606] to-orange-500 text-white py-4 rounded-xl font-bold text-lg shadow-lg hover:shadow-xl transition-all disabled:opacity-50 flex items-center justify-center gap-2">
-            <Crown size={18} /> {isSubmitting ? "সাবমিট হচ্ছে..." : "প্রোফাইল জমা দিন"}
+          {/* 🆕 প্রিভিউ ব্যানার */}
+          <div className="bg-gradient-to-r from-amber-50 to-orange-50 rounded-2xl p-4 border border-amber-200">
+            <p className="text-xs text-amber-700 flex items-center gap-1">
+              <Sparkles size={12} /> প্রোফাইল জমা দেওয়ার পর অ্যাডমিন অ্যাপ্রুভ করলে পাবলিশ হবে
+            </p>
+          </div>
+
+          <button 
+            type="submit" 
+            disabled={isSubmitting || images.length === 0} 
+            className="w-full bg-gradient-to-r from-[#f85606] to-orange-500 text-white py-4 rounded-xl font-bold text-lg shadow-lg hover:shadow-xl transition-all disabled:opacity-50 flex items-center justify-center gap-2"
+          >
+            {isSubmitting ? (
+              <>⏳ সাবমিট হচ্ছে...</>
+            ) : (
+              <>
+                {profileType === 'premium' ? <Crown size={18} /> : <Award size={18} />}
+                {profileType === 'premium' ? 'প্রিমিয়াম প্রোফাইল জমা দিন' : 'ফ্রি প্রোফাইল জমা দিন'}
+              </>
+            )}
           </button>
 
         </form>
