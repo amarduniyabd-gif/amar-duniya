@@ -3,10 +3,10 @@ export interface Category {
   name: string;
   slug: string;
   icon: string;
-  image?: string; // 🆕 ইমেজ ফিল্ড যোগ করা হয়েছে
+  image?: string; // 🔥 এই লাইনটি যোগ করুন
   parentId: string | null;
   hasPayment?: boolean;
-  status?: 'active' | 'inactive'; // 🆕 স্ট্যাটাস ফিল্ড
+  status?: 'active' | 'inactive';
 }
 
 
