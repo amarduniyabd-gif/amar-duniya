@@ -2,14 +2,14 @@
 import { useState, useEffect, memo } from "react";
 import Link from "next/link";
 import { 
-  Search, ShoppingCart, Bell, Star, Gift, Truck, Shield, Award
+  Search, ShoppingCart, Bell, Star, Gift, Truck, Shield, Award,
+  Phone, X, MapPin, Calendar, Tag
 } from "lucide-react";
 import Lottie from "lottie-react";
 
 // ============ Lottie অ্যানিমেশন URL ============
 const ANIMATIONS = {
   location: "https://assets10.lottiefiles.com/packages/lf20_p8bfn5to.json",
-  offer: "https://assets10.lottiefiles.com/packages/lf20_5ngs2ksb.json",
   flash: "https://assets9.lottiefiles.com/packages/lf20_qsxc8tqf.json",
   heart: "https://assets5.lottiefiles.com/packages/lf20_ydo0zgdg.json",
   shield: "https://assets8.lottiefiles.com/packages/lf20_emyg6gzo.json",
@@ -29,38 +29,44 @@ type MallProduct = {
   isFlash: boolean;
   isNew: boolean;
   category: string;
+  description?: string;
+  shopName?: string;
+  location?: string;
 };
 
-// ============ লোকাল প্রোডাক্ট (শাড়ি, ব্লাউজ, থ্রি-পিস) ============
+// ============ লোকাল প্রোডাক্ট ============
 const flashProducts: MallProduct[] = [
-  { id: 1, title: "কাতান শাড়ি", price: 2500, originalPrice: 4000, image: "🥻", discount: 38, stock: 3, sold: 45, rating: 4.8, isFlash: true, isNew: false, category: "saree" },
-  { id: 2, title: "জামদানি শাড়ি", price: 4500, originalPrice: 7000, image: "🥻", discount: 36, stock: 2, sold: 28, rating: 4.9, isFlash: true, isNew: false, category: "saree" },
-  { id: 3, title: "সিল্ক ব্লাউজ পিস", price: 850, originalPrice: 1500, image: "👚", discount: 43, stock: 5, sold: 60, rating: 4.6, isFlash: true, isNew: false, category: "blouse" },
-  { id: 4, title: "কটন থ্রি-পিস", price: 1800, originalPrice: 2800, image: "👗", discount: 36, stock: 4, sold: 35, rating: 4.7, isFlash: true, isNew: false, category: "threePiece" },
-  { id: 5, title: "জর্জেট শাড়ি", price: 2200, originalPrice: 3500, image: "🥻", discount: 37, stock: 3, sold: 22, rating: 4.5, isFlash: true, isNew: false, category: "saree" },
-  { id: 6, title: "ব্রাইডাল থ্রি-পিস", price: 5500, originalPrice: 8500, image: "👰", discount: 35, stock: 2, sold: 12, rating: 4.9, isFlash: true, isNew: true, category: "threePiece" },
+  { id: 1, title: "কাতান শাড়ি", price: 2500, originalPrice: 4000, image: "🥻", discount: 38, stock: 3, sold: 45, rating: 4.8, isFlash: true, isNew: false, category: "saree", shopName: "কুষ্টিয়া শাড়ি ঘর", location: "কুষ্টিয়া" },
+  { id: 2, title: "জামদানি শাড়ি", price: 4500, originalPrice: 7000, image: "🥻", discount: 36, stock: 2, sold: 28, rating: 4.9, isFlash: true, isNew: false, category: "saree", shopName: "ঢাকাই জামদানি", location: "কুষ্টিয়া" },
+  { id: 3, title: "সিল্ক ব্লাউজ পিস", price: 850, originalPrice: 1500, image: "👚", discount: 43, stock: 5, sold: 60, rating: 4.6, isFlash: true, isNew: false, category: "blouse", shopName: "ফ্যাশন বুটিক", location: "কুষ্টিয়া" },
+  { id: 4, title: "কটন থ্রি-পিস", price: 1800, originalPrice: 2800, image: "👗", discount: 36, stock: 4, sold: 35, rating: 4.7, isFlash: true, isNew: false, category: "threePiece", shopName: "কটন প্যালেস", location: "কুষ্টিয়া" },
+  { id: 5, title: "জর্জেট শাড়ি", price: 2200, originalPrice: 3500, image: "🥻", discount: 37, stock: 3, sold: 22, rating: 4.5, isFlash: true, isNew: false, category: "saree", shopName: "শাড়ি নিকেতন", location: "কুষ্টিয়া" },
+  { id: 6, title: "ব্রাইডাল থ্রি-পিস", price: 5500, originalPrice: 8500, image: "👰", discount: 35, stock: 2, sold: 12, rating: 4.9, isFlash: true, isNew: true, category: "threePiece", shopName: "ব্রাইডাল কালেকশন", location: "কুষ্টিয়া" },
 ];
 
 const dailyDeals: MallProduct[] = [
-  { id: 10, title: "হাফ সিল্ক শাড়ি", price: 1800, originalPrice: 3000, image: "🥻", discount: 40, stock: 10, sold: 85, rating: 4.7, isFlash: false, isNew: false, category: "saree" },
-  { id: 11, title: "ডিজাইনার ব্লাউজ", price: 650, originalPrice: 1200, image: "👚", discount: 46, stock: 15, sold: 120, rating: 4.5, isFlash: false, isNew: false, category: "blouse" },
-  { id: 12, title: "লিনেন থ্রি-পিস", price: 2400, originalPrice: 3800, image: "👗", discount: 37, stock: 8, sold: 45, rating: 4.6, isFlash: false, isNew: true, category: "threePiece" },
-  { id: 13, title: "বুটিক শাড়ি", price: 3200, originalPrice: 5000, image: "🥻", discount: 36, stock: 6, sold: 30, rating: 4.8, isFlash: false, isNew: false, category: "saree" },
+  { id: 10, title: "হাফ সিল্ক শাড়ি", price: 1800, originalPrice: 3000, image: "🥻", discount: 40, stock: 10, sold: 85, rating: 4.7, isFlash: false, isNew: false, category: "saree", shopName: "সিল্ক হাউজ", location: "কুষ্টিয়া" },
+  { id: 11, title: "ডিজাইনার ব্লাউজ", price: 650, originalPrice: 1200, image: "👚", discount: 46, stock: 15, sold: 120, rating: 4.5, isFlash: false, isNew: false, category: "blouse", shopName: "ব্লাউজ কর্নার", location: "কুষ্টিয়া" },
+  { id: 12, title: "লিনেন থ্রি-পিস", price: 2400, originalPrice: 3800, image: "👗", discount: 37, stock: 8, sold: 45, rating: 4.6, isFlash: false, isNew: true, category: "threePiece", shopName: "লিনেন স্টোর", location: "কুষ্টিয়া" },
+  { id: 13, title: "বুটিক শাড়ি", price: 3200, originalPrice: 5000, image: "🥻", discount: 36, stock: 6, sold: 30, rating: 4.8, isFlash: false, isNew: false, category: "saree", shopName: "বুটিক শাড়ি", location: "কুষ্টিয়া" },
 ];
 
 const justForYou: MallProduct[] = [
-  { id: 20, title: "বন্যারশি শাড়ি", price: 3800, originalPrice: 6000, image: "🥻", discount: 37, stock: 5, sold: 18, rating: 4.9, isFlash: false, isNew: true, category: "saree" },
-  { id: 21, title: "পার্টি ওয়্যার থ্রি-পিস", price: 3200, originalPrice: 4800, image: "👗", discount: 33, stock: 7, sold: 25, rating: 4.7, isFlash: false, isNew: true, category: "threePiece" },
-  { id: 22, title: "এমব্রয়ডারি ব্লাউজ", price: 950, originalPrice: 1600, image: "👚", discount: 41, stock: 12, sold: 55, rating: 4.4, isFlash: false, isNew: false, category: "blouse" },
-  { id: 23, title: "কাতান থ্রি-পিস", price: 2800, originalPrice: 4200, image: "👗", discount: 33, stock: 4, sold: 20, rating: 4.6, isFlash: false, isNew: false, category: "threePiece" },
-  { id: 24, title: "মসলিন শাড়ি", price: 2200, originalPrice: 3500, image: "🥻", discount: 37, stock: 8, sold: 32, rating: 4.5, isFlash: false, isNew: true, category: "saree" },
-  { id: 25, title: "ক্যাজুয়াল থ্রি-পিস", price: 1500, originalPrice: 2200, image: "👗", discount: 32, stock: 15, sold: 70, rating: 4.3, isFlash: false, isNew: false, category: "threePiece" },
-  { id: 26, title: "তাঁতের শাড়ি", price: 1200, originalPrice: 1800, image: "🥻", discount: 33, stock: 20, sold: 95, rating: 4.4, isFlash: false, isNew: false, category: "saree" },
+  { id: 20, title: "বন্যারশি শাড়ি", price: 3800, originalPrice: 6000, image: "🥻", discount: 37, stock: 5, sold: 18, rating: 4.9, isFlash: false, isNew: true, category: "saree", shopName: "বন্যারশি হাউজ", location: "কুষ্টিয়া" },
+  { id: 21, title: "পার্টি ওয়্যার থ্রি-পিস", price: 3200, originalPrice: 4800, image: "👗", discount: 33, stock: 7, sold: 25, rating: 4.7, isFlash: false, isNew: true, category: "threePiece", shopName: "পার্টি কালেকশন", location: "কুষ্টিয়া" },
+  { id: 22, title: "এমব্রয়ডারি ব্লাউজ", price: 950, originalPrice: 1600, image: "👚", discount: 41, stock: 12, sold: 55, rating: 4.4, isFlash: false, isNew: false, category: "blouse", shopName: "এমব্রয়ডারি স্টোর", location: "কুষ্টিয়া" },
+  { id: 23, title: "কাতান থ্রি-পিস", price: 2800, originalPrice: 4200, image: "👗", discount: 33, stock: 4, sold: 20, rating: 4.6, isFlash: false, isNew: false, category: "threePiece", shopName: "কাতান কালেকশন", location: "কুষ্টিয়া" },
+  { id: 24, title: "মসলিন শাড়ি", price: 2200, originalPrice: 3500, image: "🥻", discount: 37, stock: 8, sold: 32, rating: 4.5, isFlash: false, isNew: true, category: "saree", shopName: "মসলিন হাউজ", location: "কুষ্টিয়া" },
+  { id: 25, title: "ক্যাজুয়াল থ্রি-পিস", price: 1500, originalPrice: 2200, image: "👗", discount: 32, stock: 15, sold: 70, rating: 4.3, isFlash: false, isNew: false, category: "threePiece", shopName: "ক্যাজুয়াল স্টোর", location: "কুষ্টিয়া" },
+  { id: 26, title: "তাঁতের শাড়ি", price: 1200, originalPrice: 1800, image: "🥻", discount: 33, stock: 20, sold: 95, rating: 4.4, isFlash: false, isNew: false, category: "saree", shopName: "তাঁত শাড়ি", location: "কুষ্টিয়া" },
+  { id: 27, title: "নকশি কাঁথা শাড়ি", price: 3500, originalPrice: 5500, image: "🥻", discount: 36, stock: 6, sold: 15, rating: 4.8, isFlash: false, isNew: true, category: "saree", shopName: "নকশি কাঁথা", location: "কুষ্টিয়া" },
+  { id: 28, title: "রেশমি থ্রি-পিস", price: 4200, originalPrice: 6500, image: "👗", discount: 35, stock: 4, sold: 12, rating: 4.7, isFlash: false, isNew: true, category: "threePiece", shopName: "রেশমি কালেকশন", location: "কুষ্টিয়া" },
+  { id: 29, title: "জরি ব্লাউজ", price: 1100, originalPrice: 1800, image: "👚", discount: 39, stock: 10, sold: 40, rating: 4.5, isFlash: false, isNew: false, category: "blouse", shopName: "জরি হাউজ", location: "কুষ্টিয়া" },
 ];
 
-// ============ মেমোইজড কম্পোনেন্ট ============
-const ProductCard = memo(({ product }: { product: MallProduct }) => (
-  <Link href={`/post/${product.id}`}>
+// ============ প্রোডাক্ট কার্ড (ক্লিকে মডাল) ============
+const ProductCard = memo(({ product, onClick }: { product: MallProduct; onClick: (p: MallProduct) => void }) => (
+  <div onClick={() => onClick(product)} className="cursor-pointer">
     <div className="bg-white rounded-lg overflow-hidden hover:shadow-md transition-shadow duration-200">
       <div className="relative aspect-square bg-gradient-to-br from-pink-50 to-rose-50 flex items-center justify-center text-4xl">
         {product.image}
@@ -90,22 +96,14 @@ const ProductCard = memo(({ product }: { product: MallProduct }) => (
           </div>
           <span className="text-[10px] text-gray-400">• {product.sold}+ বিক্রি</span>
         </div>
-        {product.isFlash && product.stock > 0 && (
-          <div className="mt-1.5">
-            <div className="h-1 bg-gray-200 rounded-full overflow-hidden">
-              <div className="h-full bg-[#f85606] rounded-full" style={{ width: `${(product.stock / 10) * 100}%` }} />
-            </div>
-            <p className="text-[8px] text-gray-500 mt-0.5">মাত্র {product.stock} টি বাকি</p>
-          </div>
-        )}
       </div>
     </div>
-  </Link>
+  </div>
 ));
 ProductCard.displayName = 'ProductCard';
 
-const FlashProductCard = memo(({ product }: { product: MallProduct }) => (
-  <Link href={`/post/${product.id}`}>
+const FlashProductCard = memo(({ product, onClick }: { product: MallProduct; onClick: (p: MallProduct) => void }) => (
+  <div onClick={() => onClick(product)} className="cursor-pointer">
     <div className="flex-shrink-0 w-28 bg-white rounded-lg overflow-hidden">
       <div className="relative h-28 bg-gradient-to-br from-pink-50 to-rose-50 flex items-center justify-center text-3xl">
         {product.image}
@@ -117,7 +115,7 @@ const FlashProductCard = memo(({ product }: { product: MallProduct }) => (
         <p className="text-[9px] text-gray-500">{product.stock} left</p>
       </div>
     </div>
-  </Link>
+  </div>
 ));
 FlashProductCard.displayName = 'FlashProductCard';
 
@@ -157,6 +155,8 @@ LazyLottie.displayName = 'LazyLottie';
 // ============ মেইন পেজ ============
 export default function AmarBazarPage() {
   const [mounted, setMounted] = useState(false);
+  const [selectedProduct, setSelectedProduct] = useState<MallProduct | null>(null);
+
   useEffect(() => { setMounted(true); }, []);
   if (!mounted) return <div className="min-h-screen bg-gray-50" />;
 
@@ -184,9 +184,15 @@ export default function AmarBazarPage() {
         </div>
       </div>
 
-      {/* Lottie অফার ব্যানার */}
-      <div className="w-full h-28 bg-gradient-to-r from-amber-50 to-orange-50">
-        <LazyLottie url={ANIMATIONS.offer} className="w-full h-full" />
+      {/* 🔥 Lottie ব্যানার রিমুভ করে প্রোডাক্ট গ্রিড (৩ লাইন) */}
+      <div className="px-3 py-3">
+        <h3 className="font-bold text-gray-800 text-sm mb-2 flex items-center gap-1.5">
+          <LazyLottie url={ANIMATIONS.heart} className="w-5 h-5" />
+          🛍️ ট্রেন্ডিং প্রোডাক্ট
+        </h3>
+        <div className="grid grid-cols-3 gap-2">
+          {justForYou.slice(0, 9).map(p => <ProductCard key={p.id} product={p} onClick={setSelectedProduct} />)}
+        </div>
       </div>
 
       {/* কয়েন/অফার কার্ড */}
@@ -234,7 +240,7 @@ export default function AmarBazarPage() {
           <button className="text-[#f85606] text-[10px] font-medium">আরো দেখুন →</button>
         </div>
         <div className="flex overflow-x-auto p-3 gap-3 scrollbar-hide">
-          {flashProducts.map(p => <FlashProductCard key={p.id} product={p} />)}
+          {flashProducts.map(p => <FlashProductCard key={p.id} product={p} onClick={setSelectedProduct} />)}
         </div>
       </div>
 
@@ -247,19 +253,7 @@ export default function AmarBazarPage() {
           <button className="text-[#f85606] text-[10px] font-medium">Shop Now →</button>
         </div>
         <div className="flex overflow-x-auto p-3 gap-3 scrollbar-hide">
-          {dailyDeals.map(p => <FlashProductCard key={p.id} product={p} />)}
-        </div>
-      </div>
-
-      {/* Just For You */}
-      <div className="bg-white mx-3 mb-3 rounded-xl shadow-sm overflow-hidden">
-        <div className="p-3 border-b">
-          <h3 className="font-bold text-gray-800 text-sm flex items-center gap-1.5">
-            <LazyLottie url={ANIMATIONS.heart} className="w-5 h-5" /> 🛍️ Just For You
-          </h3>
-        </div>
-        <div className="grid grid-cols-2 gap-2 p-3">
-          {justForYou.map(p => <ProductCard key={p.id} product={p} />)}
+          {dailyDeals.map(p => <FlashProductCard key={p.id} product={p} onClick={setSelectedProduct} />)}
         </div>
       </div>
 
@@ -277,6 +271,43 @@ export default function AmarBazarPage() {
       <div className="text-center py-4">
         <p className="text-[10px] text-gray-400">📞 হোয়াটসঅ্যাপ: 017XXXXXXXX | ✉️ bazar@amarduniya.com</p>
       </div>
+
+      {/* 🔥 প্রোডাক্ট ডিটেইল মডাল - এক পেজেই */}
+      {selectedProduct && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-end md:items-center justify-center" onClick={() => setSelectedProduct(null)}>
+          <div className="bg-white rounded-t-2xl md:rounded-2xl w-full max-w-md max-h-[80vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
+            <div className="sticky top-0 bg-gradient-to-r from-[#f85606] to-orange-500 text-white p-4 flex justify-between items-center">
+              <h3 className="font-bold text-lg">প্রোডাক্ট বিস্তারিত</h3>
+              <button onClick={() => setSelectedProduct(null)} className="p-1"><X size={20} /></button>
+            </div>
+            <div className="p-4">
+              <div className="flex items-center gap-4 mb-4">
+                <div className="w-24 h-24 bg-gradient-to-br from-pink-50 to-rose-50 rounded-xl flex items-center justify-center text-5xl">
+                  {selectedProduct.image}
+                </div>
+                <div>
+                  <h2 className="text-xl font-bold">{selectedProduct.title}</h2>
+                  <p className="text-2xl font-bold text-[#f85606]">৳{selectedProduct.price}</p>
+                  {selectedProduct.originalPrice && (
+                    <p className="text-sm text-gray-400 line-through">৳{selectedProduct.originalPrice}</p>
+                  )}
+                </div>
+              </div>
+              <div className="space-y-2 text-sm">
+                <p><span className="font-medium">দোকান:</span> {selectedProduct.shopName}</p>
+                <p><span className="font-medium">লোকেশন:</span> {selectedProduct.location}</p>
+                <p><span className="font-medium">স্টক:</span> {selectedProduct.stock} টি</p>
+                <p><span className="font-medium">বিক্রি:</span> {selectedProduct.sold}+</p>
+                <p><span className="font-medium">রেটিং:</span> ⭐ {selectedProduct.rating}</p>
+              </div>
+              <div className="flex gap-2 mt-4">
+                <button className="flex-1 bg-[#f85606] text-white py-3 rounded-xl font-semibold">এখনই কিনুন</button>
+                <button className="flex-1 bg-green-500 text-white py-3 rounded-xl font-semibold">কার্টে যোগ করুন</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
