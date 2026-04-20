@@ -26,6 +26,7 @@ type SliderItem = {
   emoji: string;
   link: string;
   status?: string;
+  image?: string; // 🆕 ইমেজ ফিল্ড
 };
 
 // ডামি অ্যাড ডাটা জেনারেটর (ইমোজি ব্যবহার করে)
@@ -140,7 +141,6 @@ const AmarDuniyaHome = () => {
           if (activeSliders.length > 0) {
             setSlides(activeSliders);
           } else {
-            // যদি কোনো সক্রিয় স্লাইডার না থাকে, ডিফল্ট সেভ করে দিন
             const defaultWithStatus = defaultSlides.map((s, i) => ({ ...s, status: 'active', id: i + 1, order: i + 1 }));
             localStorage.setItem("homeSliders", JSON.stringify(defaultWithStatus));
           }
@@ -148,7 +148,6 @@ const AmarDuniyaHome = () => {
           console.error("স্লাইডার লোড করতে সমস্যা:", e);
         }
       } else {
-        // প্রথমবার লোড হলে ডিফল্ট স্লাইডার সেভ করুন
         const defaultWithStatus = defaultSlides.map((s, i) => ({ ...s, status: 'active', id: i + 1, order: i + 1 }));
         localStorage.setItem("homeSliders", JSON.stringify(defaultWithStatus));
       }
@@ -303,7 +302,16 @@ const AmarDuniyaHome = () => {
                 >
                   <Link href={slides[currentSlide].link}>
                     <div className={`w-full h-full bg-gradient-to-r ${slides[currentSlide].color} flex flex-col items-center justify-center text-white`}>
-                      <div className="text-6xl md:text-8xl mb-4">{slides[currentSlide].emoji}</div>
+                      {/* 🔥 স্লাইডার ইমেজ সাপোর্ট */}
+                      {slides[currentSlide].image ? (
+                        <img 
+                          src={slides[currentSlide].image} 
+                          alt={slides[currentSlide].title} 
+                          className="w-24 h-24 md:w-32 md:h-32 object-contain mb-4" 
+                        />
+                      ) : (
+                        <div className="text-6xl md:text-8xl mb-4">{slides[currentSlide].emoji}</div>
+                      )}
                       <h2 className="text-xl md:text-3xl font-black text-center px-4">
                         {slides[currentSlide].title}
                       </h2>
@@ -344,26 +352,26 @@ const AmarDuniyaHome = () => {
         </div>
 
         {/* ক্যাটাগরি */}
-<nav className="py-6 grid grid-cols-4 md:grid-cols-6 lg:grid-cols-12 gap-4 px-3 md:rounded-2xl md:mt-4 shadow-sm transition-colors duration-300 bg-white">
-  {rootCategories.map((cat) => (
-    <Link 
-      key={cat.id} 
-      href={`/category/${cat.slug}`}
-      className="flex flex-col items-center group"
-    >
-      <div className="w-14 h-14 md:w-16 md:h-16 flex items-center justify-center rounded-full border transition-all shadow-sm bg-gray-50 border-gray-100 group-hover:bg-orange-50 group-hover:border-[#f85606] overflow-hidden">
-        {cat.image ? (
-          <img src={cat.image} alt={cat.name} className="w-full h-full object-cover" />
-        ) : (
-          <span className="text-2xl md:text-3xl">{cat.icon}</span>
-        )}
-      </div>
-      <span className="text-[10px] md:text-xs font-semibold text-center mt-2 transition-colors line-clamp-1 px-1 text-gray-600 group-hover:text-[#f85606]">
-        {cat.name}
-      </span>
-    </Link>
-  ))}
-</nav>
+        <nav className="py-6 grid grid-cols-4 md:grid-cols-6 lg:grid-cols-12 gap-4 px-3 md:rounded-2xl md:mt-4 shadow-sm transition-colors duration-300 bg-white">
+          {rootCategories.map((cat) => (
+            <Link 
+              key={cat.id} 
+              href={`/category/${cat.slug}`}
+              className="flex flex-col items-center group"
+            >
+              <div className="w-14 h-14 md:w-16 md:h-16 flex items-center justify-center rounded-full border transition-all shadow-sm bg-gray-50 border-gray-100 group-hover:bg-orange-50 group-hover:border-[#f85606] overflow-hidden">
+                {cat.image ? (
+                  <img src={cat.image} alt={cat.name} className="w-full h-full object-cover" />
+                ) : (
+                  <span className="text-2xl md:text-3xl">{cat.icon}</span>
+                )}
+              </div>
+              <span className="text-[10px] md:text-xs font-semibold text-center mt-2 transition-colors line-clamp-1 px-1 text-gray-600 group-hover:text-[#f85606]">
+                {cat.name}
+              </span>
+            </Link>
+          ))}
+        </nav>
 
         {/* রিসেন্ট অ্যাডস */}
         <section className="mt-4 p-3 rounded-2xl shadow-sm transition-colors duration-300 bg-white">
