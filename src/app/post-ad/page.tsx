@@ -1,10 +1,10 @@
 "use client";
-import { useState, useRef } from "react";
+import { useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { 
   ImageUp, X, ArrowLeft, Tag, DollarSign, MapPin, Phone, 
-  FileText, Sparkles, Shield, Camera, Trash2, CheckCircle,
-  PlusCircle, Video, AlertCircle, FileCheck, Lock, 
+  FileText, Sparkles, Shield, Camera, Trash2,
+  PlusCircle, AlertCircle, FileCheck, 
   Package, Calendar, Truck, BadgeCheck, Crown
 } from "lucide-react";
 import { categories, getRootCategories } from "@/data/categories";
@@ -45,7 +45,6 @@ export default function PostAdPage() {
   const preSelectedCategory = searchParams.get("category");
   
   const [images, setImages] = useState<File[]>([]);
-  const [video, setVideo] = useState<File | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isFeatured, setIsFeatured] = useState(false);
   const [showFeaturedModal, setShowFeaturedModal] = useState(false);
@@ -53,7 +52,6 @@ export default function PostAdPage() {
   const [showNewCategory, setShowNewCategory] = useState(false);
   const [newCategoryName, setNewCategoryName] = useState("");
   const [imageErrors, setImageErrors] = useState<string[]>([]);
-  const [videoError, setVideoError] = useState<string | null>(null);
   const [contentError, setContentError] = useState<string | null>(null);
   
   const [formData, setFormData] = useState({
@@ -82,7 +80,7 @@ export default function PostAdPage() {
   
   const subCategories = getSubCategoriesForSelected();
 
-  // সাইলেন্ট ইমেজ কম্প্রেশন (ইউজার কিছু দেখবে না)
+  // সুপার ফাস্ট ইমেজ কম্প্রেশন (WebP)
   const compressImageToWebP = (file: File): Promise<File> => {
     return new Promise((resolve) => {
       const reader = new FileReader();
@@ -105,7 +103,7 @@ export default function PostAdPage() {
           }
           canvas.width = width;
           canvas.height = height;
-          const ctx = canvas.getContext('2d');
+          const ctx = canvas.getContext('2d', { alpha: true, willReadFrequently: false });
           ctx?.drawImage(img, 0, 0, width, height);
           
           let quality = 0.7;
@@ -143,35 +141,14 @@ export default function PostAdPage() {
           const compressed = await compressImageToWebP(file);
           setImages(prev => [...prev, compressed]);
         } catch (error) {
-          // সাইলেন্ট ফেইল - ইউজার দেখবে না
+          // সাইলেন্ট ফেইল
         }
       }
     }
   };
 
-  const handleVideoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files[0]) {
-      const file = e.target.files[0];
-      if (!file.type.startsWith('video/')) {
-        setVideoError('শুধু ভিডিও ফাইল আপলোড করুন');
-        return;
-      }
-      if (file.size > 100 * 1024) {
-        setVideoError('ভিডিও সাইজ ১০০KB এর বেশি হতে পারবে না');
-        return;
-      }
-      setVideo(file);
-      setVideoError(null);
-    }
-  };
-
   const removeImage = (index: number) => {
     setImages(images.filter((_, i) => i !== index));
-  };
-
-  const removeVideo = () => {
-    setVideo(null);
-    setVideoError(null);
   };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
@@ -200,7 +177,6 @@ export default function PostAdPage() {
     alert("✅ আপনার পোস্ট ফিচার্ড হয়েছে! ৭ দিন হোমপেজের টপে থাকবে।");
   };
 
-  // 🔥 আপডেটেড হ্যান্ডলসাবমিট - ডকুমেন্ট সার্ভিস চেক করলে ডকুমেন্ট আপলোড পেজে যাবে
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -217,28 +193,26 @@ export default function PostAdPage() {
     
     setIsSubmitting(true);
     
-    // পোস্ট আইডি তৈরি (এখন ডামি, পরে ডাটাবেস থেকে আসবে)
     const newPostId = `POST_${Date.now()}`;
     
     setTimeout(() => {
       setIsSubmitting(false);
       
       if (useDocumentService) {
-        // ডকুমেন্ট সার্ভিস চেক করা থাকলে ডকুমেন্ট আপলোড পেজে নিয়ে যান
         alert('✅ পোস্ট তৈরি হয়েছে! এখন আপনার ডকুমেন্ট আপলোড করুন।');
         router.push(`/documents/upload?postId=${newPostId}&postTitle=${encodeURIComponent(formData.title)}`);
       } else {
         alert('✅ আপনার পোস্ট সফলভাবে জমা দেওয়া হয়েছে!');
         router.push("/");
       }
-    }, 1500);
+    }, 1000); // আরও ফাস্ট!
   };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-orange-50 via-white to-amber-50">
       <div className="max-w-2xl mx-auto p-4">
         
-        {/* বিলিয়ন ডলার হেডার - কমলা থিম */}
+        {/* হেডার */}
         <div className="relative mb-8">
           <div className="absolute inset-0 bg-gradient-to-r from-[#f85606]/30 via-orange-500/30 to-[#f85606]/30 rounded-2xl blur-xl"></div>
           <div className="relative flex items-center gap-3">
@@ -269,14 +243,14 @@ export default function PostAdPage() {
             </div>
           )}
 
-          {/* ছবি আপলোড - কমলা থিম */}
+          {/* ছবি আপলোড - সুপার ফাস্ট */}
           <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-xl p-5 border border-[#f85606]/20 hover:shadow-2xl transition-all duration-300">
             <label className="flex items-center gap-2 text-sm font-semibold text-gray-700 mb-3">
               <div className="w-8 h-8 bg-gradient-to-br from-[#f85606]/20 to-orange-500/20 rounded-xl flex items-center justify-center">
                 <Camera size={16} className="text-[#f85606]" />
               </div>
               ছবি আপলোড করুন
-              <span className="text-xs text-gray-400">(সর্বোচ্চ ৪টি)</span>
+              <span className="text-xs text-gray-400">(সর্বোচ্চ ৪টি, WebP ফরম্যাট)</span>
             </label>
             
             <div className="flex flex-wrap gap-3 mb-3">
@@ -297,37 +271,11 @@ export default function PostAdPage() {
                 </label>
               )}
             </div>
-          </div>
-
-          {/* ভিডিও আপলোড - কমলা থিম */}
-          <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-xl p-5 border border-[#f85606]/20 hover:shadow-2xl transition-all duration-300">
-            <label className="flex items-center gap-2 text-sm font-semibold text-gray-700 mb-3">
-              <div className="w-8 h-8 bg-gradient-to-br from-[#f85606]/20 to-orange-500/20 rounded-xl flex items-center justify-center">
-                <Video size={16} className="text-[#f85606]" />
-              </div>
-              ভিডিও (ঐচ্ছিক)
-              <span className="text-xs text-gray-400">(সর্বোচ্চ ১০০KB)</span>
-            </label>
-            
-            {!video ? (
-              <label className="w-full border-2 border-dashed border-[#f85606]/30 rounded-xl flex flex-col items-center justify-center py-6 cursor-pointer hover:border-[#f85606] hover:bg-orange-50 transition-all group">
-                <Video size={40} className="text-gray-400 group-hover:text-[#f85606]" />
-                <span className="text-sm text-gray-500 mt-2 group-hover:text-[#f85606]">ভিডিও আপলোড করুন</span>
-                <input type="file" accept="video/*" onChange={handleVideoUpload} className="hidden" />
-              </label>
-            ) : (
-              <div className="relative">
-                <video src={URL.createObjectURL(video)} controls className="w-full rounded-xl max-h-48" />
-                <button type="button" onClick={removeVideo} className="absolute top-2 right-2 bg-red-500 text-white rounded-full p-1 shadow-md">
-                  <Trash2 size={14} />
-                </button>
-              </div>
-            )}
-            {videoError && <p className="text-red-500 text-xs mt-2">{videoError}</p>}
+            <p className="text-[10px] text-gray-400 mt-2">✓ ছবি অটোমেটিক WebP ফরম্যাটে কম্প্রেস হবে (৫০KB)</p>
           </div>
 
           {/* পণ্যের নাম */}
-          <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-xl p-5 border border-[#f85606]/20 hover:shadow-2xl transition-all duration-300">
+          <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-xl p-5 border border-[#f85606]/20">
             <label className="flex items-center gap-2 text-sm font-semibold text-gray-700 mb-2">
               <div className="w-8 h-8 bg-gradient-to-br from-[#f85606]/20 to-orange-500/20 rounded-xl flex items-center justify-center">
                 <Tag size={16} className="text-[#f85606]" />
@@ -340,13 +288,13 @@ export default function PostAdPage() {
               value={formData.title}
               onChange={handleChange}
               placeholder="যেমন: iPhone 15 Pro Max - 128GB"
-              className="w-full p-4 bg-gray-50/50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#f85606] focus:border-transparent transition-all"
+              className="w-full p-4 bg-gray-50/50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#f85606]"
               required
             />
           </div>
 
           {/* ব্র্যান্ড */}
-          <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-xl p-5 border border-[#f85606]/20 hover:shadow-2xl transition-all duration-300">
+          <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-xl p-5 border border-[#f85606]/20">
             <label className="flex items-center gap-2 text-sm font-semibold text-gray-700 mb-2">
               <div className="w-8 h-8 bg-gradient-to-br from-[#f85606]/20 to-orange-500/20 rounded-xl flex items-center justify-center">
                 <BadgeCheck size={16} className="text-[#f85606]" />
@@ -359,7 +307,7 @@ export default function PostAdPage() {
               value={formData.brand}
               onChange={handleChange}
               placeholder="যেমন: Apple, Samsung, Nike..."
-              className="w-full p-4 bg-gray-50/50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#f85606] focus:border-transparent transition-all"
+              className="w-full p-4 bg-gray-50/50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#f85606]"
             />
           </div>
 
@@ -453,20 +401,8 @@ export default function PostAdPage() {
                   className="w-full p-3 border border-gray-200 rounded-lg mb-2"
                 />
                 <div className="flex gap-2">
-                  <button
-                    type="button"
-                    onClick={handleAddNewCategory}
-                    className="bg-[#f85606] text-white px-4 py-2 rounded-lg text-sm"
-                  >
-                    জমা দিন
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setShowNewCategory(false)}
-                    className="bg-gray-200 text-gray-700 px-4 py-2 rounded-lg text-sm"
-                  >
-                    বাতিল
-                  </button>
+                  <button type="button" onClick={handleAddNewCategory} className="bg-[#f85606] text-white px-4 py-2 rounded-lg text-sm">জমা দিন</button>
+                  <button type="button" onClick={() => setShowNewCategory(false)} className="bg-gray-200 text-gray-700 px-4 py-2 rounded-lg text-sm">বাতিল</button>
                 </div>
               </div>
             )}
@@ -507,7 +443,6 @@ export default function PostAdPage() {
               placeholder="পণ্যের বিস্তারিত বিবরণ দিন..."
               className="w-full p-4 bg-gray-50/50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#f85606]"
             />
-            <p className="text-[10px] text-gray-400 mt-2">✓ বিস্তারিত বিবরণ দিলে ক্রেতা আগ্রহী হয়</p>
           </div>
 
           {/* ডেলিভারি অপশন */}
@@ -518,25 +453,11 @@ export default function PostAdPage() {
             </label>
             <div className="flex gap-6">
               <label className="flex items-center gap-2 cursor-pointer">
-                <input
-                  type="radio"
-                  name="delivery"
-                  value="pickup"
-                  checked={formData.delivery === "pickup"}
-                  onChange={handleChange}
-                  className="w-4 h-4 text-[#f85606]"
-                />
+                <input type="radio" name="delivery" value="pickup" checked={formData.delivery === "pickup"} onChange={handleChange} className="w-4 h-4 text-[#f85606]" />
                 <span className="text-sm">হাতে হাতে নিবেন</span>
               </label>
               <label className="flex items-center gap-2 cursor-pointer">
-                <input
-                  type="radio"
-                  name="delivery"
-                  value="delivery"
-                  checked={formData.delivery === "delivery"}
-                  onChange={handleChange}
-                  className="w-4 h-4 text-[#f85606]"
-                />
+                <input type="radio" name="delivery" value="delivery" checked={formData.delivery === "delivery"} onChange={handleChange} className="w-4 h-4 text-[#f85606]" />
                 <span className="text-sm">হোম ডেলিভারি চাই</span>
               </label>
             </div>
@@ -576,7 +497,7 @@ export default function PostAdPage() {
             </div>
           </div>
 
-          {/* ডকুমেন্ট সার্ভিস - কমলা থিম */}
+          {/* ডকুমেন্ট সার্ভিস */}
           <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-xl p-5 border border-[#f85606]/20">
             <label className="flex items-start gap-3 cursor-pointer">
               <input
@@ -598,7 +519,7 @@ export default function PostAdPage() {
             </label>
           </div>
 
-          {/* ফিচার্ড লিস্টিং - কমলা থিম */}
+          {/* ফিচার্ড লিস্টিং */}
           <div className={`rounded-2xl shadow-xl p-5 transition-all duration-300 cursor-pointer ${isFeatured ? 'bg-gradient-to-r from-amber-50/80 to-orange-50/80 border-2 border-[#f85606]' : 'bg-white/80 backdrop-blur-sm border border-[#f85606]/20'}`}>
             <label className="flex items-start gap-4 cursor-pointer">
               <input
@@ -634,7 +555,7 @@ export default function PostAdPage() {
             )}
           </div>
 
-          {/* ফ্রি পোস্টের দায়িত্ব অস্বীকার - কমলা থিম */}
+          {/* ফ্রি পোস্টের দায়িত্ব অস্বীকার */}
           <div className="bg-gradient-to-r from-amber-50/80 to-orange-50/80 rounded-2xl backdrop-blur-sm border border-amber-200 p-5">
             <div className="flex items-start gap-3">
               <div className="w-10 h-10 bg-amber-100 rounded-xl flex items-center justify-center">
@@ -660,7 +581,7 @@ export default function PostAdPage() {
             </div>
           </div>
 
-          {/* সাবমিট বাটন - কমলা থিম */}
+          {/* সাবমিট বাটন */}
           <button
             type="submit"
             disabled={isSubmitting}
@@ -690,7 +611,7 @@ export default function PostAdPage() {
           description="আপনার পোস্ট ৭ দিন হোমপেজের টপে থাকবে"
         />
 
-        {/* নিরাপত্তা নোটিশ - কমলা থিম */}
+        {/* নিরাপত্তা নোটিশ */}
         <div className="text-center text-xs text-gray-500 mt-6 flex items-center justify-center gap-2">
           <div className="w-6 h-6 bg-gradient-to-br from-orange-100 to-amber-100 rounded-full flex items-center justify-center">
             <Shield size={12} className="text-[#f85606]" />
