@@ -247,62 +247,62 @@ export default function OfferZonePage() {
           </div>
         )}
       </div>
-{/* বিস্তারিত তথ্য প্যানেল - একদম উপরে */}
+{/* বিস্তারিত তথ্য প্যানেল */}
 {selectedBanner && (
   <div 
-    className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-start justify-center animate-in fade-in duration-200"
+    className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-end md:items-center justify-center animate-in fade-in duration-200"
     onClick={() => setSelectedBanner(null)}
   >
     <div 
-      className="bg-white rounded-b-3xl md:rounded-2xl max-w-lg w-full max-h-[70vh] overflow-hidden shadow-2xl animate-in slide-in-from-top duration-300 flex flex-col mt-0"
+      className="bg-white rounded-t-3xl md:rounded-2xl max-w-lg w-full max-h-[75vh] overflow-hidden shadow-2xl animate-in slide-in-from-bottom duration-300 flex flex-col"
       onClick={e => e.stopPropagation()}
     >
-      <div className="bg-gradient-to-r from-[#f85606] to-orange-500 text-white p-3 flex justify-between items-center flex-shrink-0">
-        <h3 className="font-bold text-base flex items-center gap-2">
-          <Gift size={18} /> অফার বিস্তারিত
+      <div className="bg-gradient-to-r from-[#f85606] to-orange-500 text-white p-4 flex justify-between items-center flex-shrink-0">
+        <h3 className="font-bold text-lg flex items-center gap-2">
+          <Gift size={20} /> অফার বিস্তারিত
         </h3>
-        <button onClick={() => setSelectedBanner(null)} className="p-1.5 hover:bg-white/20 rounded-full transition">
-          <X size={18} />
+        <button onClick={() => setSelectedBanner(null)} className="p-2 hover:bg-white/20 rounded-full transition">
+          <X size={20} />
         </button>
       </div>
       
-      <div className="p-3 overflow-y-auto flex-1">
-        <div className="flex items-center gap-3 mb-3">
-          <div className="w-14 h-14 bg-gradient-to-br from-orange-100 to-amber-100 rounded-xl flex items-center justify-center text-3xl shadow-md flex-shrink-0">
+      <div className="p-4 overflow-y-auto flex-1">
+        <div className="flex items-center gap-3 mb-4">
+          <div className="w-16 h-16 bg-gradient-to-br from-orange-100 to-amber-100 rounded-xl flex items-center justify-center text-4xl shadow-md flex-shrink-0">
             {selectedBanner.image}
           </div>
           <div className="flex-1 min-w-0">
-            <h2 className="text-base font-bold text-gray-800 truncate">{selectedBanner.title}</h2>
-            <p className="text-[#f85606] font-semibold text-xs">{selectedBanner.description}</p>
+            <h2 className="text-lg font-bold text-gray-800 truncate">{selectedBanner.title}</h2>
+            <p className="text-[#f85606] font-semibold text-sm">{selectedBanner.description}</p>
             {selectedBanner.discountCode && (
-              <div className="mt-1 inline-flex items-center gap-1 bg-gray-100 px-2 py-0.5 rounded-md">
-                <Tag size={10} className="text-[#f85606]" />
-                <span className="font-mono font-bold text-[10px]">{selectedBanner.discountCode}</span>
+              <div className="mt-1 inline-flex items-center gap-1 bg-gray-100 px-2 py-1 rounded-lg">
+                <Tag size={12} className="text-[#f85606]" />
+                <span className="font-mono font-bold text-xs">{selectedBanner.discountCode}</span>
               </div>
             )}
           </div>
         </div>
         
-        <p className="text-xs text-gray-600 mb-2">{selectedBanner.offerDetails}</p>
+        <p className="text-sm text-gray-600 mb-3">{selectedBanner.offerDetails}</p>
         
-        <div className="bg-gray-50 rounded-lg p-2.5 mb-2">
-          <h4 className="font-semibold text-gray-800 mb-1.5 text-xs">📞 যোগাযোগ</h4>
-          <div className="space-y-1">
-            <p className="flex items-center gap-1.5 text-[11px]">
-              <Phone size={11} className="text-[#f85606] flex-shrink-0" />
+        <div className="bg-gray-50 rounded-xl p-3 mb-3">
+          <h4 className="font-semibold text-gray-800 mb-2 text-sm">📞 যোগাযোগ</h4>
+          <div className="space-y-1.5">
+            <p className="flex items-center gap-2 text-xs">
+              <Phone size={12} className="text-[#f85606] flex-shrink-0" />
               <span className="truncate">{selectedBanner.contactName} - {selectedBanner.contactPhone}</span>
             </p>
-            <p className="flex items-center gap-1.5 text-[11px]">
-              <Mail size={11} className="text-[#f85606] flex-shrink-0" />
+            <p className="flex items-center gap-2 text-xs">
+              <Mail size={12} className="text-[#f85606] flex-shrink-0" />
               <span className="truncate">{selectedBanner.contactEmail}</span>
             </p>
-            <p className="flex items-center gap-1.5 text-[11px]">
-              <MapPin size={11} className="text-[#f85606] flex-shrink-0" />
+            <p className="flex items-center gap-2 text-xs">
+              <MapPin size={12} className="text-[#f85606] flex-shrink-0" />
               <span className="truncate">{selectedBanner.contactLocation}</span>
             </p>
-            <p className="flex items-center gap-1.5 text-[11px]">
-              <Calendar size={11} className="text-[#f85606] flex-shrink-0" />
-              <span className="truncate">মেয়াদ: {new Date(selectedBanner.validUntil).toLocaleDateString('bn-BD')} ({getDaysLeft(selectedBanner.validUntil)} দিন)</span>
+            <p className="flex items-center gap-2 text-xs">
+              <Calendar size={12} className="text-[#f85606] flex-shrink-0" />
+              মেয়াদ: {new Date(selectedBanner.validUntil).toLocaleDateString('bn-BD')} ({getDaysLeft(selectedBanner.validUntil)} দিন বাকি)
             </p>
           </div>
         </div>
@@ -311,15 +311,15 @@ export default function OfferZonePage() {
         <div className="flex gap-2">
           <button 
             onClick={() => handleCall(selectedBanner.contactPhone)}
-            className="flex-1 bg-[#f85606] text-white py-2 rounded-lg font-semibold text-xs flex items-center justify-center gap-1"
+            className="flex-1 bg-[#f85606] text-white py-2.5 rounded-lg font-semibold text-sm flex items-center justify-center gap-1"
           >
-            <Phone size={14} /> কল
+            <Phone size={16} /> কল
           </button>
           <button 
             onClick={() => handleWhatsApp(selectedBanner.contactPhone)}
-            className="flex-1 bg-green-500 text-white py-2 rounded-lg font-semibold text-xs flex items-center justify-center gap-1"
+            className="flex-1 bg-green-500 text-white py-2.5 rounded-lg font-semibold text-sm flex items-center justify-center gap-1"
           >
-            <ExternalLink size={14} /> WhatsApp
+            <ExternalLink size={16} /> WhatsApp
           </button>
         </div>
       </div>
