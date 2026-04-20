@@ -5,7 +5,7 @@ import {
   LayoutDashboard, Users, Package, Gavel, 
   CreditCard, FileText, Flag, Settings, FolderTree,
   LogOut, ChevronRight, Shield, Home, Menu, X,
-  Sparkles, MessageCircle, Heart
+  Sparkles, MessageCircle, Heart, Gift
 } from "lucide-react";
 import { useState, useEffect } from "react";
 
@@ -22,6 +22,7 @@ const menuItems = [
   { href: "/admin/chat", label: "চ্যাট মনিটরিং", icon: <MessageCircle size={18} /> },
   { href: "/admin/reports", label: "রিপোর্ট ম্যানেজমেন্ট", icon: <Flag size={18} /> },
   { href: "/admin/settings", label: "সেটিংস", icon: <Settings size={18} /> },
+  { href: "/admin/offer-ads", label: "অফার জোন", icon: <Gift size={18} /> },
 ];
 
 export default function AdminSidebar() {
