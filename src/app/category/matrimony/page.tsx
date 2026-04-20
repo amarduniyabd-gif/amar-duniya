@@ -60,6 +60,13 @@ type Profile = {
   hobbies?: string[];
   views: number;
   interests: number;
+  // 🆕 নতুন ফিল্ড
+  fatherName?: string;
+  motherName?: string;
+  siblings?: string;
+  prayerTime?: string;
+  smoking?: string;
+  occupationType?: string;
 };
 
 const dummyProfiles: Profile[] = [
@@ -71,6 +78,8 @@ const dummyProfiles: Profile[] = [
     familyStatus: "মধ্যবিত্ত", about: "সরল ও শিক্ষিত পরিবারের মেয়ে। নিজের পায়ে দাঁড়াতে চাই।",
     createdAt: "২০২৪-০১-১৫", maritalStatus: "unmarried", hasChildren: false, remarryWilling: "yes",
     bloodGroup: "O+", complexion: "ফর্সা", hobbies: ["বই পড়া", "ভ্রমণ", "রান্না"], views: 1240, interests: 56,
+    fatherName: "আব্দুর রহিম", motherName: "ফাতেমা বেগম", siblings: "৩",
+    prayerTime: "regular", smoking: "no", occupationType: "job",
   },
   {
     id: 2, name: "আব্দুল করিম", age: 28, village: "গাজীপুর সদর", district: "গাজীপুর",
@@ -81,6 +90,8 @@ const dummyProfiles: Profile[] = [
     createdAt: "২০২৪-০২-১০", maritalStatus: "divorced", hasChildren: true, childrenCount: 1,
     remarryWilling: "yes", bloodGroup: "B+", complexion: "মাঝারি", hobbies: ["ব্যবসা", "গাড়ি চালানো", "ক্রিকেট"],
     views: 890, interests: 34,
+    fatherName: "আব্দুল মান্নান", motherName: "রহিমা বেগম", siblings: "৪",
+    prayerTime: "sometimes", smoking: "no", occupationType: "business",
   },
   {
     id: 3, name: "ফাতেমা বেগম", age: 22, village: "কুমিল্লা সদর", district: "কুমিল্লা",
@@ -91,6 +102,8 @@ const dummyProfiles: Profile[] = [
     createdAt: "২০২৪-০৩-০৫", maritalStatus: "unmarried", hasChildren: false, remarryWilling: "yes",
     bloodGroup: "A+", complexion: "শ্যামলা", hobbies: ["গান শোনা", "চলচ্চিত্র", "ঘুরতে ভালোবাসি"],
     views: 2100, interests: 89,
+    fatherName: "আলমগীর হোসেন", motherName: "নাজমা বেগম", siblings: "২",
+    prayerTime: "regular", smoking: "no", occupationType: "student",
   },
   {
     id: 4, name: "শাহিনুর রহমান", age: 26, village: "মিরপুর", district: "ঢাকা",
@@ -100,6 +113,8 @@ const dummyProfiles: Profile[] = [
     familyStatus: "মধ্যবিত্ত", about: "ব্যাংকে চাকরি করি। সাদামাটা জীবনযাপন পছন্দ করি।",
     createdAt: "২০২৪-০৩-১০", maritalStatus: "unmarried", hasChildren: false, remarryWilling: "yes",
     bloodGroup: "AB+", complexion: "ফর্সা", hobbies: ["ক্রিকেট", "ভ্রমণ"], views: 567, interests: 23,
+    fatherName: "রফিকুল ইসলাম", motherName: "শাহিদা বেগম", siblings: "৩",
+    prayerTime: "regular", smoking: "no", occupationType: "job",
   },
   {
     id: 5, name: "নাজমা বেগম", age: 25, village: "রাজশাহী সদর", district: "রাজশাহী",
@@ -109,6 +124,8 @@ const dummyProfiles: Profile[] = [
     familyStatus: "মধ্যবিত্ত", about: "সরকারি চাকরি করি। ভালো মানুষ খুঁজছি।",
     createdAt: "২০২৪-০৩-১৫", maritalStatus: "unmarried", hasChildren: false, remarryWilling: "yes",
     bloodGroup: "O-", complexion: "মাঝারি", hobbies: ["রান্না", "সেলাই"], views: 432, interests: 18,
+    fatherName: "আব্দুল মজিদ", motherName: "রাশিদা বেগম", siblings: "৫",
+    prayerTime: "sometimes", smoking: "no", occupationType: "job",
   },
   {
     id: 6, name: "হাসান মিয়া", age: 30, village: "সিলেট সদর", district: "সিলেট",
@@ -118,6 +135,8 @@ const dummyProfiles: Profile[] = [
     familyStatus: "উচ্চ মধ্যবিত্ত", about: "বিদেশে কাজ করি। বাংলাদেশে স্থায়ী হতে চাই।",
     createdAt: "২০২৪-০৩-২০", maritalStatus: "unmarried", hasChildren: false, remarryWilling: "yes",
     bloodGroup: "B-", complexion: "শ্যামলা", hobbies: ["ভ্রমণ", "ছবি তোলা"], views: 678, interests: 45,
+    fatherName: "জামাল উদ্দিন", motherName: "আমেনা বেগম", siblings: "৪",
+    prayerTime: "regular", smoking: "sometimes", occupationType: "job",
   },
 ];
 
@@ -142,9 +161,7 @@ const getRemarryWillingText = (status: string) => {
 // কনগ্রাচুলেশন মডাল
 function CongratulationsModal({ onClose, profileName }: { onClose: () => void; profileName: string }) {
   useEffect(() => {
-    const timer = setTimeout(() => {
-      onClose();
-    }, 5000);
+    const timer = setTimeout(() => { onClose(); }, 5000);
     return () => clearTimeout(timer);
   }, [onClose]);
 
@@ -169,12 +186,8 @@ function CongratulationsModal({ onClose, profileName }: { onClose: () => void; p
               <li className="flex items-center gap-2">✅ প্রোফাইল শেয়ার</li>
             </ul>
           </div>
-          <div className="bg-yellow-50 rounded-xl p-2 mb-4">
-            <p className="text-xs text-yellow-700">🔒 ছবি ডাউনলোড বা স্ক্রিনশট নেওয়া যাবে না।</p>
-          </div>
-          <button onClick={onClose} className="w-full bg-gradient-to-r from-[#f85606] to-orange-500 text-white py-3 rounded-xl font-semibold">
-            প্রোফাইল দেখুন
-          </button>
+          <div className="bg-yellow-50 rounded-xl p-2 mb-4"><p className="text-xs text-yellow-700">🔒 ছবি ডাউনলোড বা স্ক্রিনশট নেওয়া যাবে না।</p></div>
+          <button onClick={onClose} className="w-full bg-gradient-to-r from-[#f85606] to-orange-500 text-white py-3 rounded-xl font-semibold">প্রোফাইল দেখুন</button>
         </div>
       </div>
     </div>
@@ -191,13 +204,11 @@ function InfoModal({ onClose, onConfirm }: { onClose: () => void; onConfirm: () 
           <button onClick={onClose} className="text-gray-400 hover:text-gray-600"><X size={20} /></button>
         </div>
         <p className="text-sm text-gray-600 mb-4">আপনি <span className="font-bold text-[#f85606]">৫০০ টাকা</span> পেমেন্ট করে এই প্রোফাইলটি দেখতে যাচ্ছেন।</p>
-        
         <div className="space-y-3 mb-4">
           <div className="bg-green-50 rounded-xl p-3"><div className="flex items-start gap-2"><CheckCircle size={16} className="text-green-600 mt-0.5" /><div><p className="text-sm font-semibold text-green-800">✅ যা করতে পারবেন:</p><ul className="text-xs text-green-700 mt-1 space-y-1"><li>• প্রোফাইলের নাম, ছবি, ফোন, ঠিকানা দেখতে পারবেন</li><li>• ব্যক্তির সাথে সরাসরি চ্যাট করতে পারবেন</li><li>• প্রোফাইল লিংক শেয়ার করতে পারবেন</li></ul></div></div></div>
           <div className="bg-red-50 rounded-xl p-3"><div className="flex items-start gap-2"><AlertTriangle size={16} className="text-red-600 mt-0.5" /><div><p className="text-sm font-semibold text-red-800">❌ যা করতে পারবেন না:</p><ul className="text-xs text-red-700 mt-1 space-y-1"><li>• ছবি ডাউনলোড করতে পারবেন না</li><li>• ছবি রাইট-ক্লিক করতে পারবেন না</li><li>• প্রোফাইলের ছবি স্ক্রিনশট করে শেয়ার করা নিষিদ্ধ</li></ul></div></div></div>
           <div className="bg-yellow-50 rounded-xl p-3"><div className="flex items-start gap-2"><AlertTriangle size={16} className="text-yellow-600 mt-0.5" /><div><p className="text-sm font-semibold text-yellow-800">⚠️ সতর্কতা:</p><p className="text-xs text-yellow-700 mt-1">স্ক্রিনশট নিলে আপনার একাউন্ট ব্লক হতে পারে।</p></div></div></div>
         </div>
-
         <div className="flex gap-3">
           <button onClick={onConfirm} className="flex-1 bg-gradient-to-r from-[#f85606] to-orange-500 text-white py-3 rounded-xl font-semibold">আমি বুঝতে পেরেছি</button>
           <button onClick={onClose} className="flex-1 bg-gray-100 text-gray-700 py-3 rounded-xl font-semibold">বাতিল</button>
@@ -214,11 +225,7 @@ function PaymentModal({ onClose, onSuccess, profileName, price, profileId }: { o
 
   const handlePayment = () => {
     setIsProcessing(true);
-    setTimeout(() => {
-      setIsProcessing(false);
-      onSuccess();
-      onClose();
-    }, 2000);
+    setTimeout(() => { setIsProcessing(false); onSuccess(); onClose(); }, 2000);
   };
 
   return (
@@ -231,7 +238,6 @@ function PaymentModal({ onClose, onSuccess, profileName, price, profileId }: { o
         <div className="bg-gradient-to-r from-orange-50 to-orange-100 rounded-xl p-4 mb-4">
           <div className="text-center"><p className="text-sm text-gray-600 mb-1">সর্বনিম্ন চার্জ</p><p className="text-3xl font-bold text-[#f85606]">{price} টাকা</p><p className="text-xs text-gray-500 mt-1">একবার পেমেন্ট করলে সম্পূর্ণ প্রোফাইল দেখতে পাবেন</p></div>
         </div>
-
         <div className="space-y-3">
           <button onClick={() => setPaymentMethod("bkash")} className={`w-full flex items-center justify-between p-3 border rounded-xl transition ${paymentMethod === "bkash" ? "border-[#f85606] bg-orange-50 ring-2 ring-[#f85606]/20" : "border-gray-200"}`}>
             <div className="flex items-center gap-3"><div className="w-8 h-8 bg-pink-500 rounded-full flex items-center justify-center text-white text-sm font-bold">বি</div><span className="font-medium">bKash</span><span className="text-xs text-green-600 ml-2">(নিরাপদ)</span></div>
@@ -246,7 +252,6 @@ function PaymentModal({ onClose, onSuccess, profileName, price, profileId }: { o
             {paymentMethod === "rocket" && <CheckCircle size={18} className="text-[#f85606]" />}
           </button>
         </div>
-
         <button onClick={handlePayment} disabled={isProcessing} className="w-full mt-5 bg-gradient-to-r from-[#f85606] to-orange-500 text-white py-3 rounded-xl font-semibold flex items-center justify-center gap-2 shadow-md disabled:opacity-50">
           <CreditCard size={18} /> {isProcessing ? "প্রসেসিং..." : `${price} টাকা পেমেন্ট করুন`}
         </button>
@@ -256,7 +261,7 @@ function PaymentModal({ onClose, onSuccess, profileName, price, profileId }: { o
   );
 }
 
-// প্রোফাইল কার্ড
+// প্রোফাইল কার্ড - ৭০% ব্লার সহ
 function ProfileCard({ profile, onViewDetails }: { profile: Profile; onViewDetails: (id: number) => void }) {
   const router = useRouter();
   const [showFullInfo, setShowFullInfo] = useState(false);
@@ -271,9 +276,7 @@ function ProfileCard({ profile, onViewDetails }: { profile: Profile; onViewDetai
   const [mounted, setMounted] = useState(false);
   const [animate, setAnimate] = useState(false);
 
-  useEffect(() => {
-    setMounted(true);
-  }, []);
+  useEffect(() => { setMounted(true); }, []);
 
   const checkIfPaid = () => {
     if (typeof window !== 'undefined') {
@@ -303,17 +306,8 @@ function ProfileCard({ profile, onViewDetails }: { profile: Profile; onViewDetai
     }
   }, [isPaid]);
 
-  const handleViewDetails = () => {
-    if (!isPaid && !showFullInfo) {
-      setShowInfoModal(true);
-    }
-  };
-
-  const handleConfirmPayment = () => {
-    setShowInfoModal(false);
-    setShowPaymentModal(true);
-  };
-
+  const handleViewDetails = () => { if (!isPaid && !showFullInfo) setShowInfoModal(true); };
+  const handleConfirmPayment = () => { setShowInfoModal(false); setShowPaymentModal(true); };
   const handlePaymentSuccess = () => {
     setShowFullInfo(true);
     setShowCongratsModal(true);
@@ -324,16 +318,8 @@ function ProfileCard({ profile, onViewDetails }: { profile: Profile; onViewDetai
     }
   };
 
-  const handleChat = () => {
-    if (isPaid || showFullInfo) {
-      router.push(`/chat/${profile.id}?type=matrimony&name=${encodeURIComponent(profile.name)}`);
-    }
-  };
-
-  const handleLike = () => {
-    setIsLiked(!isLiked);
-  };
-
+  const handleChat = () => { if (isPaid || showFullInfo) router.push(`/chat/${profile.id}?type=matrimony&name=${encodeURIComponent(profile.name)}`); };
+  const handleLike = () => { setIsLiked(!isLiked); };
   const handleSave = () => {
     const savedProfiles = JSON.parse(localStorage.getItem('savedMatrimonyProfiles') || '[]');
     if (isAlreadySaved) {
@@ -347,38 +333,16 @@ function ProfileCard({ profile, onViewDetails }: { profile: Profile; onViewDetai
     }
   };
 
-  // 🔥 শেয়ার ফাংশন - সম্পূর্ণ নতুন করে (৩ লেভেল ফ্যালব্যাক)
   const handleShare = async () => {
     const url = `${window.location.origin}/category/matrimony?id=${profile.id}`;
     const title = profile.name;
     const text = `${profile.name} - পাত্র/পাত্রী প্রোফাইল | বয়স: ${profile.age} বছর | পেশা: ${profile.profession}`;
-    
-    // লেভেল ১: মোবাইলে Web Share API
     if (navigator.share) {
-      try {
-        await navigator.share({
-          title: title,
-          text: text,
-          url: url,
-        });
-        return;
-      } catch (err) {
-        console.log('শেয়ার বাতিল বা ব্যর্থ');
-      }
+      try { await navigator.share({ title, text, url }); return; } catch (err) {}
     }
-    
-    // লেভেল ২: Clipboard API
     if (navigator.clipboard && typeof navigator.clipboard.writeText === 'function') {
-      try {
-        await navigator.clipboard.writeText(url);
-        alert("✅ প্রোফাইল লিংক কপি হয়েছে!");
-        return;
-      } catch (err) {
-        console.log('ক্লিপবোর্ড ব্যর্থ');
-      }
+      try { await navigator.clipboard.writeText(url); alert("✅ প্রোফাইল লিংক কপি হয়েছে!"); return; } catch (err) {}
     }
-    
-    // লেভেল ৩: ফাইনাল ফ্যালব্যাক - execCommand
     try {
       const textarea = document.createElement('textarea');
       textarea.value = url;
@@ -389,25 +353,13 @@ function ProfileCard({ profile, onViewDetails }: { profile: Profile; onViewDetai
       textarea.setSelectionRange(0, 99999);
       const success = document.execCommand('copy');
       document.body.removeChild(textarea);
-      if (success) {
-        alert("✅ প্রোফাইল লিংক কপি হয়েছে!");
-      } else {
-        alert("🔗 লিংকটি কপি করুন: " + url);
-      }
-    } catch (err) {
-      alert("🔗 লিংকটি কপি করুন: " + url);
-    }
+      if (success) alert("✅ প্রোফাইল লিংক কপি হয়েছে!");
+      else alert("🔗 লিংকটি কপি করুন: " + url);
+    } catch (err) { alert("🔗 লিংকটি কপি করুন: " + url); }
   };
 
-  const handleContextMenu = (e: React.MouseEvent) => {
-    e.preventDefault();
-    return false;
-  };
-
-  const handleDragStart = (e: React.DragEvent) => {
-    e.preventDefault();
-    return false;
-  };
+  const handleContextMenu = (e: React.MouseEvent) => { e.preventDefault(); return false; };
+  const handleDragStart = (e: React.DragEvent) => { e.preventDefault(); return false; };
 
   if (!mounted) return null;
 
@@ -416,42 +368,35 @@ function ProfileCard({ profile, onViewDetails }: { profile: Profile; onViewDetai
       <div className={`bg-white rounded-2xl shadow-xl hover:shadow-2xl transition-all duration-500 overflow-hidden border border-gray-100 group transform hover:-translate-y-1 ${animate ? 'animate-pulse ring-2 ring-[#f85606] ring-offset-2' : ''}`}>
         <div className="relative h-52 bg-gradient-to-br from-orange-100 to-orange-200">
           {(isPaid || showFullInfo) ? (
-            <div 
-              className="w-full h-full flex items-center justify-center relative"
-              onContextMenu={handleContextMenu}
-              onDragStart={handleDragStart}
-            >
+            <div className="w-full h-full flex items-center justify-center relative" onContextMenu={handleContextMenu} onDragStart={handleDragStart}>
               <div className="text-8xl">{profile.isMale ? "👨‍🦱" : "👩‍🦰"}</div>
               <div className="absolute bottom-2 left-2 text-[8px] text-white/50 bg-black/30 px-1 rounded">© আমার দুনিয়া</div>
-              <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                <div className="text-white/10 text-2xl font-bold rotate-[-25deg]">আমার দুনিয়া</div>
-              </div>
+              <div className="absolute inset-0 flex items-center justify-center pointer-events-none"><div className="text-white/10 text-2xl font-bold rotate-[-25deg]">আমার দুনিয়া</div></div>
+              {profile.isPremium && <div className="absolute top-3 left-3 bg-gradient-to-r from-amber-500 to-orange-500 text-white text-xs px-2 py-1 rounded-full flex items-center gap-1 shadow-md"><Gem size={10} /> প্রিমিয়াম</div>}
+              {profile.isVerified && <div className="absolute top-3 right-3 bg-green-500 text-white text-xs px-2 py-1 rounded-full flex items-center gap-1 shadow-md"><CheckCircle size={10} /> ভেরিফাইড</div>}
             </div>
           ) : (
-            <div className="w-full h-full flex flex-col items-center justify-center bg-gradient-to-b from-black/40 to-black/60 backdrop-blur-sm">
-              <div className="w-16 h-16 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center mb-2"><Lock size={28} className="text-white" /></div>
-              <button onClick={handleViewDetails} className="bg-gradient-to-r from-[#f85606] to-orange-500 text-white px-5 py-2.5 rounded-xl text-sm font-semibold flex items-center gap-2 shadow-lg hover:scale-105 transition-all duration-300">
-                <Eye size={16} /> প্রোফাইল দেখুন (৫০০ টাকা)
-              </button>
-              <p className="text-[10px] text-white/80 mt-2">নাম, ছবি, ফোন লুকানো আছে</p>
+            <div className="w-full h-full relative">
+              <div className="absolute inset-0 flex items-center justify-center"><div className="text-8xl opacity-20 blur-sm">{profile.isMale ? "👨‍🦱" : "👩‍🦰"}</div></div>
+              <div className="absolute inset-0 bg-white/10 backdrop-blur-md flex flex-col items-center justify-center">
+                <div className="w-20 h-20 rounded-full bg-white/30 backdrop-blur-sm flex items-center justify-center mb-3 shadow-xl border border-white/40"><Lock size={32} className="text-white drop-shadow-lg" /></div>
+                <div className="text-center mb-3"><p className="text-white font-bold text-lg drop-shadow-lg">প্রোফাইল আনলক করুন</p><p className="text-white/90 text-sm mt-1">নাম, ছবি, ফোন, ঠিকানা দেখুন</p></div>
+                <div className="bg-gradient-to-r from-amber-400 to-orange-500 text-white px-4 py-1.5 rounded-full text-sm font-bold mb-3 shadow-lg">মাত্র ৫০০ টাকা</div>
+                <button onClick={handleViewDetails} className="bg-white text-[#f85606] px-6 py-2.5 rounded-xl text-sm font-bold flex items-center gap-2 shadow-xl hover:scale-105 transition-all duration-300 hover:shadow-2xl"><Eye size={16} /> আনলক করুন</button>
+                <div className="absolute bottom-3 left-3 right-3 flex justify-between text-white/70 text-[10px]"><span className="flex items-center gap-1">👁️ {profile.views} ভিউ</span><span className="flex items-center gap-1">❤️ {profile.interests} আগ্রহ</span></div>
+              </div>
+              {profile.isPremium && <div className="absolute top-3 left-3 bg-gradient-to-r from-amber-500 to-orange-500 text-white text-xs px-2 py-1 rounded-full flex items-center gap-1 shadow-md z-10"><Gem size={10} /> প্রিমিয়াম</div>}
+              {profile.isVerified && <div className="absolute top-3 right-3 bg-green-500 text-white text-xs px-2 py-1 rounded-full flex items-center gap-1 shadow-md z-10"><CheckCircle size={10} /> ভেরিফাইড</div>}
             </div>
           )}
-          {profile.isPremium && (isPaid || showFullInfo) && <div className="absolute top-3 left-3 bg-gradient-to-r from-amber-500 to-orange-500 text-white text-xs px-2 py-1 rounded-full flex items-center gap-1 shadow-md"><Gem size={10} /> প্রিমিয়াম</div>}
-          {profile.isVerified && (isPaid || showFullInfo) && <div className="absolute top-3 right-3 bg-green-500 text-white text-xs px-2 py-1 rounded-full flex items-center gap-1 shadow-md"><CheckCircle size={10} /> ভেরিফাইড</div>}
-          {!(isPaid || showFullInfo) && <div className="absolute top-3 right-3 bg-amber-500 text-white text-xs px-2 py-1 rounded-full flex items-center gap-1 shadow-md"><Lock size={10} /> লক করা</div>}
         </div>
         <div className="p-5">
           <div className="flex justify-between items-start mb-3">
-            <div>
-              <h3 className="font-bold text-xl text-gray-800">{(isPaid || showFullInfo) ? profile.name : "***"}</h3>
-              <div className="flex items-center gap-2 text-sm text-gray-500 mt-1"><span>{profile.age} বছর</span><span>•</span><span>{profile.religion}</span></div>
-            </div>
+            <div><h3 className="font-bold text-xl text-gray-800">{(isPaid || showFullInfo) ? profile.name : "***"}</h3><div className="flex items-center gap-2 text-sm text-gray-500 mt-1"><span>{profile.age} বছর</span><span>•</span><span>{profile.religion}</span></div></div>
             <div className="flex gap-1">
               <button onClick={handleLike} className="p-1.5 rounded-full hover:bg-gray-100 transition"><Heart size={16} className={isLiked ? "text-red-500 fill-red-500" : "text-gray-400"} /></button>
               <button onClick={handleShare} className="p-1.5 rounded-full hover:bg-gray-100 transition"><Share2 size={16} className="text-gray-400" /></button>
-              {(isPaid || showFullInfo) && (
-                <button onClick={handleSave} className="p-1.5 rounded-full hover:bg-gray-100 transition"><Bookmark size={16} className={isAlreadySaved ? "text-[#f85606] fill-[#f85606]" : "text-gray-400"} /></button>
-              )}
+              {(isPaid || showFullInfo) && <button onClick={handleSave} className="p-1.5 rounded-full hover:bg-gray-100 transition"><Bookmark size={16} className={isAlreadySaved ? "text-[#f85606] fill-[#f85606]" : "text-gray-400"} /></button>}
             </div>
           </div>
           {(isPaid || showFullInfo) ? (
@@ -469,6 +414,20 @@ function ProfileCard({ profile, onViewDetails }: { profile: Profile; onViewDetai
                 {profile.bloodGroup && <div className="flex items-center gap-2 text-gray-600"><Heart size={14} className="text-[#f85606]" /><span>ব্লাড গ্রুপ: {profile.bloodGroup}</span></div>}
               </div>
               {profile.hobbies && profile.hobbies.length > 0 && (<div className="mt-3"><p className="text-xs text-gray-500 mb-2">🎯 আগ্রহ:</p><div className="flex flex-wrap gap-1.5">{profile.hobbies.map((hobby, idx) => (<span key={idx} className="text-xs bg-gray-100 text-gray-600 px-2 py-1 rounded-full">{hobby}</span>))}</div></div>)}
+              
+              {/* 🆕 পরিবার ও ব্যক্তিগত তথ্য */}
+              <div className="mt-3 p-3 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl">
+                <p className="text-xs font-semibold text-gray-700 mb-2 flex items-center gap-1"><Users size={12} className="text-blue-600" /> পরিবার ও ব্যক্তিগত তথ্য</p>
+                <div className="grid grid-cols-2 gap-2 text-xs">
+                  {profile.fatherName && <div><span className="text-gray-400">পিতা:</span><p className="font-medium text-gray-700">{profile.fatherName}</p></div>}
+                  {profile.motherName && <div><span className="text-gray-400">মাতা:</span><p className="font-medium text-gray-700">{profile.motherName}</p></div>}
+                  {profile.siblings && <div><span className="text-gray-400">ভাই-বোন:</span><p className="font-medium text-gray-700">{profile.siblings} জন</p></div>}
+                  {profile.prayerTime && <div><span className="text-gray-400">নামাজ:</span><p className="font-medium text-gray-700">{profile.prayerTime === 'regular' ? 'নিয়মিত' : profile.prayerTime === 'sometimes' ? 'মাঝে মাঝে' : 'না'}</p></div>}
+                  {profile.smoking && <div><span className="text-gray-400">ধূমপান:</span><p className="font-medium text-gray-700">{profile.smoking === 'no' ? 'না' : profile.smoking === 'yes' ? 'হ্যাঁ' : 'মাঝে মাঝে'}</p></div>}
+                  {profile.occupationType && <div><span className="text-gray-400">পেশার ধরন:</span><p className="font-medium text-gray-700">{profile.occupationType === 'job' ? 'চাকরিজীবী' : profile.occupationType === 'business' ? 'ব্যবসায়ী' : profile.occupationType === 'student' ? 'শিক্ষার্থী' : 'অন্যান্য'}</p></div>}
+                </div>
+              </div>
+              
               {profile.about && (<div className="mt-3 p-3 bg-gray-50 rounded-xl"><p className="text-xs text-gray-600 italic">"{profile.about}"</p></div>)}
               <div className="flex items-center gap-3 mt-3 text-xs text-gray-400"><span className="flex items-center gap-1">👁️ {profile.views}</span><span>•</span><span className="flex items-center gap-1">❤️ {profile.interests}</span></div>
               <div className="mt-4 flex gap-2">
@@ -481,9 +440,9 @@ function ProfileCard({ profile, onViewDetails }: { profile: Profile; onViewDetai
           )}
         </div>
       </div>
-      {showInfoModal && (<InfoModal onClose={() => setShowInfoModal(false)} onConfirm={handleConfirmPayment} />)}
-      {showPaymentModal && (<PaymentModal onClose={() => setShowPaymentModal(false)} onSuccess={handlePaymentSuccess} profileName={profile.name} price={500} profileId={profile.id} />)}
-      {showCongratsModal && (<CongratulationsModal onClose={() => setShowCongratsModal(false)} profileName={profile.name} />)}
+      {showInfoModal && <InfoModal onClose={() => setShowInfoModal(false)} onConfirm={handleConfirmPayment} />}
+      {showPaymentModal && <PaymentModal onClose={() => setShowPaymentModal(false)} onSuccess={handlePaymentSuccess} profileName={profile.name} price={500} profileId={profile.id} />}
+      {showCongratsModal && <CongratulationsModal onClose={() => setShowCongratsModal(false)} profileName={profile.name} />}
     </>
   );
 }
@@ -495,9 +454,7 @@ export default function MatrimonyPage() {
   const [filterDistrict, setFilterDistrict] = useState("");
   const [mounted, setMounted] = useState(false);
 
-  useEffect(() => {
-    setMounted(true);
-  }, []);
+  useEffect(() => { setMounted(true); }, []);
 
   const filteredProfiles = dummyProfiles.filter(profile => {
     if (activeTab === "male" && profile.isMale === false) return false;
@@ -511,7 +468,6 @@ export default function MatrimonyPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-gray-50 to-gray-100 pb-20">
-      {/* হিরো সেকশন */}
       <div className="relative bg-gradient-to-r from-[#f85606] via-orange-500 to-[#f85606] text-white overflow-hidden">
         <div className="absolute inset-0 bg-[url('/pattern.png')] opacity-10"></div>
         <div className="absolute top-0 right-0 w-96 h-96 bg-white/10 rounded-full blur-3xl"></div>
@@ -554,7 +510,6 @@ export default function MatrimonyPage() {
         ) : (
           <div className="text-center py-16 bg-white rounded-2xl shadow-sm"><div className="text-6xl mb-4">😔</div><h2 className="text-xl font-bold text-gray-800 mb-2">কোনো প্রোফাইল পাওয়া যায়নি</h2><p className="text-gray-500">অন্য ফিল্টার দিয়ে চেষ্টা করুন</p></div>
         )}
-        {/* প্রাইভেসি ব্যানার */}
         <div className="mt-8 grid md:grid-cols-3 gap-4">
           <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl p-4 border border-blue-100"><div className="flex items-start gap-3"><ShieldCheck size={20} className="text-blue-600 mt-0.5" /><div><p className="text-sm font-semibold text-gray-800">গোপনীয়তা সুরক্ষিত</p><p className="text-xs text-gray-600">আপনার তথ্য এন্ড-টু-এন্ড এনক্রিপ্টেড</p></div></div></div>
           <div className="bg-gradient-to-r from-green-50 to-emerald-50 rounded-xl p-4 border border-green-100"><div className="flex items-start gap-3"><CheckCircle size={20} className="text-green-600 mt-0.5" /><div><p className="text-sm font-semibold text-gray-800">ভেরিফাইড প্রোফাইল</p><p className="text-xs text-gray-600">আমাদের টিম দ্বারা ভেরিফাইড</p></div></div></div>
