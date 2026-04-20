@@ -371,18 +371,18 @@ export default function AdminCategories() {
               <div className="overflow-x-auto">
                 <table className="w-full">
                   <thead className="bg-gray-50">
-                    <tr><th className="p-3 text-left">আইকন</th><th className="p-3 text-left">নাম (বাংলা)</th><th className="p-3 text-left hidden md:table-cell">নাম (ইংরেজি)</th><th className="p-3 text-left hidden lg:table-cell">স্লাগ</th><th className="p-3 text-center">পোস্ট</th><th className="p-3 text-center">স্ট্যাটাস</th><th className="p-3 text-center">একশন</th></tr>
+                    <tr><th className="p-3 text-left">ইমেজ</th><th className="p-3 text-left">নাম (বাংলা)</th><th className="p-3 text-left hidden md:table-cell">নাম (ইংরেজি)</th><th className="p-3 text-left hidden lg:table-cell">স্লাগ</th><th className="p-3 text-center">পোস্ট</th><th className="p-3 text-center">স্ট্যাটাস</th><th className="p-3 text-center">একশন</th></tr>
                   </thead>
                   <tbody className="divide-y divide-gray-100">
                     {filteredCategories.map((cat) => (
                       <React.Fragment key={cat.id}>
                         <tr className="hover:bg-gray-50">
                           <td className="p-3">
-                            <div className="flex items-center gap-2">
+                            <div className="w-10 h-10 rounded-lg overflow-hidden bg-gray-100 flex items-center justify-center">
                               {cat.image ? (
-                                <img src={cat.image} alt={cat.name} className="w-8 h-8 rounded-lg object-cover" />
+                                <img src={cat.image} alt={cat.name} className="w-full h-full object-cover" />
                               ) : (
-                                <span className="text-2xl">{cat.icon}</span>
+                                <span className="text-xl">{cat.icon}</span>
                               )}
                             </div>
                           </td>
@@ -420,11 +420,11 @@ export default function AdminCategories() {
                         {expandedParents.includes(cat.id) && getSubCategories(cat.id).map((sub) => (
                           <tr key={sub.id} className="bg-gray-50 hover:bg-gray-100">
                             <td className="p-3 pl-10">
-                              <div className="flex items-center gap-2">
+                              <div className="w-8 h-8 rounded-lg overflow-hidden bg-gray-100 flex items-center justify-center">
                                 {sub.image ? (
-                                  <img src={sub.image} alt={sub.name} className="w-6 h-6 rounded-lg object-cover" />
+                                  <img src={sub.image} alt={sub.name} className="w-full h-full object-cover" />
                                 ) : (
-                                  <span className="text-xl">{sub.icon}</span>
+                                  <span className="text-lg">{sub.icon}</span>
                                 )}
                               </div>
                             </td>
@@ -466,11 +466,13 @@ export default function AdminCategories() {
                 <div key={cat.id} className="bg-white rounded-xl p-4 shadow-sm border border-gray-100 hover:shadow-md transition">
                   <div className="flex items-center justify-between mb-3">
                     <div className="flex items-center gap-3">
-                      {cat.image ? (
-                        <img src={cat.image} alt={cat.name} className="w-12 h-12 rounded-lg object-cover" />
-                      ) : (
-                        <div className="text-3xl">{cat.icon}</div>
-                      )}
+                      <div className="w-12 h-12 rounded-lg overflow-hidden bg-gray-100 flex items-center justify-center">
+                        {cat.image ? (
+                          <img src={cat.image} alt={cat.name} className="w-full h-full object-cover" />
+                        ) : (
+                          <span className="text-2xl">{cat.icon}</span>
+                        )}
+                      </div>
                       <div>
                         <h3 className="font-bold">{cat.name}</h3>
                         <p className="text-xs text-gray-400">{cat.nameEn}</p>
@@ -527,7 +529,7 @@ export default function AdminCategories() {
             <div className="space-y-3">
               {/* ইমেজ আপলোড */}
               <div>
-                <label className="block text-sm font-medium mb-2">ক্যাটাগরি ইমেজ</label>
+                <label className="block text-sm font-medium mb-2">ক্যাটাগরি ইমেজ (অপশনাল)</label>
                 <div className="flex items-center gap-3">
                   {imagePreview && (
                     <div className="w-16 h-16 rounded-lg overflow-hidden border">
@@ -544,7 +546,7 @@ export default function AdminCategories() {
               
               <input type="text" value={newCategory.name} onChange={(e) => setNewCategory({...newCategory, name: e.target.value, slug: e.target.value.toLowerCase().replace(/\s/g, "-")})} placeholder="বাংলা নাম *" className="w-full p-3 border rounded-xl" />
               <input type="text" value={newCategory.nameEn} onChange={(e) => setNewCategory({...newCategory, nameEn: e.target.value})} placeholder="ইংরেজি নাম *" className="w-full p-3 border rounded-xl" />
-              <input type="text" value={newCategory.icon} onChange={(e) => setNewCategory({...newCategory, icon: e.target.value})} placeholder="আইকন (ইমোজি)" className="w-full p-3 border rounded-xl" />
+              <input type="text" value={newCategory.icon} onChange={(e) => setNewCategory({...newCategory, icon: e.target.value})} placeholder="আইকন (ইমোজি) - ইমেজ না থাকলে দেখাবে" className="w-full p-3 border rounded-xl" />
               <input type="text" value={newCategory.slug} onChange={(e) => setNewCategory({...newCategory, slug: e.target.value})} placeholder="স্লাগ (auto-generated)" className="w-full p-3 border rounded-xl" />
               
               <select value={newCategory.parentId} onChange={(e) => setNewCategory({...newCategory, parentId: e.target.value})} className="w-full p-3 border rounded-xl">
@@ -590,7 +592,7 @@ export default function AdminCategories() {
               
               <input type="text" value={editCategory.name} onChange={(e) => setEditCategory({...editCategory, name: e.target.value})} placeholder="বাংলা নাম" className="w-full p-3 border rounded-xl" />
               <input type="text" value={editCategory.nameEn} onChange={(e) => setEditCategory({...editCategory, nameEn: e.target.value})} placeholder="ইংরেজি নাম" className="w-full p-3 border rounded-xl" />
-              <input type="text" value={editCategory.icon} onChange={(e) => setEditCategory({...editCategory, icon: e.target.value})} placeholder="আইকন" className="w-full p-3 border rounded-xl" />
+              <input type="text" value={editCategory.icon} onChange={(e) => setEditCategory({...editCategory, icon: e.target.value})} placeholder="আইকন (ইমেজ না থাকলে দেখাবে)" className="w-full p-3 border rounded-xl" />
               
               <select value={editCategory.status} onChange={(e) => setEditCategory({...editCategory, status: e.target.value})} className="w-full p-3 border rounded-xl">
                 <option value="active">✅ সক্রিয়</option><option value="inactive">❌ নিষ্ক্রিয়</option>
