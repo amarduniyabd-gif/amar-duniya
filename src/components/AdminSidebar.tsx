@@ -23,7 +23,7 @@ const menuItems = [
   { href: "/admin/reports", label: "রিপোর্ট ম্যানেজমেন্ট", icon: <Flag size={18} /> },
   { href: "/admin/settings", label: "সেটিংস", icon: <Settings size={18} /> },
   { href: "/admin/offer-ads", label: "অফার জোন", icon: <Gift size={18} /> },
-  { href: "/admin/bazar", label: "আমার দুনিয়া বাজার", icon: <ShoppingBag size={18} /> },
+  
 ];
 
 export default function AdminSidebar() {

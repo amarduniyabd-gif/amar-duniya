@@ -29,8 +29,7 @@ export const defaultCategories: Category[] = [
   { id: "animal", name: "পশু", slug: "animal", icon: "🐄", parentId: null, status: 'active' },
   { id: "liquid", name: "তরল প্রোডাক্ট", slug: "liquid", icon: "🥛", parentId: null, status: 'active' },
   { id: "daily", name: "প্রতিদিনের বাজার", slug: "daily", icon: "🛒", parentId: null, status: 'active' },
-  { id: "amar_bazar", name: "আমার দুনিয়া বাজার", slug: "amar-bazar", icon: "🛒", parentId: null, status: 'active' },
-  
+    
   // ========== কৃষি ক্যাটাগরি ==========
     { id: "agriculture", name: "কৃষি", slug: "agriculture", icon: "🌾", parentId: null, status: 'active' },
   { id: "agri_rice", name: "ধান", slug: "rice", icon: "🌾", parentId: "agriculture", status: 'active' },
