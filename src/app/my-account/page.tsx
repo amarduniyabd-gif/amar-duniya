@@ -4,12 +4,9 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { 
   User, Package, Gavel, Settings, LogOut, Heart, 
-  MessageCircle, Bell, Shield, MapPin, Phone, Mail,
-  ChevronRight, Edit2, Camera, X, CheckCircle,
-  Crown, Clock, CreditCard, FileText, Star, Eye,
-  TrendingUp, Award, Zap, Trash2, AlertCircle,
-  MoreVertical, Plus, Copy, Users, Filter, RefreshCw,
-  Calendar, ExternalLink, EyeOff, Lock, Gem, Bookmark
+  MessageCircle, Bell, Shield, ChevronRight, Edit2, Camera,
+  Crown, Clock, CreditCard, FileText, Eye, Zap, Trash2, Plus,
+  Bookmark, CheckCircle
 } from "lucide-react";
 
 // ============ টাইপ ডেফিনিশন ============
@@ -51,7 +48,6 @@ type MyAuction = {
   winningBid?: number;
 };
 
-// 🔥 পাত্র-পাত্রী প্রোফাইল টাইপ
 type MyMatrimonyProfile = {
   id: number;
   name: string;
@@ -68,7 +64,6 @@ type MyMatrimonyProfile = {
   expiresAt?: string;
 };
 
-// 🔥 পাত্র-পাত্রী পেমেন্ট হিস্ট্রি
 type MatrimonyPayment = {
   id: string;
   profileId: number;
@@ -78,7 +73,7 @@ type MatrimonyPayment = {
   type: 'profile_unlock' | 'premium' | 'featured';
 };
 
-// ============ ইমেজ কম্প্রেশন (সুপার ফাস্ট) ============
+// ============ অপটিমাইজড ইমেজ কম্প্রেশন (নন-ব্লকিং) ============
 const compressToWebP = (file: File): Promise<string> => {
   return new Promise((resolve) => {
     const reader = new FileReader();
@@ -87,28 +82,62 @@ const compressToWebP = (file: File): Promise<string> => {
       const img = new Image();
       img.src = e.target?.result as string;
       img.onload = () => {
-        const canvas = document.createElement('canvas');
-        const size = 150;
-        canvas.width = size;
-        canvas.height = size;
-        const ctx = canvas.getContext('2d', { alpha: true, willReadFrequently: false });
-        ctx?.drawImage(img, 0, 0, size, size);
-        resolve(canvas.toDataURL('image/webp', 0.7));
+        // requestAnimationFrame দিয়ে মেইন থ্রেড ব্লক কমানো
+        requestAnimationFrame(() => {
+          const canvas = document.createElement('canvas');
+          const size = 150;
+          canvas.width = size;
+          canvas.height = size;
+          const ctx = canvas.getContext('2d', { alpha: true, willReadFrequently: false });
+          if (ctx) {
+            ctx.drawImage(img, 0, 0, size, size);
+            resolve(canvas.toDataURL('image/webp', 0.7));
+          } else {
+            resolve('');
+          }
+        });
       };
     };
   });
 };
 
+// ============ মেমোইজড সাব-কম্পোনেন্ট ============
+const StatCard = memo(({ label, value, isOrange }: { label: string; value: string | number; isOrange?: boolean }) => (
+  <div className={`rounded-xl p-3 shadow-md ${isOrange ? 'bg-gradient-to-r from-[#f85606] to-orange-500 text-white' : 'bg-white'}`}>
+    <p className="text-xs opacity-90">{label}</p>
+    <p className="text-xl font-bold">{value}</p>
+  </div>
+));
+StatCard.displayName = 'StatCard';
+
+const MenuItem = memo(({ item }: { item: any }) => (
+  <Link href={item.href}>
+    <div className="group bg-white/80 backdrop-blur-sm rounded-2xl p-4 flex items-center justify-between shadow-md hover:shadow-xl transition-all duration-200 hover:-translate-y-0.5 cursor-pointer border border-[#f85606]/10">
+      <div className="flex items-center gap-4">
+        <div className={`w-12 h-12 rounded-xl ${item.bgColor} flex items-center justify-center group-hover:scale-110 transition-transform duration-200`}>
+          <div className={item.iconColor}>{item.icon}</div>
+        </div>
+        <div>
+          <span className="font-semibold text-gray-800">{item.label}</span>
+          {item.badge && <p className="text-xs text-gray-400">{item.badge} টি আইটেম</p>}
+        </div>
+      </div>
+      <div className="flex items-center gap-2">
+        {item.badge && <span className="bg-gradient-to-r from-[#f85606] to-orange-500 text-white text-xs px-2 py-1 rounded-full">{item.badge}</span>}
+        <ChevronRight size={18} className="text-gray-400 group-hover:text-[#f85606] group-hover:translate-x-1 transition" />
+      </div>
+    </div>
+  </Link>
+));
+MenuItem.displayName = 'MenuItem';
+
 export default function MyAccountPage() {
   const router = useRouter();
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [mounted, setMounted] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [profileImage, setProfileImage] = useState<string>("👨");
   const [isUploading, setIsUploading] = useState(false);
   const [activeTab, setActiveTab] = useState<'overview' | 'auctions' | 'matrimony' | 'featured' | 'payments' | 'documents'>('overview');
-  const [showDeleteConfirm, setShowDeleteConfirm] = useState<number | null>(null);
-  const [showActionMenu, setShowActionMenu] = useState<number | null>(null);
   const [showExtendModal, setShowExtendModal] = useState<number | null>(null);
   const [extendDays, setExtendDays] = useState(7);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -150,7 +179,6 @@ export default function MyAccountPage() {
     },
   ]);
 
-  // 🔥 পাত্র-পাত্রী প্রোফাইল স্টেট
   const [myMatrimonyProfiles, setMyMatrimonyProfiles] = useState<MyMatrimonyProfile[]>([
     {
       id: 1, name: "রহিমা খাতুন", age: 24, gender: "female", district: "নারায়ণগঞ্জ",
@@ -164,25 +192,27 @@ export default function MyAccountPage() {
     },
   ]);
 
-  // 🔥 পাত্র-পাত্রী পেমেন্ট হিস্ট্রি
   const [matrimonyPayments, setMatrimonyPayments] = useState<MatrimonyPayment[]>([
     { id: '1', profileId: 1, profileName: 'রহিমা খাতুন', amount: 500, date: '২০২৬-০৪-১৫', type: 'profile_unlock' },
     { id: '2', profileId: 2, profileName: 'নিজের প্রোফাইল', amount: 1000, date: '২০২৬-০৪-১৮', type: 'premium' },
   ]);
 
-  // 🔥 সেভ করা প্রোফাইল
   const [savedProfiles, setSavedProfiles] = useState<MyMatrimonyProfile[]>([
     { id: 3, name: "ফাতেমা বেগম", age: 22, gender: "female", district: "কুমিল্লা", profession: "চিকিৎসা শিক্ষার্থী", status: "approved", isVerified: true, isPremium: false, views: 2100, interests: 89, createdAt: "২০২৬-০৪-১৩" },
   ]);
 
   useEffect(() => {
     setMounted(true);
-    const loggedIn = localStorage.getItem("isLoggedIn");
-    setIsLoggedIn(loggedIn === "true");
-    if (loggedIn !== "true") router.push("/login");
+    // ক্লায়েন্ট সাইড চেক
+    if (typeof window !== 'undefined') {
+      const loggedIn = localStorage.getItem("isLoggedIn");
+      if (loggedIn !== "true") {
+        router.replace("/login");
+      }
+    }
   }, [router]);
 
-  // ============ অপটিমাইজড হ্যান্ডলার ============
+  // ============ অপটিমাইজড হ্যান্ডলার (সঠিক ডিপেন্ডেন্সি সহ) ============
   const getDaysLeft = useCallback((endDate: string) => {
     const end = new Date(endDate).getTime();
     const now = Date.now();
@@ -196,16 +226,21 @@ export default function MyAccountPage() {
     const diff = end - now;
     if (diff <= 0) return { text: "সমাপ্ত", isEnded: true };
     const days = Math.floor(diff / (1000 * 60 * 60 * 24));
-    const hours = Math.floor((diff % (86400000)) / (3600000));
+    const hours = Math.floor((diff % 86400000) / 3600000);
     if (days > 0) return { text: `${days} দিন ${hours} ঘন্টা`, isEnded: false };
     return { text: `${hours} ঘন্টা`, isEnded: false };
   }, []);
 
   const handleImageUpload = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files?.[0]) {
-      setIsUploading(true);
-      const webpImage = await compressToWebP(e.target.files[0]);
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setIsUploading(true);
+    try {
+      const webpImage = await compressToWebP(file);
       setProfileImage(webpImage);
+    } catch (error) {
+      console.error('Image upload failed:', error);
+    } finally {
       setIsUploading(false);
     }
   }, []);
@@ -220,11 +255,13 @@ export default function MyAccountPage() {
     router.push("/login");
   }, [router]);
 
-  const handleDeleteAuction = useCallback((id: number) => {
-    setMyAuctions(prev => prev.filter(a => a.id !== id));
-    setShowDeleteConfirm(null);
-    alert("✅ নিলাম ডিলিট করা হয়েছে!");
-  }, []);
+  const handleViewAuction = useCallback((id: number) => {
+    router.push(`/auction/${id}`);
+  }, [router]);
+
+  const handleViewBids = useCallback((id: number) => {
+    router.push(`/auction/${id}?tab=bids`);
+  }, [router]);
 
   const handleEditAuction = useCallback((id: number) => {
     alert(`📝 নিলাম এডিট ফিচার শীঘ্রই আসছে!\nনিলাম আইডি: ${id}`);
@@ -240,19 +277,6 @@ export default function MyAccountPage() {
     alert(`✅ ফিচার্ড ${days} দিন বাড়ানো হয়েছে!`);
   }, []);
 
-  const handleViewAuction = useCallback((id: number) => {
-    router.push(`/auction/${id}`);
-  }, [router]);
-
-  const handleViewBids = useCallback((id: number) => {
-    router.push(`/auction/${id}?tab=bids`);
-  }, [router]);
-
-  const handlePayNow = useCallback((auction: MyAuction) => {
-    router.push(`/auction/${auction.id}/payment?amount=${auction.winningBid || auction.currentPrice}`);
-  }, [router]);
-
-  // 🔥 পাত্র-পাত্রী হ্যান্ডলার
   const handleEditMatrimonyProfile = useCallback((id: number) => {
     router.push(`/category/matrimony/edit/${id}`);
   }, [router]);
@@ -263,7 +287,6 @@ export default function MyAccountPage() {
 
   const handleDeleteMatrimonyProfile = useCallback((id: number) => {
     setMyMatrimonyProfiles(prev => prev.filter(p => p.id !== id));
-    setShowDeleteConfirm(null);
     alert("✅ প্রোফাইল ডিলিট করা হয়েছে!");
   }, []);
 
@@ -279,16 +302,24 @@ export default function MyAccountPage() {
   const activeFeaturedCount = featuredPosts.filter(p => p.status === 'active').length;
 
   const menuItems = [
-  { icon: <Package size={20} />, label: "আমার পোস্ট", href: "/my-posts", badge: "12", bgColor: "bg-blue-50", iconColor: "text-blue-600" },
-  { icon: <Gavel size={20} />, label: "আমার নিলাম", href: "/my-auctions", badge: String(myAuctions.length), bgColor: "bg-green-50", iconColor: "text-green-600" },
-  { icon: <Heart size={20} />, label: "পাত্র-পাত্রী", href: "/category/matrimony", badge: String(myMatrimonyProfiles.length), bgColor: "bg-pink-50", iconColor: "text-pink-600" },
-  { icon: <Heart size={20} />, label: "সংরক্ষিত পণ্য", href: "/saved", badge: "8", bgColor: "bg-red-50", iconColor: "text-red-600" },
-  { icon: <MessageCircle size={20} />, label: "মেসেজ", href: "/chat", badge: "5", bgColor: "bg-purple-50", iconColor: "text-purple-600" },
-  { icon: <Bell size={20} />, label: "নোটিফিকেশন", href: "/notifications", badge: "2", bgColor: "bg-yellow-50", iconColor: "text-yellow-600" },
-  { icon: <Settings size={20} />, label: "সেটিংস", href: "/settings", bgColor: "bg-gray-50", iconColor: "text-gray-600" }, // ✅ এটা ঠিক আছে
-  { icon: <Shield size={20} />, label: "প্রাইভেসি ও নিরাপত্তা", href: "/privacy", bgColor: "bg-indigo-50", iconColor: "text-indigo-600" },
-];
-  if (!mounted || !isLoggedIn) return null;
+    { icon: <Package size={20} />, label: "আমার পোস্ট", href: "/my-posts", badge: "12", bgColor: "bg-blue-50", iconColor: "text-blue-600" },
+    { icon: <Gavel size={20} />, label: "আমার নিলাম", href: "/my-auctions", badge: String(myAuctions.length), bgColor: "bg-green-50", iconColor: "text-green-600" },
+    { icon: <Heart size={20} />, label: "পাত্র-পাত্রী", href: "/category/matrimony", badge: String(myMatrimonyProfiles.length), bgColor: "bg-pink-50", iconColor: "text-pink-600" },
+    { icon: <Heart size={20} />, label: "সংরক্ষিত পণ্য", href: "/saved", badge: "8", bgColor: "bg-red-50", iconColor: "text-red-600" },
+    { icon: <MessageCircle size={20} />, label: "মেসেজ", href: "/chat", badge: "5", bgColor: "bg-purple-50", iconColor: "text-purple-600" },
+    { icon: <Bell size={20} />, label: "নোটিফিকেশন", href: "/notifications", badge: "2", bgColor: "bg-yellow-50", iconColor: "text-yellow-600" },
+    { icon: <Settings size={20} />, label: "সেটিংস", href: "/settings", bgColor: "bg-gray-50", iconColor: "text-gray-600" },
+    { icon: <Shield size={20} />, label: "প্রাইভেসি ও নিরাপত্তা", href: "/privacy", bgColor: "bg-indigo-50", iconColor: "text-indigo-600" },
+  ];
+
+  // লোডিং স্টেট
+  if (!mounted) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-4 border-[#f85606] border-t-transparent" />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-orange-50 via-white to-amber-50 pb-20">
@@ -312,6 +343,7 @@ export default function MyAccountPage() {
             <button 
               onClick={() => fileInputRef.current?.click()}
               className="absolute bottom-0 right-0 bg-white rounded-full p-2 shadow-lg hover:scale-110 transition-transform duration-200 active:scale-95"
+              disabled={isUploading}
             >
               <Camera size={16} className="text-[#f85606]" />
             </button>
@@ -342,46 +374,32 @@ export default function MyAccountPage() {
       {/* স্ট্যাটাস কার্ড */}
       <div className="max-w-3xl mx-auto px-4 mt-4">
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-          <div className="bg-gradient-to-r from-[#f85606] to-orange-500 rounded-xl p-3 text-white shadow-lg">
-            <p className="text-xs opacity-90">মোট খরচ</p>
-            <p className="text-xl font-bold">{totalSpent} ৳</p>
-          </div>
-          <div className="bg-white rounded-xl p-3 shadow-md">
-            <p className="text-xs text-gray-500">সক্রিয় ফিচার্ড</p>
-            <p className="text-xl font-bold text-[#f85606]">{activeFeaturedCount}</p>
-          </div>
-          <div className="bg-white rounded-xl p-3 shadow-md">
-            <p className="text-xs text-gray-500">মোট পোস্ট</p>
-            <p className="text-xl font-bold text-[#f85606]">12</p>
-          </div>
-          <div className="bg-white rounded-xl p-3 shadow-md">
-            <p className="text-xs text-gray-500">মোট ভিউ</p>
-            <p className="text-xl font-bold text-[#f85606]">4,230</p>
-          </div>
+          <StatCard label="মোট খরচ" value={`${totalSpent} ৳`} isOrange />
+          <StatCard label="সক্রিয় ফিচার্ড" value={activeFeaturedCount} />
+          <StatCard label="মোট পোস্ট" value="12" />
+          <StatCard label="মোট ভিউ" value="4,230" />
         </div>
       </div>
 
       {/* ট্যাব মেনু */}
       <div className="max-w-3xl mx-auto px-4 mt-4">
         <div className="flex gap-2 bg-white/80 backdrop-blur-sm rounded-2xl p-1 shadow-md border border-[#f85606]/20 overflow-x-auto">
-          {[
-            { id: 'overview', label: 'ওভারভিউ' },
-            { id: 'auctions', label: 'নিলাম' },
-            { id: 'matrimony', label: 'পাত্র-পাত্রী' },
-            { id: 'featured', label: 'ফিচার্ড' },
-            { id: 'payments', label: 'পেমেন্ট' },
-            { id: 'documents', label: 'ডকুমেন্ট' },
-          ].map((tab) => (
+          {['overview', 'auctions', 'matrimony', 'featured', 'payments', 'documents'].map((tab) => (
             <button
-              key={tab.id}
-              onClick={() => setActiveTab(tab.id as any)}
+              key={tab}
+              onClick={() => setActiveTab(tab as any)}
               className={`flex-1 py-2.5 rounded-xl text-sm font-semibold transition-all duration-200 whitespace-nowrap px-3 ${
-                activeTab === tab.id 
+                activeTab === tab 
                   ? 'bg-gradient-to-r from-[#f85606] to-orange-500 text-white shadow-md' 
                   : 'text-gray-600 hover:text-[#f85606]'
               }`}
             >
-              {tab.label}
+              {tab === 'overview' && 'ওভারভিউ'}
+              {tab === 'auctions' && 'নিলাম'}
+              {tab === 'matrimony' && 'পাত্র-পাত্রী'}
+              {tab === 'featured' && 'ফিচার্ড'}
+              {tab === 'payments' && 'পেমেন্ট'}
+              {tab === 'documents' && 'ডকুমেন্ট'}
             </button>
           ))}
         </div>
@@ -394,38 +412,19 @@ export default function MyAccountPage() {
         {activeTab === 'overview' && (
           <>
             {menuItems.map((item, idx) => (
-              <Link key={idx} href={item.href}>
-                <div className="group bg-white/80 backdrop-blur-sm rounded-2xl p-4 flex items-center justify-between shadow-md hover:shadow-xl transition-all duration-200 hover:-translate-y-0.5 cursor-pointer border border-[#f85606]/10">
-                  <div className="flex items-center gap-4">
-                    <div className={`w-12 h-12 rounded-xl ${item.bgColor} flex items-center justify-center group-hover:scale-110 transition-transform duration-200`}>
-                      <div className={item.iconColor}>{item.icon}</div>
-                    </div>
-                    <div>
-                      <span className="font-semibold text-gray-800">{item.label}</span>
-                      {item.badge && <p className="text-xs text-gray-400">{item.badge} টি আইটেম</p>}
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    {item.badge && <span className="bg-gradient-to-r from-[#f85606] to-orange-500 text-white text-xs px-2 py-1 rounded-full">{item.badge}</span>}
-                    <ChevronRight size={18} className="text-gray-400 group-hover:text-[#f85606] group-hover:translate-x-1 transition" />
-                  </div>
-                </div>
-              </Link>
+              <MenuItem key={idx} item={item} />
             ))}
           </>
         )}
 
-        {/* 🔥 পাত্র-পাত্রী ট্যাব */}
+        {/* পাত্র-পাত্রী ট্যাব */}
         {activeTab === 'matrimony' && (
           <div className="space-y-4">
-            {/* আমার প্রোফাইল */}
             <div className="bg-white/80 backdrop-blur-sm rounded-2xl p-5 shadow-md border border-[#f85606]/10">
               <div className="flex justify-between items-center mb-4">
                 <h2 className="text-lg font-bold text-gray-800 flex items-center gap-2">
                   <Heart size={20} className="text-[#f85606]" />
-                  <span className="bg-gradient-to-r from-[#f85606] to-orange-500 bg-clip-text text-transparent">
-                    আমার প্রোফাইল ({myMatrimonyProfiles.length})
-                  </span>
+                  <span>আমার প্রোফাইল ({myMatrimonyProfiles.length})</span>
                 </h2>
                 <Link href="/category/matrimony/create">
                   <button className="bg-gradient-to-r from-[#f85606] to-orange-500 text-white px-4 py-2 rounded-xl text-sm font-semibold flex items-center gap-2">
@@ -487,7 +486,7 @@ export default function MyAccountPage() {
                         <button onClick={() => handleBoostProfile(prof.id)} className="flex-1 bg-green-50 hover:bg-green-100 text-green-700 py-2 rounded-lg text-xs font-medium flex items-center justify-center gap-1">
                           <Zap size={12} /> বুস্ট
                         </button>
-                        <button onClick={() => { setShowDeleteConfirm(prof.id); }} className="w-8 h-8 bg-red-50 hover:bg-red-100 text-red-600 rounded-lg flex items-center justify-center">
+                        <button onClick={() => handleDeleteMatrimonyProfile(prof.id)} className="w-8 h-8 bg-red-50 hover:bg-red-100 text-red-600 rounded-lg flex items-center justify-center">
                           <Trash2 size={14} />
                         </button>
                       </div>
@@ -497,7 +496,6 @@ export default function MyAccountPage() {
               )}
             </div>
 
-            {/* সেভ করা প্রোফাইল */}
             {savedProfiles.length > 0 && (
               <div className="bg-white/80 backdrop-blur-sm rounded-2xl p-5 shadow-md border border-[#f85606]/10">
                 <h2 className="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">
@@ -525,7 +523,6 @@ export default function MyAccountPage() {
               </div>
             )}
 
-            {/* পাত্র-পাত্রী পেমেন্ট হিস্ট্রি */}
             <div className="bg-white/80 backdrop-blur-sm rounded-2xl p-5 shadow-md border border-[#f85606]/10">
               <h2 className="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">
                 <CreditCard size={20} className="text-[#f85606]" />

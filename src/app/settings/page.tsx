@@ -2,9 +2,9 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { 
-  ArrowLeft, Bell, Lock, EyeOff, Shield, Save, CheckCircle, X, AlertCircle,
-  User, Mail, Phone, MapPin, Globe, Moon, Sun, Smartphone, CreditCard,
-  FileText, Trash2, LogOut, ChevronRight, Eye, Key, Database, Download, Upload
+  ArrowLeft, Bell, Shield, EyeOff, Save, CheckCircle, X, AlertCircle,
+  User, Mail, Phone, MapPin, CreditCard,
+  FileText, LogOut, ChevronRight, Eye, Key, Database, Download, Upload, Lock
 } from "lucide-react";
 
 export default function UserSettingsPage() {
@@ -13,26 +13,31 @@ export default function UserSettingsPage() {
   const [showSuccess, setShowSuccess] = useState(false);
   const [successMessage, setSuccessMessage] = useState("");
   
-  // ============ পাসওয়ার্ড মডাল স্টেট ============
-  const [showPasswordModal, setShowPasswordModal] = useState(false);
+  // ============ পাসওয়ার্ড মডার্ন স্টেট ============
+  const [passwordData, setPasswordData] = useState({
+    currentPassword: "",
+    newPassword: "",
+    confirmPassword: "",
+  });
+  
+  // রিয়েল-টাইম এরর ও ভ্যালিডেশন
+  const [passwordErrors, setPasswordErrors] = useState({
+    current: "",
+    new: "",
+    confirm: "",
+  });
+
+  const [isPasswordValid, setIsPasswordValid] = useState(false);
   const [showCurrentPassword, setShowCurrentPassword] = useState(false);
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  
+
   // ============ ফরগট পাসওয়ার্ড মডাল ============
   const [showForgotPasswordModal, setShowForgotPasswordModal] = useState(false);
   const [forgotEmail, setForgotEmail] = useState("");
   const [forgotStep, setForgotStep] = useState<'email' | 'otp' | 'newPassword'>('email');
   const [forgotOtp, setForgotOtp] = useState("");
   const [newPasswordData, setNewPasswordData] = useState({ password: "", confirm: "" });
-  
-  // ============ পাসওয়ার্ড ডাটা ============
-  const [passwordData, setPasswordData] = useState({
-    currentPassword: "",
-    newPassword: "",
-    confirmPassword: "",
-  });
-  const [passwordError, setPasswordError] = useState("");
 
   const [profile, setProfile] = useState({
     fullName: "রহিম উদ্দিন",
@@ -41,8 +46,6 @@ export default function UserSettingsPage() {
     district: "ঢাকা",
     address: "মিরপুর, ঢাকা",
     bio: "প্রফেশনাল বিক্রেতা | ৫ বছর অভিজ্ঞতা",
-    language: "bn",
-    theme: "light",
   });
 
   const [notificationSettings, setNotificationSettings] = useState({
@@ -68,47 +71,56 @@ export default function UserSettingsPage() {
     if (savedProfile) setProfile(JSON.parse(savedProfile));
   }, []);
 
+  // ============ রিয়েল-টাইম পাসওয়ার্ড ভ্যালিডেশন ============
+  useEffect(() => {
+    const errors = { current: "", new: "", confirm: "" };
+    
+    if (passwordData.newPassword) {
+      if (passwordData.newPassword.length < 6) {
+        errors.new = "পাসওয়ার্ড কমপক্ষে ৬ অক্ষরের হতে হবে";
+      }
+    }
+    
+    if (passwordData.confirmPassword) {
+      if (passwordData.newPassword !== passwordData.confirmPassword) {
+        errors.confirm = "পাসওয়ার্ড মিলছে না";
+      }
+    }
+
+    setPasswordErrors(errors);
+    setIsPasswordValid(
+      passwordData.currentPassword.length > 0 &&
+      passwordData.newPassword.length >= 6 &&
+      passwordData.newPassword === passwordData.confirmPassword
+    );
+  }, [passwordData]);
+
   const showSuccessMessage = (message: string) => {
     setSuccessMessage(message);
     setShowSuccess(true);
     setTimeout(() => setShowSuccess(false), 3000);
   };
 
-  // ============ পাসওয়ার্ড পরিবর্তন ============
+  // ============ মডার্ন পাসওয়ার্ড পরিবর্তন ============
   const handlePasswordChange = () => {
-    if (!passwordData.currentPassword) {
-      setPasswordError("বর্তমান পাসওয়ার্ড দিন");
-      return;
-    }
-    if (passwordData.newPassword !== passwordData.confirmPassword) {
-      setPasswordError("নতুন পাসওয়ার্ড এবং কনফার্ম পাসওয়ার্ড মিলছে না");
-      return;
-    }
-    if (passwordData.newPassword.length < 6) {
-      setPasswordError("পাসওয়ার্ড কমপক্ষে ৬ অক্ষরের হতে হবে");
-      return;
-    }
+    if (!isPasswordValid) return;
     
-    // লোকাল স্টোরেজে পাসওয়ার্ড সেভ (ডেমো)
+    // লোকাল স্টোরেজে পাসওয়ার্ড সেভ (Supabase রেডি হলে এখানে API কল হবে)
     localStorage.setItem("userPassword", passwordData.newPassword);
-    setPasswordError("");
-    setShowPasswordModal(false);
     setPasswordData({ currentPassword: "", newPassword: "", confirmPassword: "" });
     showSuccessMessage("✅ পাসওয়ার্ড সফলভাবে পরিবর্তন করা হয়েছে!");
   };
 
-  // ============ ফরগট পাসওয়ার্ড - ইমেইল পাঠানো ============
+  // ============ ফরগট পাসওয়ার্ড ফাংশন ============
   const handleSendResetEmail = () => {
     if (!forgotEmail) {
       alert("ইমেইল ঠিকানা দিন");
       return;
     }
-    // ডেমো OTP
     setForgotStep('otp');
     alert(`📧 ${forgotEmail} এ একটি OTP পাঠানো হয়েছে!\n🔐 ডেমো OTP: 123456`);
   };
 
-  // ============ ফরগট পাসওয়ার্ড - OTP ভেরিফাই ============
   const handleVerifyOtp = () => {
     if (forgotOtp === "123456") {
       setForgotStep('newPassword');
@@ -117,7 +129,6 @@ export default function UserSettingsPage() {
     }
   };
 
-  // ============ ফরগট পাসওয়ার্ড - নতুন পাসওয়ার্ড সেট ============
   const handleSetNewPassword = () => {
     if (newPasswordData.password !== newPasswordData.confirm) {
       alert("পাসওয়ার্ড মিলছে না");
@@ -236,19 +247,19 @@ export default function UserSettingsPage() {
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">পূর্ণ নাম</label>
-                      <input type="text" value={profile.fullName} onChange={(e) => setProfile({...profile, fullName: e.target.value})} className="w-full p-3 border border-gray-200 rounded-xl" />
+                      <input type="text" value={profile.fullName} onChange={(e) => setProfile({...profile, fullName: e.target.value})} className="w-full p-3 border border-gray-200 rounded-xl focus:border-[#f85606] outline-none transition" />
                     </div>
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">ইমেইল</label>
-                      <input type="email" value={profile.email} onChange={(e) => setProfile({...profile, email: e.target.value})} className="w-full p-3 border border-gray-200 rounded-xl" />
+                      <input type="email" value={profile.email} onChange={(e) => setProfile({...profile, email: e.target.value})} className="w-full p-3 border border-gray-200 rounded-xl focus:border-[#f85606] outline-none transition" />
                     </div>
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">ফোন নম্বর</label>
-                      <input type="tel" value={profile.phone} onChange={(e) => setProfile({...profile, phone: e.target.value})} className="w-full p-3 border border-gray-200 rounded-xl" />
+                      <input type="tel" value={profile.phone} onChange={(e) => setProfile({...profile, phone: e.target.value})} className="w-full p-3 border border-gray-200 rounded-xl focus:border-[#f85606] outline-none transition" />
                     </div>
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">জেলা</label>
-                      <select value={profile.district} onChange={(e) => setProfile({...profile, district: e.target.value})} className="w-full p-3 border border-gray-200 rounded-xl">
+                      <select value={profile.district} onChange={(e) => setProfile({...profile, district: e.target.value})} className="w-full p-3 border border-gray-200 rounded-xl focus:border-[#f85606] outline-none transition">
                         {bangladeshDistricts.map(d => <option key={d} value={d}>{d}</option>)}
                       </select>
                     </div>
@@ -256,37 +267,16 @@ export default function UserSettingsPage() {
                   
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">ঠিকানা</label>
-                    <textarea value={profile.address} onChange={(e) => setProfile({...profile, address: e.target.value})} rows={2} className="w-full p-3 border border-gray-200 rounded-xl" />
+                    <textarea value={profile.address} onChange={(e) => setProfile({...profile, address: e.target.value})} rows={2} className="w-full p-3 border border-gray-200 rounded-xl focus:border-[#f85606] outline-none transition" />
                   </div>
 
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">বায়ো</label>
-                    <textarea value={profile.bio} onChange={(e) => setProfile({...profile, bio: e.target.value})} rows={3} className="w-full p-3 border border-gray-200 rounded-xl" />
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">ভাষা</label>
-                      <select value={profile.language} onChange={(e) => setProfile({...profile, language: e.target.value})} className="w-full p-3 border rounded-xl">
-                        <option value="bn">বাংলা</option>
-                        <option value="en">English</option>
-                      </select>
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">থিম</label>
-                      <div className="flex gap-2">
-                        <button onClick={() => setProfile({...profile, theme: 'light'})} className={`flex-1 p-3 border rounded-xl flex items-center justify-center gap-2 ${profile.theme === 'light' ? 'border-[#f85606] bg-orange-50' : 'border-gray-200'}`}>
-                          <Sun size={16} /> লাইট
-                        </button>
-                        <button onClick={() => setProfile({...profile, theme: 'dark'})} className={`flex-1 p-3 border rounded-xl flex items-center justify-center gap-2 ${profile.theme === 'dark' ? 'border-[#f85606] bg-orange-50' : 'border-gray-200'}`}>
-                          <Moon size={16} /> ডার্ক
-                        </button>
-                      </div>
-                    </div>
+                    <textarea value={profile.bio} onChange={(e) => setProfile({...profile, bio: e.target.value})} rows={3} className="w-full p-3 border border-gray-200 rounded-xl focus:border-[#f85606] outline-none transition" />
                   </div>
                 </div>
 
-                <button onClick={handleSaveProfile} className="mt-6 w-full bg-gradient-to-r from-[#f85606] to-orange-500 text-white py-3 rounded-xl font-semibold flex items-center justify-center gap-2">
+                <button onClick={handleSaveProfile} className="mt-6 w-full bg-gradient-to-r from-[#f85606] to-orange-500 text-white py-3 rounded-xl font-semibold flex items-center justify-center gap-2 hover:shadow-lg transition">
                   <Save size={18} /> সংরক্ষণ করুন
                 </button>
               </div>
@@ -309,34 +299,127 @@ export default function UserSettingsPage() {
                     </label>
                   ))}
                 </div>
-                <button onClick={handleSaveNotifications} className="mt-6 w-full bg-gradient-to-r from-[#f85606] to-orange-500 text-white py-3 rounded-xl font-semibold">
+                <button onClick={handleSaveNotifications} className="mt-6 w-full bg-gradient-to-r from-[#f85606] to-orange-500 text-white py-3 rounded-xl font-semibold hover:shadow-lg transition">
                   <Save size={18} /> সংরক্ষণ করুন
                 </button>
               </div>
             )}
 
-            {/* ============ নিরাপত্তা ট্যাব ============ */}
+            {/* ============ নিরাপত্তা ট্যাব (মডার্ন পাসওয়ার্ড) ============ */}
             {activeTab === 'security' && (
               <div className="bg-white rounded-2xl shadow-lg p-6">
                 <h2 className="text-lg font-bold text-gray-800 mb-6 flex items-center gap-2">
                   <Shield size={20} className="text-[#f85606]" /> নিরাপত্তা সেটিংস
                 </h2>
                 
-                <div className="space-y-3">
-                  {/* পাসওয়ার্ড পরিবর্তন */}
-                  <button onClick={() => setShowPasswordModal(true)} className="w-full p-4 bg-gray-50 rounded-xl flex items-center justify-between hover:bg-gray-100 transition">
-                    <div className="flex items-center gap-3">
-                      <Key size={18} className="text-[#f85606]" />
-                      <span className="font-medium">পাসওয়ার্ড পরিবর্তন করুন</span>
+                {/* মডার্ন পাসওয়ার্ড চেঞ্জ ফর্ম */}
+                <div className="bg-gray-50 rounded-xl p-5 mb-4">
+                  <h3 className="font-medium text-gray-700 mb-4 flex items-center gap-2">
+                    <Lock size={16} className="text-[#f85606]" /> পাসওয়ার্ড পরিবর্তন
+                  </h3>
+                  
+                  <div className="space-y-4">
+                    {/* Current Password */}
+                    <div>
+                      <label className="block text-xs font-medium text-gray-500 mb-1">বর্তমান পাসওয়ার্ড</label>
+                      <div className="relative">
+                        <input 
+                          type={showCurrentPassword ? "text" : "password"} 
+                          value={passwordData.currentPassword} 
+                          onChange={(e) => setPasswordData({...passwordData, currentPassword: e.target.value})} 
+                          className={`w-full p-3 pr-10 border rounded-xl bg-white focus:outline-none transition ${
+                            passwordErrors.current ? 'border-red-300' : 'border-gray-200 focus:border-[#f85606]'
+                          }`}
+                          placeholder="••••••••"
+                        />
+                        <button onClick={() => setShowCurrentPassword(!showCurrentPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
+                          {showCurrentPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                        </button>
+                      </div>
                     </div>
-                    <ChevronRight size={16} />
-                  </button>
 
+                    {/* New Password */}
+                    <div>
+                      <label className="block text-xs font-medium text-gray-500 mb-1">নতুন পাসওয়ার্ড</label>
+                      <div className="relative">
+                        <input 
+                          type={showNewPassword ? "text" : "password"} 
+                          value={passwordData.newPassword} 
+                          onChange={(e) => setPasswordData({...passwordData, newPassword: e.target.value})} 
+                          className={`w-full p-3 pr-10 border rounded-xl bg-white focus:outline-none transition ${
+                            passwordErrors.new ? 'border-red-300' : 'border-gray-200 focus:border-[#f85606]'
+                          }`}
+                          placeholder="কমপক্ষে ৬ অক্ষর"
+                        />
+                        <button onClick={() => setShowNewPassword(!showNewPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
+                          {showNewPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                        </button>
+                      </div>
+                      {passwordErrors.new && (
+                        <p className="text-xs text-red-500 mt-1 flex items-center gap-1">
+                          <AlertCircle size={12} /> {passwordErrors.new}
+                        </p>
+                      )}
+                    </div>
+
+                    {/* Confirm Password */}
+                    <div>
+                      <label className="block text-xs font-medium text-gray-500 mb-1">পাসওয়ার্ড নিশ্চিত করুন</label>
+                      <div className="relative">
+                        <input 
+                          type={showConfirmPassword ? "text" : "password"} 
+                          value={passwordData.confirmPassword} 
+                          onChange={(e) => setPasswordData({...passwordData, confirmPassword: e.target.value})} 
+                          className={`w-full p-3 pr-10 border rounded-xl bg-white focus:outline-none transition ${
+                            passwordErrors.confirm ? 'border-red-300' : 'border-gray-200 focus:border-[#f85606]'
+                          }`}
+                          placeholder="পুনরায় লিখুন"
+                        />
+                        <button onClick={() => setShowConfirmPassword(!showConfirmPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
+                          {showConfirmPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                        </button>
+                      </div>
+                      {passwordErrors.confirm && (
+                        <p className="text-xs text-red-500 mt-1 flex items-center gap-1">
+                          <AlertCircle size={12} /> {passwordErrors.confirm}
+                        </p>
+                      )}
+                    </div>
+
+                    {/* Password Strength Indicator */}
+                    {passwordData.newPassword && (
+                      <div className="mt-2">
+                        <div className="flex items-center gap-2">
+                          <div className={`h-1.5 flex-1 rounded-full transition-all ${
+                            passwordData.newPassword.length >= 6 ? 'bg-green-500' : 'bg-gray-300'
+                          }`} />
+                          <span className="text-xs text-gray-500">
+                            {passwordData.newPassword.length >= 6 ? '✅ শক্তিশালী' : '⚠️ দুর্বল'}
+                          </span>
+                        </div>
+                      </div>
+                    )}
+
+                    <button 
+                      onClick={handlePasswordChange} 
+                      disabled={!isPasswordValid}
+                      className={`w-full py-3 rounded-xl font-semibold transition flex items-center justify-center gap-2 ${
+                        isPasswordValid 
+                          ? 'bg-gradient-to-r from-[#f85606] to-orange-500 text-white hover:shadow-lg' 
+                          : 'bg-gray-200 text-gray-400 cursor-not-allowed'
+                      }`}
+                    >
+                      <Key size={16} /> পাসওয়ার্ড আপডেট করুন
+                    </button>
+                  </div>
+                </div>
+
+                <div className="space-y-3">
                   {/* ফরগট পাসওয়ার্ড */}
                   <button onClick={() => setShowForgotPasswordModal(true)} className="w-full p-4 bg-gray-50 rounded-xl flex items-center justify-between hover:bg-gray-100 transition">
                     <div className="flex items-center gap-3">
                       <Lock size={18} className="text-[#f85606]" />
-                      <div>
+                      <div className="text-left">
                         <span className="font-medium">পাসওয়ার্ড ভুলে গেছেন?</span>
                         <p className="text-xs text-gray-400">ইমেইলের মাধ্যমে রিসেট করুন</p>
                       </div>
@@ -434,50 +517,6 @@ export default function UserSettingsPage() {
           </div>
         </div>
       </div>
-
-      {/* ============ পাসওয়ার্ড পরিবর্তন মডাল ============ */}
-      {showPasswordModal && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl max-w-md w-full p-6">
-            <div className="flex justify-between items-center mb-4">
-              <h3 className="text-lg font-bold">পাসওয়ার্ড পরিবর্তন</h3>
-              <button onClick={() => { setShowPasswordModal(false); setPasswordError(""); }}><X size={20} /></button>
-            </div>
-            
-            {passwordError && (
-              <div className="mb-4 bg-red-50 border border-red-200 rounded-xl p-3 flex items-center gap-2">
-                <AlertCircle size={16} className="text-red-500" />
-                <p className="text-sm text-red-600">{passwordError}</p>
-              </div>
-            )}
-
-            <div className="space-y-3">
-              <div className="relative">
-                <Lock size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-                <input type={showCurrentPassword ? "text" : "password"} placeholder="বর্তমান পাসওয়ার্ড" value={passwordData.currentPassword} onChange={(e) => setPasswordData({...passwordData, currentPassword: e.target.value})} className="w-full pl-10 pr-10 p-3 border rounded-xl" />
-                <button onClick={() => setShowCurrentPassword(!showCurrentPassword)} className="absolute right-3 top-1/2 -translate-y-1/2">
-                  {showCurrentPassword ? <EyeOff size={16} /> : <Eye size={16} />}
-                </button>
-              </div>
-              <div className="relative">
-                <Lock size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-                <input type={showNewPassword ? "text" : "password"} placeholder="নতুন পাসওয়ার্ড" value={passwordData.newPassword} onChange={(e) => setPasswordData({...passwordData, newPassword: e.target.value})} className="w-full pl-10 pr-10 p-3 border rounded-xl" />
-                <button onClick={() => setShowNewPassword(!showNewPassword)} className="absolute right-3 top-1/2 -translate-y-1/2">
-                  {showNewPassword ? <EyeOff size={16} /> : <Eye size={16} />}
-                </button>
-              </div>
-              <div className="relative">
-                <Lock size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-                <input type={showConfirmPassword ? "text" : "password"} placeholder="পাসওয়ার্ড নিশ্চিত করুন" value={passwordData.confirmPassword} onChange={(e) => setPasswordData({...passwordData, confirmPassword: e.target.value})} className="w-full pl-10 pr-10 p-3 border rounded-xl" />
-                <button onClick={() => setShowConfirmPassword(!showConfirmPassword)} className="absolute right-3 top-1/2 -translate-y-1/2">
-                  {showConfirmPassword ? <EyeOff size={16} /> : <Eye size={16} />}
-                </button>
-              </div>
-              <button onClick={handlePasswordChange} className="w-full bg-[#f85606] text-white py-3 rounded-xl font-semibold">পাসওয়ার্ড পরিবর্তন করুন</button>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* ============ ফরগট পাসওয়ার্ড মডাল ============ */}
       {showForgotPasswordModal && (
