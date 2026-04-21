@@ -141,14 +141,16 @@ const BannerDetailModal = memo(({
 
   return (
     <div 
-      className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-end md:items-center justify-center"
+      className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4"
       onClick={handleBackdropClick}
     >
       <div 
-        className="bg-white rounded-t-3xl md:rounded-2xl max-w-lg w-full max-h-[75vh] overflow-hidden shadow-2xl flex flex-col transform-gpu"
+        className="bg-white rounded-2xl max-w-lg w-full shadow-2xl flex flex-col transform-gpu"
+        style={{ maxHeight: 'calc(100vh - 40px)' }}
         onClick={e => e.stopPropagation()}
       >
-        <div className="bg-gradient-to-r from-[#f85606] to-orange-500 text-white p-4 flex justify-between items-center flex-shrink-0">
+        {/* হেডার */}
+        <div className="bg-gradient-to-r from-[#f85606] to-orange-500 text-white p-4 flex justify-between items-center flex-shrink-0 rounded-t-2xl">
           <h3 className="font-bold text-lg flex items-center gap-2">
             <Gift size={20} /> অফার বিস্তারিত
           </h3>
@@ -160,59 +162,69 @@ const BannerDetailModal = memo(({
           </button>
         </div>
         
-        <div className="p-4 overflow-y-auto flex-1">
+        {/* কন্টেন্ট */}
+        <div className="p-5 overflow-y-auto flex-1">
+          {/* ইমেজ + টাইটেল */}
           <div className="flex items-center gap-3 mb-4">
             <div className="w-16 h-16 bg-gradient-to-br from-orange-100 to-amber-100 rounded-xl flex items-center justify-center text-4xl shadow-md flex-shrink-0">
               {banner.image}
             </div>
             <div className="flex-1 min-w-0">
-              <h2 className="text-lg font-bold text-gray-800 truncate">{banner.title}</h2>
+              <h2 className="text-lg font-bold text-gray-800">{banner.title}</h2>
               <p className="text-[#f85606] font-semibold text-sm">{banner.description}</p>
               {banner.discountCode && (
-                <div className="mt-1 inline-flex items-center gap-1 bg-gray-100 px-2 py-1 rounded-lg">
-                  <Tag size={12} className="text-[#f85606]" />
-                  <span className="font-mono font-bold text-xs">{banner.discountCode}</span>
+                <div className="mt-1 inline-flex items-center gap-1 bg-gray-100 px-3 py-1 rounded-lg">
+                  <Tag size={14} className="text-[#f85606]" />
+                  <span className="font-mono font-bold text-sm">{banner.discountCode}</span>
                 </div>
               )}
             </div>
           </div>
           
-          <p className="text-sm text-gray-600 mb-3">{banner.offerDetails}</p>
+          {/* অফার ডিটেইলস */}
+          <p className="text-sm text-gray-700 mb-4 leading-relaxed">{banner.offerDetails}</p>
           
-          <div className="bg-gray-50 rounded-xl p-3 mb-3">
-            <h4 className="font-semibold text-gray-800 mb-2 text-sm">📞 যোগাযোগ</h4>
-            <div className="space-y-1.5">
-              <p className="flex items-center gap-2 text-xs">
-                <Phone size={12} className="text-[#f85606] flex-shrink-0" />
-                <span className="truncate">{banner.contactName} - {banner.contactPhone}</span>
+          {/* কন্টাক্ট ইনফো */}
+          <div className="bg-gray-50 rounded-xl p-4 mb-4">
+            <h4 className="font-semibold text-gray-800 mb-3 text-sm flex items-center gap-1">
+              <span className="w-1 h-4 bg-[#f85606] rounded-full"></span>
+              যোগাযোগের তথ্য
+            </h4>
+            <div className="space-y-2">
+              <p className="flex items-center gap-3 text-sm">
+                <Phone size={16} className="text-[#f85606] flex-shrink-0" />
+                <span className="text-gray-700">{banner.contactName} - {banner.contactPhone}</span>
               </p>
-              <p className="flex items-center gap-2 text-xs">
-                <Mail size={12} className="text-[#f85606] flex-shrink-0" />
-                <span className="truncate">{banner.contactEmail}</span>
+              <p className="flex items-center gap-3 text-sm">
+                <Mail size={16} className="text-[#f85606] flex-shrink-0" />
+                <span className="text-gray-700">{banner.contactEmail}</span>
               </p>
-              <p className="flex items-center gap-2 text-xs">
-                <MapPin size={12} className="text-[#f85606] flex-shrink-0" />
-                <span className="truncate">{banner.contactLocation}</span>
+              <p className="flex items-center gap-3 text-sm">
+                <MapPin size={16} className="text-[#f85606] flex-shrink-0" />
+                <span className="text-gray-700">{banner.contactLocation}</span>
               </p>
-              <p className="flex items-center gap-2 text-xs">
-                <Calendar size={12} className="text-[#f85606] flex-shrink-0" />
-                মেয়াদ: {new Date(banner.validUntil).toLocaleDateString('bn-BD')} ({daysLeft} দিন বাকি)
+              <p className="flex items-center gap-3 text-sm">
+                <Calendar size={16} className="text-[#f85606] flex-shrink-0" />
+                <span className="text-gray-700">
+                  মেয়াদ: {new Date(banner.validUntil).toLocaleDateString('bn-BD')} ({daysLeft} দিন বাকি)
+                </span>
               </p>
             </div>
           </div>
           
-          <div className="flex gap-2">
+          {/* অ্যাকশন বাটন */}
+          <div className="flex gap-3">
             <button 
               onClick={handleCall}
-              className="flex-1 bg-[#f85606] text-white py-2.5 rounded-lg font-semibold text-sm flex items-center justify-center gap-1 hover:bg-[#e04e00] transition active:scale-95"
+              className="flex-1 bg-[#f85606] text-white py-3 rounded-xl font-semibold text-sm flex items-center justify-center gap-2 hover:bg-[#e04e00] transition active:scale-95 shadow-md"
             >
-              <Phone size={16} /> কল
+              <Phone size={18} /> কল করুন
             </button>
             <button 
               onClick={handleWhatsApp}
-              className="flex-1 bg-green-500 text-white py-2.5 rounded-lg font-semibold text-sm flex items-center justify-center gap-1 hover:bg-green-600 transition active:scale-95"
+              className="flex-1 bg-green-500 text-white py-3 rounded-xl font-semibold text-sm flex items-center justify-center gap-2 hover:bg-green-600 transition active:scale-95 shadow-md"
             >
-              <ExternalLink size={16} /> WhatsApp
+              <ExternalLink size={18} /> WhatsApp
             </button>
           </div>
         </div>
@@ -220,6 +232,7 @@ const BannerDetailModal = memo(({
     </div>
   );
 });
+BannerDetailModal.displayName = 'BannerDetailModal';
 BannerDetailModal.displayName = 'BannerDetailModal';
 
 // ============ মেইন পেজ ============
