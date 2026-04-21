@@ -9,6 +9,8 @@
     "lint": "eslint"
   },
   "dependencies": {
+    "@supabase/ssr": "^0.10.2",
+    "@supabase/supabase-js": "^2.104.0",
     "@tanstack/react-virtual": "^3.13.23",
     "framer-motion": "^12.38.0",
     "lottie-react": "^2.4.1",
