@@ -28,15 +28,15 @@ const nextConfig: NextConfig = {
   compress: true,
   trailingSlash: false,
   poweredByHeader: false,
-  reactStrictMode: true,
+  reactStrictMode: false,
   
   // ============ ডেভেলপমেন্ট সেটিংস ============
   allowedDevOrigins: [
     'localhost', 
     '10.59.153.225', 
     '10.43.113.225', 
-    '192.168.0.104',  // 🔥 আপনার নতুন IP যোগ করা হয়েছে
-    '192.168.0.103'   // 🔥 আগের IP রাখা হয়েছে
+    '192.168.0.104',
+    '192.168.0.103'
   ],
   
   // ============ প্রোডাকশন আউটপুট ============
@@ -53,30 +53,11 @@ const nextConfig: NextConfig = {
       {
         source: '/:path*',
         headers: [
-          {
-            key: 'X-DNS-Prefetch-Control',
-            value: 'on'
-          },
-          {
-            key: 'X-XSS-Protection',
-            value: '1; mode=block'
-          },
-          {
-            key: 'X-Frame-Options',
-            value: 'SAMEORIGIN'
-          },
-          {
-            key: 'X-Content-Type-Options',
-            value: 'nosniff'
-          },
-          {
-            key: 'Referrer-Policy',
-            value: 'origin-when-cross-origin'
-          },
-          {
-            key: 'Cache-Control',
-            value: 'public, max-age=31536000, immutable',
-          },
+          { key: 'X-DNS-Prefetch-Control', value: 'on' },
+          { key: 'X-XSS-Protection', value: '1; mode=block' },
+          { key: 'X-Frame-Options', value: 'SAMEORIGIN' },
+          { key: 'X-Content-Type-Options', value: 'nosniff' },
+          { key: 'Referrer-Policy', value: 'origin-when-cross-origin' },
         ],
       },
       {
@@ -86,19 +67,13 @@ const nextConfig: NextConfig = {
           { key: 'Access-Control-Allow-Origin', value: '*' },
           { key: 'Access-Control-Allow-Methods', value: 'GET,OPTIONS,PATCH,DELETE,POST,PUT' },
           { key: 'Access-Control-Allow-Headers', value: 'X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version' },
-          {
-            key: 'Cache-Control',
-            value: 'no-cache, no-store, must-revalidate',
-          },
+          { key: 'Cache-Control', value: 'no-cache, no-store, must-revalidate' },
         ],
       },
       {
         source: '/_next/static/:path*',
         headers: [
-          {
-            key: 'Cache-Control',
-            value: 'public, max-age=31536000, immutable',
-          },
+          { key: 'Cache-Control', value: 'public, max-age=31536000, immutable' },
         ],
       },
     ];
@@ -107,7 +82,6 @@ const nextConfig: NextConfig = {
   // ============ এক্সপেরিমেন্টাল ফিচার ============
   experimental: {
     scrollRestoration: true,
-    // optimizePackageImports: ['lucide-react'], // Next.js 16 এর নতুন ফিচার
   },
   
   // ============ ক্যাশ কম্পোনেন্টস ============

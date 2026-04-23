@@ -1,12 +1,13 @@
 "use client";
-import { useState, useEffect, useRef, useCallback, useMemo, memo } from 'react';
+import { useState, useEffect, useCallback, useMemo, memo } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { 
   Eye, Lock, CreditCard, MapPin, Briefcase, Phone, ShieldCheck, CheckCircle,
   X, Heart, Star, MessageCircle, PlusCircle, Share2, Bookmark,
-  Key, Wallet, Crown, Fingerprint, Baby, Diamond, Gem
+  Key, Wallet, Crown, Fingerprint, Baby, Diamond, Gem, Loader2
 } from 'lucide-react';
+import { getSupabaseClient } from '@/lib/supabase/client';
 
 // ============ কনস্ট্যান্ট ============
 const bangladeshDistricts = [
@@ -25,7 +26,7 @@ const bangladeshDistricts = [
 ];
 
 type Profile = {
-  id: number;
+  id: string;
   name: string;
   age: number;
   village: string;
@@ -37,7 +38,7 @@ type Profile = {
   religion: string;
   phone: string;
   email: string;
-  isMale: boolean;
+  gender: string;
   hasPhoto: boolean;
   photoBlurred: boolean;
   isVerified: boolean;
@@ -46,75 +47,18 @@ type Profile = {
   familyStatus: string;
   about: string;
   createdAt: string;
-  maritalStatus: "unmarried" | "divorced" | "widowed";
+  maritalStatus: string;
   hasChildren: boolean;
   childrenCount?: number;
-  remarryWilling: "yes" | "no" | "undecided";
+  remarryWilling: string;
   bloodGroup?: string;
   complexion?: string;
   hobbies?: string[];
   views: number;
   interests: number;
+  images?: any[];
+  user?: any;
 };
-
-const dummyProfiles: Profile[] = [
-  {
-    id: 1, name: "রহিমা খাতুন", age: 24, village: "সোনারগাঁও", district: "নারায়ণগঞ্জ",
-    profession: "সফটওয়্যার ইঞ্জিনিয়ার", education: "বিএসসি (সিএসই)", height: "৫'৪\"", weight: "৫০ কেজি",
-    religion: "ইসলাম", phone: "০১৭XXXXXXXX", email: "rahima@gmail.com", isMale: false, hasPhoto: true,
-    photoBlurred: true, isVerified: true, isPremium: true, expectedIncome: "৬০,০০০ - ৮০,০০০",
-    familyStatus: "মধ্যবিত্ত", about: "সরল ও শিক্ষিত পরিবারের মেয়ে। নিজের পায়ে দাঁড়াতে চাই।",
-    createdAt: "২০২৪-০১-১৫", maritalStatus: "unmarried", hasChildren: false, remarryWilling: "yes",
-    bloodGroup: "O+", complexion: "ফর্সা", hobbies: ["বই পড়া", "ভ্রমণ", "রান্না"], views: 1240, interests: 56,
-  },
-  {
-    id: 2, name: "আব্দুল করিম", age: 28, village: "গাজীপুর সদর", district: "গাজীপুর",
-    profession: "ব্যবসায়ী", education: "এমবিএ", height: "৫'৮\"", weight: "৬৫ কেজি",
-    religion: "ইসলাম", phone: "০১৮XXXXXXXX", email: "karim@gmail.com", isMale: true, hasPhoto: true,
-    photoBlurred: true, isVerified: true, isPremium: false, expectedIncome: "১,০০,০০০ - ১,৫০,০০০",
-    familyStatus: "উচ্চ মধ্যবিত্ত", about: "নিজের ব্যবসা আছে। সৎ ও দায়িত্বশীল জীবনসঙ্গী খুঁজছি।",
-    createdAt: "২০২৪-০২-১০", maritalStatus: "divorced", hasChildren: true, childrenCount: 1,
-    remarryWilling: "yes", bloodGroup: "B+", complexion: "মাঝারি", hobbies: ["ব্যবসা", "গাড়ি চালানো", "ক্রিকেট"],
-    views: 890, interests: 34,
-  },
-  {
-    id: 3, name: "ফাতেমা বেগম", age: 22, village: "কুমিল্লা সদর", district: "কুমিল্লা",
-    profession: "চিকিৎসা শিক্ষার্থী", education: "এমবিবিএস (চলমান)", height: "৫'২\"", weight: "৪৮ কেজি",
-    religion: "ইসলাম", phone: "০১৯XXXXXXXX", email: "fatema@gmail.com", isMale: false, hasPhoto: true,
-    photoBlurred: true, isVerified: false, isPremium: false, expectedIncome: "অধ্যায়নরত",
-    familyStatus: "মধ্যবিত্ত", about: "উচ্চাকাঙ্ক্ষী ডাক্তার। পড়াশোনা শেষে চাকরি করব।",
-    createdAt: "২০২৪-০৩-০৫", maritalStatus: "unmarried", hasChildren: false, remarryWilling: "yes",
-    bloodGroup: "A+", complexion: "শ্যামলা", hobbies: ["গান শোনা", "চলচ্চিত্র", "ঘুরতে ভালোবাসি"],
-    views: 2100, interests: 89,
-  },
-  {
-    id: 4, name: "শাহিনুর রহমান", age: 26, village: "মিরপুর", district: "ঢাকা",
-    profession: "ব্যাংকার", education: "এমবিএ", height: "৫'৬\"", weight: "৫৮ কেজি",
-    religion: "ইসলাম", phone: "০১৬XXXXXXXX", email: "shahinur@gmail.com", isMale: true, hasPhoto: true,
-    photoBlurred: true, isVerified: true, isPremium: true, expectedIncome: "৭০,০০০ - ৯০,০০০",
-    familyStatus: "মধ্যবিত্ত", about: "ব্যাংকে চাকরি করি। সাদামাটা জীবনযাপন পছন্দ করি।",
-    createdAt: "২০২৪-০৩-১০", maritalStatus: "unmarried", hasChildren: false, remarryWilling: "yes",
-    bloodGroup: "AB+", complexion: "ফর্সা", hobbies: ["ক্রিকেট", "ভ্রমণ"], views: 567, interests: 23,
-  },
-  {
-    id: 5, name: "নাজমা বেগম", age: 25, village: "রাজশাহী সদর", district: "রাজশাহী",
-    profession: "সরকারি চাকরি", education: "স্নাতকোত্তর", height: "৫'৩\"", weight: "৫২ কেজি",
-    religion: "ইসলাম", phone: "০১৭XXXXXXXX", email: "nazma@gmail.com", isMale: false, hasPhoto: true,
-    photoBlurred: true, isVerified: false, isPremium: false, expectedIncome: "৪০,০০০ - ৫০,০০০",
-    familyStatus: "মধ্যবিত্ত", about: "সরকারি চাকরি করি। ভালো মানুষ খুঁজছি।",
-    createdAt: "২০২৪-০৩-১৫", maritalStatus: "unmarried", hasChildren: false, remarryWilling: "yes",
-    bloodGroup: "O-", complexion: "মাঝারি", hobbies: ["রান্না", "সেলাই"], views: 432, interests: 18,
-  },
-  {
-    id: 6, name: "হাসান মিয়া", age: 30, village: "সিলেট সদর", district: "সিলেট",
-    profession: "ইঞ্জিনিয়ার", education: "বিএসসি (সিভিল)", height: "৫'৯\"", weight: "৭০ কেজি",
-    religion: "ইসলাম", phone: "০১৮XXXXXXXX", email: "hasan@gmail.com", isMale: true, hasPhoto: true,
-    photoBlurred: true, isVerified: true, isPremium: false, expectedIncome: "৮০,০০০ - ১,০০,০০০",
-    familyStatus: "উচ্চ মধ্যবিত্ত", about: "বিদেশে কাজ করি। বাংলাদেশে স্থায়ী হতে চাই।",
-    createdAt: "২০২৪-০৩-২০", maritalStatus: "unmarried", hasChildren: false, remarryWilling: "yes",
-    bloodGroup: "B-", complexion: "শ্যামলা", hobbies: ["ভ্রমণ", "ছবি তোলা"], views: 678, interests: 45,
-  },
-];
 
 // ============ হেল্পার ফাংশন ============
 const getMaritalStatusText = (status: string) => {
@@ -135,8 +79,8 @@ const getRemarryWillingText = (status: string) => {
   }
 };
 
-// ============ কনগ্রাচুলেশন মডাল (মেমোইজড) ============
-const CongratulationsModal = memo(({ onClose, profileName }: { onClose: () => void; profileName: string }) => {
+// ============ কনগ্রাচুলেশন মডাল ============
+const CongratulationsModal = memo(({ onClose }: { onClose: () => void; profileName: string }) => {
   useEffect(() => {
     const timer = setTimeout(onClose, 5000);
     return () => clearTimeout(timer);
@@ -211,18 +155,44 @@ const InfoModal = memo(({ onClose, onConfirm }: { onClose: () => void; onConfirm
 InfoModal.displayName = 'InfoModal';
 
 // ============ পেমেন্ট মডাল ============
-const PaymentModal = memo(({ onClose, onSuccess, price }: { onClose: () => void; onSuccess: () => void; profileName: string; price: number; profileId: number }) => {
+const PaymentModal = memo(({ onClose, onSuccess, price, profileId }: { 
+  onClose: () => void; 
+  onSuccess: () => void; 
+  profileName: string; 
+  price: number; 
+  profileId: string;
+}) => {
   const [isProcessing, setIsProcessing] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState("bkash");
 
-  const handlePayment = useCallback(() => {
+  const handlePayment = useCallback(async () => {
     setIsProcessing(true);
-    setTimeout(() => {
+    
+    try {
+      const supabase = getSupabaseClient();
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      if (user) {
+        await supabase.from('matrimony_payments').insert({
+          payer_id: user.id,
+          profile_id: profileId, // ✅ এখানে profileId ব্যবহার হচ্ছে
+          amount: price,
+          type: 'profile_unlock',
+          status: 'completed',
+        });
+      }
+      
+      setTimeout(() => {
+        setIsProcessing(false);
+        onSuccess();
+        onClose();
+      }, 1500);
+    } catch (error) {
       setIsProcessing(false);
       onSuccess();
       onClose();
-    }, 2000);
-  }, [onSuccess, onClose]);
+    }
+  }, [onSuccess, onClose, price, profileId]); // ✅ ডিপেন্ডেন্সিতে profileId যোগ করা হয়েছে
 
   return (
     <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
@@ -265,8 +235,8 @@ const PaymentModal = memo(({ onClose, onSuccess, price }: { onClose: () => void;
 });
 PaymentModal.displayName = 'PaymentModal';
 
-// ============ প্রোফাইল কার্ড (মেমোইজড) ============
-const ProfileCard = memo(({ profile }: { profile: Profile; onViewDetails: (id: number) => void }) => {
+// ============ প্রোফাইল কার্ড ============
+const ProfileCard = memo(({ profile, onViewDetails }: { profile: Profile; onViewDetails: (id: string) => void }) => {
   const router = useRouter();
   const [showFullInfo, setShowFullInfo] = useState(false);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
@@ -279,20 +249,16 @@ const ProfileCard = memo(({ profile }: { profile: Profile; onViewDetails: (id: n
   
   const marital = useMemo(() => getMaritalStatusText(profile.maritalStatus), [profile.maritalStatus]);
   const remarry = useMemo(() => getRemarryWillingText(profile.remarryWilling), [profile.remarryWilling]);
+  const isMale = profile.gender === 'male';
 
-  // ক্লায়েন্ট সাইড চেক
-  useEffect(() => {
-    setMounted(true);
-  }, []);
+  useEffect(() => setMounted(true), []);
 
-  // পেইড স্ট্যাটাস চেক (মেমোইজড)
   const isPaid = useMemo(() => {
     if (typeof window === 'undefined') return false;
     const paidProfiles = JSON.parse(localStorage.getItem('paidMatrimonyProfiles') || '[]');
     return paidProfiles.includes(profile.id);
   }, [profile.id]);
 
-  // সেভড স্ট্যাটাস চেক
   const isAlreadySaved = useMemo(() => {
     if (typeof window === 'undefined') return false;
     const savedProfiles = JSON.parse(localStorage.getItem('savedMatrimonyProfiles') || '[]');
@@ -300,22 +266,13 @@ const ProfileCard = memo(({ profile }: { profile: Profile; onViewDetails: (id: n
   }, [profile.id]);
 
   useEffect(() => {
-    if (isPaid) {
-      setShowFullInfo(true);
-    }
+    if (isPaid) setShowFullInfo(true);
     setIsSaved(isAlreadySaved);
   }, [isPaid, isAlreadySaved]);
 
   const handleViewDetails = useCallback(() => {
-    if (!isPaid && !showFullInfo) {
-      setShowInfoModal(true);
-    }
+    if (!isPaid && !showFullInfo) setShowInfoModal(true);
   }, [isPaid, showFullInfo]);
-
-  const handleConfirmPayment = useCallback(() => {
-    setShowInfoModal(false);
-    setShowPaymentModal(true);
-  }, []);
 
   const handlePaymentSuccess = useCallback(() => {
     setShowFullInfo(true);
@@ -333,14 +290,10 @@ const ProfileCard = memo(({ profile }: { profile: Profile; onViewDetails: (id: n
     }
   }, [isPaid, showFullInfo, router, profile.id, profile.name]);
 
-  const handleLike = useCallback(() => {
-    setIsLiked(prev => !prev);
-  }, []);
-
   const handleSave = useCallback(() => {
     const savedProfiles = JSON.parse(localStorage.getItem('savedMatrimonyProfiles') || '[]');
     if (isAlreadySaved) {
-      const newSaved = savedProfiles.filter((id: number) => id !== profile.id);
+      const newSaved = savedProfiles.filter((id: string) => id !== profile.id);
       localStorage.setItem('savedMatrimonyProfiles', JSON.stringify(newSaved));
       setIsSaved(false);
     } else {
@@ -352,18 +305,12 @@ const ProfileCard = memo(({ profile }: { profile: Profile; onViewDetails: (id: n
 
   const handleShare = useCallback(async () => {
     const url = `${window.location.origin}/category/matrimony?id=${profile.id}`;
-    
     if (navigator.share) {
       try {
-        await navigator.share({
-          title: profile.name,
-          text: `${profile.name} - পাত্র/পাত্রী প্রোফাইল | বয়স: ${profile.age} বছর`,
-          url: url,
-        });
+        await navigator.share({ title: profile.name, text: `${profile.name} - ${profile.age} বছর`, url });
         return;
       } catch {}
     }
-    
     try {
       await navigator.clipboard.writeText(url);
       alert("✅ প্রোফাইল লিংক কপি হয়েছে!");
@@ -380,7 +327,11 @@ const ProfileCard = memo(({ profile }: { profile: Profile; onViewDetails: (id: n
         <div className="relative h-52 bg-gradient-to-br from-orange-100 to-orange-200">
           {(isPaid || showFullInfo) ? (
             <div className="w-full h-full flex items-center justify-center relative" onContextMenu={(e) => e.preventDefault()}>
-              <div className="text-8xl">{profile.isMale ? "👨‍🦱" : "👩‍🦰"}</div>
+              {profile.images?.[0]?.thumbnail_url ? (
+                <img src={profile.images[0].thumbnail_url} alt={profile.name} className="w-full h-full object-cover" />
+              ) : (
+                <div className="text-8xl">{isMale ? "👨‍🦱" : "👩‍🦰"}</div>
+              )}
               <div className="absolute bottom-2 left-2 text-[8px] text-white/50 bg-black/30 px-1 rounded">© আমার দুনিয়া</div>
             </div>
           ) : (
@@ -412,7 +363,7 @@ const ProfileCard = memo(({ profile }: { profile: Profile; onViewDetails: (id: n
               </div>
             </div>
             <div className="flex gap-1">
-              <button onClick={handleLike} className="p-1.5 rounded-full hover:bg-gray-100 transition">
+              <button onClick={() => setIsLiked(prev => !prev)} className="p-1.5 rounded-full hover:bg-gray-100 transition">
                 <Heart size={16} className={isLiked ? "text-red-500 fill-red-500" : "text-gray-400"} />
               </button>
               <button onClick={handleShare} className="p-1.5 rounded-full hover:bg-gray-100 transition">
@@ -477,7 +428,7 @@ const ProfileCard = memo(({ profile }: { profile: Profile; onViewDetails: (id: n
         </div>
       </div>
       
-      {showInfoModal && <InfoModal onClose={() => setShowInfoModal(false)} onConfirm={handleConfirmPayment} />}
+      {showInfoModal && <InfoModal onClose={() => setShowInfoModal(false)} onConfirm={() => { setShowInfoModal(false); setShowPaymentModal(true); }} />}
       {showPaymentModal && (
         <PaymentModal 
           onClose={() => setShowPaymentModal(false)} 
@@ -493,6 +444,21 @@ const ProfileCard = memo(({ profile }: { profile: Profile; onViewDetails: (id: n
 });
 ProfileCard.displayName = 'ProfileCard';
 
+// ============ স্কেলেটন কার্ড ============
+const SkeletonCard = () => (
+  <div className="bg-white rounded-2xl shadow-xl overflow-hidden border border-gray-100 animate-pulse">
+    <div className="h-52 bg-gray-200" />
+    <div className="p-5">
+      <div className="h-6 bg-gray-200 rounded w-3/4 mb-3" />
+      <div className="h-4 bg-gray-200 rounded w-1/2 mb-4" />
+      <div className="space-y-2">
+        <div className="h-4 bg-gray-200 rounded w-full" />
+        <div className="h-4 bg-gray-200 rounded w-2/3" />
+      </div>
+    </div>
+  </div>
+);
+
 // ============ মেইন পেজ ============
 export default function MatrimonyPage() {
   const router = useRouter();
@@ -500,28 +466,96 @@ export default function MatrimonyPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [filterDistrict, setFilterDistrict] = useState("");
   const [mounted, setMounted] = useState(false);
+  const [profiles, setProfiles] = useState<Profile[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [page, setPage] = useState(1);
+  const [hasMore, setHasMore] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [totalCount, setTotalCount] = useState(0);
+
+  // Supabase থেকে প্রোফাইল লোড
+  const loadProfiles = useCallback(async (pageNum: number, reset: boolean = false) => {
+    if (reset) setLoading(true);
+    else setLoadingMore(true);
+    
+    const supabase = getSupabaseClient();
+    const from = (pageNum - 1) * 9;
+    const to = from + 8;
+    
+    try {
+      let query = supabase
+        .from('matrimony_profiles')
+        .select(`
+          *,
+          user:profiles!user_id(id, name, avatar),
+          images:matrimony_images(thumbnail_url, full_url, is_blurred, order_index)
+        `, { count: 'exact' })
+        .eq('status', 'approved')
+        .order('created_at', { ascending: false })
+        .range(from, to);
+      
+      if (activeTab === 'male') query = query.eq('gender', 'male');
+      else query = query.eq('gender', 'female');
+      
+      if (filterDistrict) query = query.eq('district', filterDistrict);
+      if (searchTerm) query = query.or(`name.ilike.%${searchTerm}%,village.ilike.%${searchTerm}%`);
+      
+      const { data, error, count } = await query;
+      
+      if (error) throw error;
+      
+      const formattedData = (data || []).map((p: any) => ({
+        ...p,
+        isMale: p.gender === 'male',
+        hasPhoto: p.images?.length > 0,
+        photoBlurred: p.images?.[0]?.is_blurred || false,
+      }));
+      
+      if (reset) {
+        setProfiles(formattedData);
+      } else {
+        setProfiles(prev => [...prev, ...formattedData]);
+      }
+      
+      setTotalCount(count || 0);
+      setHasMore((data?.length || 0) === 9);
+    } catch (error) {
+      console.error('Load profiles error:', error);
+      // লোকাল ফলব্যাক - dummyProfiles নেই, খালি অ্যারে দেখাবে
+      if (reset) setProfiles([]);
+    } finally {
+      setLoading(false);
+      setLoadingMore(false);
+    }
+  }, [activeTab, filterDistrict, searchTerm]);
 
   useEffect(() => {
     setMounted(true);
-  }, []);
+    loadProfiles(1, true);
+  }, [loadProfiles]);
 
-  const filteredProfiles = useMemo(() => {
-    return dummyProfiles.filter(profile => {
-      if (activeTab === "male" && !profile.isMale) return false;
-      if (activeTab === "female" && profile.isMale) return false;
-      if (searchTerm && !profile.name.includes(searchTerm) && !profile.village.includes(searchTerm) && !profile.district.includes(searchTerm)) return false;
-      if (filterDistrict && profile.district !== filterDistrict) return false;
-      return true;
-    });
-  }, [activeTab, searchTerm, filterDistrict]);
+  // স্ক্রল ট্রিগার
+  useEffect(() => {
+    const handleScroll = () => {
+      if (window.innerHeight + window.scrollY >= document.body.offsetHeight - 500 && !loading && !loadingMore && hasMore) {
+        const nextPage = page + 1;
+        setPage(nextPage);
+        loadProfiles(nextPage, false);
+      }
+    };
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, [loading, loadingMore, hasMore, page, loadProfiles]);
 
-  const maleCount = useMemo(() => dummyProfiles.filter(p => p.isMale).length, []);
-  const femaleCount = useMemo(() => dummyProfiles.filter(p => !p.isMale).length, []);
+  const filteredProfiles = profiles;
+
+  const maleCount = useMemo(() => totalCount, [totalCount, activeTab]);
+  const femaleCount = useMemo(() => totalCount, [totalCount, activeTab]);
 
   if (!mounted) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-4 border-[#f85606] border-t-transparent" />
+        <Loader2 className="animate-spin text-[#f85606]" size={40} />
       </div>
     );
   }
@@ -578,7 +612,7 @@ export default function MatrimonyPage() {
                   : "bg-white text-gray-600 border border-gray-200"
               }`}
             >
-              👨 পুরুষ ({maleCount})
+              👨 পুরুষ
             </button>
             <button 
               onClick={() => setActiveTab("female")} 
@@ -588,7 +622,7 @@ export default function MatrimonyPage() {
                   : "bg-white text-gray-600 border border-gray-200"
               }`}
             >
-              👩 মহিলা ({femaleCount})
+              👩 মহিলা
             </button>
           </div>
           
@@ -613,12 +647,30 @@ export default function MatrimonyPage() {
         </div>
         
         {/* প্রোফাইল গ্রিড */}
-        {filteredProfiles.length > 0 ? (
+        {loading ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {filteredProfiles.map((profile) => (
-              <ProfileCard key={profile.id} profile={profile} onViewDetails={() => {}} />
-            ))}
+            {[...Array(6)].map((_, i) => <SkeletonCard key={i} />)}
           </div>
+        ) : filteredProfiles.length > 0 ? (
+          <>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {filteredProfiles.map((profile) => (
+                <ProfileCard key={profile.id} profile={profile} onViewDetails={() => {}} />
+              ))}
+            </div>
+            
+            {loadingMore && (
+              <div className="flex justify-center py-6">
+                <Loader2 className="animate-spin text-[#f85606]" size={24} />
+              </div>
+            )}
+            
+            {!hasMore && filteredProfiles.length > 0 && (
+              <div className="text-center py-6">
+                <p className="text-xs text-gray-400">🎉 সব প্রোফাইল দেখানো হয়েছে</p>
+              </div>
+            )}
+          </>
         ) : (
           <div className="text-center py-16 bg-white rounded-2xl shadow-sm">
             <div className="text-6xl mb-4">😔</div>

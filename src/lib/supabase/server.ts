@@ -1,6 +1,8 @@
+import 'server-only';
 import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
 
+// ============ সাধারণ সার্ভার ক্লায়েন্ট ============
 export const createServerSupabaseClient = async () => {
   const cookieStore = await cookies();
   
@@ -18,9 +20,7 @@ export const createServerSupabaseClient = async () => {
               cookieStore.set(name, value, options);
             });
           } catch {
-            // The `setAll` method was called from a Server Component.
-            // This can be ignored if you have middleware refreshing
-            // user sessions.
+            // Server Component থেকে setAll কল হলে ইগনোর
           }
         },
       },
@@ -28,7 +28,7 @@ export const createServerSupabaseClient = async () => {
   );
 };
 
-// For server actions
+// ============ অ্যাডমিন ক্লায়েন্ট (Service Role) ============
 export const createAdminClient = async () => {
   const cookieStore = await cookies();
   
@@ -36,6 +36,10 @@ export const createAdminClient = async () => {
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.SUPABASE_SERVICE_ROLE_KEY!,
     {
+      auth: {
+        persistSession: false,
+        autoRefreshToken: false,
+      },
       cookies: {
         getAll() {
           return cookieStore.getAll();
@@ -45,9 +49,26 @@ export const createAdminClient = async () => {
             cookiesToSet.forEach(({ name, value, options }) => {
               cookieStore.set(name, value, options);
             });
-          } catch {}
+          } catch {
+            // Server Component থেকে setAll কল হলে ইগনোর
+          }
         },
       },
     }
+  );
+};
+
+// ============ ইউটিলিটি ============
+export const isSupabaseConfigured = (): boolean => {
+  return !!(
+    process.env.NEXT_PUBLIC_SUPABASE_URL && 
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+  );
+};
+
+export const isAdminConfigured = (): boolean => {
+  return !!(
+    process.env.NEXT_PUBLIC_SUPABASE_URL && 
+    process.env.SUPABASE_SERVICE_ROLE_KEY
   );
 };

@@ -5,13 +5,13 @@ import { useRouter } from "next/navigation";
 import { 
   User, Package, Gavel, Settings, LogOut, Heart, 
   MessageCircle, Bell, Shield, ChevronRight, Edit2, Camera,
-  Crown, Clock, CreditCard, FileText, Eye, Zap, Trash2, Plus,
-  Bookmark, CheckCircle
+  Crown, Clock, CreditCard, Eye, Trash2, Plus,
+  Bookmark, CheckCircle, Loader2
 } from "lucide-react";
 
 // ============ টাইপ ডেফিনিশন ============
 type FeaturedPost = {
-  postId: number;
+  postId: string;
   postTitle: string;
   endDate: string;
   status: 'active' | 'expired';
@@ -26,79 +26,31 @@ type PaymentHistory = {
   date: string;
 };
 
-type DocumentRequest = {
-  id: string;
-  postTitle: string;
-  status: 'pending' | 'released';
-  fee: number;
-  createdAt: string;
-};
-
 type MyAuction = {
-  id: number;
+  id: string;
   title: string;
-  currentPrice: number;
-  startPrice: number;
+  current_price: number;
+  start_price: number;
   image: string;
-  endTime: string;
-  totalBids: number;
-  status: 'active' | 'ended' | 'won' | 'cancelled';
+  end_time: string;
+  total_bids: number;
+  status: string;
   views: number;
-  isWinner?: boolean;
-  winningBid?: number;
 };
 
 type MyMatrimonyProfile = {
-  id: number;
+  id: string;
   name: string;
   age: number;
-  gender: 'male' | 'female';
+  gender: string;
   district: string;
   profession: string;
-  status: 'pending' | 'approved' | 'rejected';
-  isVerified: boolean;
-  isPremium: boolean;
+  status: string;
+  is_verified: boolean;
+  is_premium: boolean;
   views: number;
   interests: number;
-  createdAt: string;
-  expiresAt?: string;
-};
-
-type MatrimonyPayment = {
-  id: string;
-  profileId: number;
-  profileName: string;
-  amount: number;
-  date: string;
-  type: 'profile_unlock' | 'premium' | 'featured';
-};
-
-// ============ অপটিমাইজড ইমেজ কম্প্রেশন (নন-ব্লকিং) ============
-const compressToWebP = (file: File): Promise<string> => {
-  return new Promise((resolve) => {
-    const reader = new FileReader();
-    reader.readAsDataURL(file);
-    reader.onload = (e) => {
-      const img = new Image();
-      img.src = e.target?.result as string;
-      img.onload = () => {
-        // requestAnimationFrame দিয়ে মেইন থ্রেড ব্লক কমানো
-        requestAnimationFrame(() => {
-          const canvas = document.createElement('canvas');
-          const size = 150;
-          canvas.width = size;
-          canvas.height = size;
-          const ctx = canvas.getContext('2d', { alpha: true, willReadFrequently: false });
-          if (ctx) {
-            ctx.drawImage(img, 0, 0, size, size);
-            resolve(canvas.toDataURL('image/webp', 0.7));
-          } else {
-            resolve('');
-          }
-        });
-      };
-    };
-  });
+  created_at: string;
 };
 
 // ============ মেমোইজড সাব-কম্পোনেন্ট ============
@@ -131,192 +83,333 @@ const MenuItem = memo(({ item }: { item: any }) => (
 ));
 MenuItem.displayName = 'MenuItem';
 
+// ইমেজ কম্প্রেশন
+const compressToWebP = (file: File): Promise<string> => {
+  return new Promise((resolve) => {
+    const reader = new FileReader();
+    reader.readAsDataURL(file);
+    reader.onload = (e) => {
+      const img = new Image();
+      img.src = e.target?.result as string;
+      img.onload = () => {
+        requestAnimationFrame(() => {
+          const canvas = document.createElement('canvas');
+          const size = 150;
+          canvas.width = size;
+          canvas.height = size;
+          const ctx = canvas.getContext('2d', { alpha: true, willReadFrequently: false });
+          if (ctx) {
+            ctx.drawImage(img, 0, 0, size, size);
+            resolve(canvas.toDataURL('image/webp', 0.7));
+          } else {
+            resolve('');
+          }
+        });
+      };
+    };
+  });
+};
+
+// টাইম এগো
+const timeAgo = (date: string): string => {
+  const diff = Date.now() - new Date(date).getTime();
+  const days = Math.floor(diff / 86400000);
+  if (days > 0) return `${days} দিন আগে`;
+  const hours = Math.floor(diff / 3600000);
+  if (hours > 0) return `${hours} ঘন্টা আগে`;
+  return 'এইমাত্র';
+};
+
 export default function MyAccountPage() {
   const router = useRouter();
   const [mounted, setMounted] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [supabase, setSupabase] = useState<any>(null);
   const [showEditModal, setShowEditModal] = useState(false);
   const [profileImage, setProfileImage] = useState<string>("👨");
   const [isUploading, setIsUploading] = useState(false);
-  const [activeTab, setActiveTab] = useState<'overview' | 'auctions' | 'matrimony' | 'featured' | 'payments' | 'documents'>('overview');
-  const [showExtendModal, setShowExtendModal] = useState<number | null>(null);
-  const [extendDays, setExtendDays] = useState(7);
+  const [activeTab, setActiveTab] = useState<'overview' | 'auctions' | 'matrimony' | 'payments'>('overview');
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   
   const [profile, setProfile] = useState({
-    name: "রহিম উদ্দিন",
-    email: "rahim@gmail.com",
-    phone: "017XXXXXXXX",
-    location: "কুষ্টিয়া, বাংলাদেশ",
-    bio: "প্রফেশনাল বিক্রেতা | ৫ বছর অভিজ্ঞতা | ৫০০+ সফল লেনদেন",
+    name: "",
+    email: "",
+    phone: "",
+    location: "",
+    bio: "",
+    avatar: "",
   });
 
-  const [featuredPosts, setFeaturedPosts] = useState<FeaturedPost[]>([
-    { postId: 1, postTitle: 'iPhone 15 Pro Max', endDate: '2026-04-23T00:00:00Z', status: 'active', views: 1240 },
-    { postId: 2, postTitle: 'MacBook Pro M2', endDate: '2026-04-20T00:00:00Z', status: 'active', views: 890 },
-  ]);
+  const [stats, setStats] = useState({
+    totalPosts: 0,
+    totalAuctions: 0,
+    totalMatrimony: 0,
+    totalSpent: 0,
+    totalViews: 0,
+  });
 
-  const [payments, setPayments] = useState<PaymentHistory[]>([
-    { id: '1', type: 'featured', amount: 100, postTitle: 'iPhone 15 Pro Max', date: '২০২৬-০৪-১৬' },
-    { id: '2', type: 'matrimony', amount: 500, postTitle: 'পাত্রী প্রোফাইল আনলক', date: '২০২৬-০৪-১৫' },
-    { id: '3', type: 'bid', amount: 2, date: '২০২৬-০৪-১৫' },
-  ]);
+  const [payments, setPayments] = useState<PaymentHistory[]>([]);
+  const [myAuctions, setMyAuctions] = useState<MyAuction[]>([]);
+  const [myMatrimonyProfiles, setMyMatrimonyProfiles] = useState<MyMatrimonyProfile[]>([]);
 
-  const [documentRequests, setDocumentRequests] = useState<DocumentRequest[]>([
-    { id: '1', postTitle: 'iPhone 15 Pro Max', status: 'released', fee: 1500, createdAt: '২০২৬-০৪-১৪' },
-    { id: '2', postTitle: 'Samsung Galaxy S23', status: 'pending', fee: 1900, createdAt: '২০২৬-০৪-১৫' },
-  ]);
-
-  const [myAuctions, setMyAuctions] = useState<MyAuction[]>([
-    {
-      id: 1, title: "iPhone 15 Pro Max - 128GB", currentPrice: 85000, startPrice: 70000,
-      image: "📱", endTime: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000).toISOString(),
-      totalBids: 15, status: 'active', views: 340,
-    },
-    {
-      id: 2, title: "MacBook Pro M2 - 256GB", currentPrice: 145000, startPrice: 120000,
-      image: "💻", endTime: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString(),
-      totalBids: 28, status: 'ended', views: 560, isWinner: true, winningBid: 145000,
-    },
-  ]);
-
-  const [myMatrimonyProfiles, setMyMatrimonyProfiles] = useState<MyMatrimonyProfile[]>([
-    {
-      id: 1, name: "রহিমা খাতুন", age: 24, gender: "female", district: "নারায়ণগঞ্জ",
-      profession: "সফটওয়্যার ইঞ্জিনিয়ার", status: "approved", isVerified: true, isPremium: true,
-      views: 1240, interests: 56, createdAt: "২০২৬-০৪-১৫",
-    },
-    {
-      id: 2, name: "আব্দুল করিম", age: 28, gender: "male", district: "গাজীপুর",
-      profession: "ব্যবসায়ী", status: "pending", isVerified: false, isPremium: false,
-      views: 120, interests: 8, createdAt: "২০২৬-০৪-১৮",
-    },
-  ]);
-
-  const [matrimonyPayments, setMatrimonyPayments] = useState<MatrimonyPayment[]>([
-    { id: '1', profileId: 1, profileName: 'রহিমা খাতুন', amount: 500, date: '২০২৬-০৪-১৫', type: 'profile_unlock' },
-    { id: '2', profileId: 2, profileName: 'নিজের প্রোফাইল', amount: 1000, date: '২০২৬-০৪-১৮', type: 'premium' },
-  ]);
-
-  const [savedProfiles, setSavedProfiles] = useState<MyMatrimonyProfile[]>([
-    { id: 3, name: "ফাতেমা বেগম", age: 22, gender: "female", district: "কুমিল্লা", profession: "চিকিৎসা শিক্ষার্থী", status: "approved", isVerified: true, isPremium: false, views: 2100, interests: 89, createdAt: "২০২৬-০৪-১৩" },
-  ]);
-
+  // ✅ Supabase ক্লায়েন্ট লোড
   useEffect(() => {
-    setMounted(true);
-    // ক্লায়েন্ট সাইড চেক
-    if (typeof window !== 'undefined') {
-      const loggedIn = localStorage.getItem("isLoggedIn");
-      if (loggedIn !== "true") {
-        router.replace("/login");
+    const loadSupabase = async () => {
+      try {
+        const { getSupabaseClient } = await import('@/lib/supabase/client');
+        const client = getSupabaseClient();
+        setSupabase(client);
+      } catch (error) {
+        console.error('Failed to load Supabase:', error);
       }
-    }
-  }, [router]);
-
-  // ============ অপটিমাইজড হ্যান্ডলার (সঠিক ডিপেন্ডেন্সি সহ) ============
-  const getDaysLeft = useCallback((endDate: string) => {
-    const end = new Date(endDate).getTime();
-    const now = Date.now();
-    const diff = Math.ceil((end - now) / (1000 * 60 * 60 * 24));
-    return diff > 0 ? diff : 0;
+    };
+    
+    loadSupabase();
+    setMounted(true);
   }, []);
+
+  // ✅ ডাটা লোড
+  useEffect(() => {
+    if (!supabase) return;
+
+    const loadUserData = async () => {
+      setLoading(true);
+      
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) {
+          router.replace("/login?redirect=/my-account");
+          return;
+        }
+        setCurrentUserId(user.id);
+
+        // প্রোফাইল লোড
+        const { data: profileData } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', user.id)
+          .single();
+        
+        if (profileData) {
+          setProfile({
+            name: profileData.name || 'ইউজার',
+            email: user.email || '',
+            phone: profileData.phone || '',
+            location: profileData.location || 'বাংলাদেশ',
+            bio: profileData.bio || '',
+            avatar: profileData.avatar || '',
+          });
+          if (profileData.avatar) setProfileImage(profileData.avatar);
+        } else {
+          setProfile(prev => ({ ...prev, email: user.email || '' }));
+        }
+
+        // পোস্ট কাউন্ট
+        const { count: postsCount } = await supabase
+          .from('posts')
+          .select('*', { count: 'exact', head: true })
+          .eq('seller_id', user.id);
+        
+        // নিলাম কাউন্ট
+        const { count: auctionsCount } = await supabase
+          .from('auctions')
+          .select('*', { count: 'exact', head: true })
+          .eq('seller_id', user.id);
+        
+        // পাত্র-পাত্রী কাউন্ট
+        const { count: matrimonyCount } = await supabase
+          .from('matrimony_profiles')
+          .select('*', { count: 'exact', head: true })
+          .eq('user_id', user.id);
+        
+        // পেমেন্ট টোটাল
+        const { data: paymentsData } = await supabase
+          .from('payments')
+          .select('amount')
+          .eq('user_id', user.id);
+        
+        // ভিউ টোটাল
+        const { data: viewsData } = await supabase
+          .from('posts')
+          .select('views')
+          .eq('seller_id', user.id);
+        
+        setStats({
+          totalPosts: postsCount || 0,
+          totalAuctions: auctionsCount || 0,
+          totalMatrimony: matrimonyCount || 0,
+          totalSpent: paymentsData?.reduce((s: number, p: any) => s + p.amount, 0) || 0,
+          totalViews: viewsData?.reduce((s: number, p: any) => s + (p.views || 0), 0) || 0,
+        });
+
+        // নিলাম লোড
+        const { data: auctions } = await supabase
+          .from('auctions')
+          .select(`
+            id, title, current_price, start_price, end_time, status, views,
+            images:auction_images(thumbnail_url),
+            bids(count)
+          `)
+          .eq('seller_id', user.id)
+          .order('created_at', { ascending: false })
+          .limit(5);
+        
+        if (auctions) {
+          setMyAuctions(auctions.map((a: any) => ({
+            ...a,
+            image: a.images?.[0]?.thumbnail_url || '🔨',
+            total_bids: a.bids?.[0]?.count || 0,
+          })));
+        }
+
+        // পাত্র-পাত্রী লোড
+        const { data: matrimony } = await supabase
+          .from('matrimony_profiles')
+          .select('*')
+          .eq('user_id', user.id)
+          .order('created_at', { ascending: false })
+          .limit(5);
+        
+        if (matrimony) setMyMatrimonyProfiles(matrimony);
+
+        // পেমেন্ট হিস্ট্রি
+        const { data: paymentHistory } = await supabase
+          .from('payments')
+          .select('*')
+          .eq('user_id', user.id)
+          .order('created_at', { ascending: false })
+          .limit(10);
+        
+        if (paymentHistory) {
+          setPayments(paymentHistory.map((p: any) => ({
+            id: p.id,
+            type: p.type,
+            amount: p.amount,
+            date: new Date(p.created_at).toLocaleDateString('bn-BD'),
+          })));
+        }
+
+      } catch (error) {
+        console.error('Load error:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadUserData();
+  }, [supabase, router]);
+
+  // ============ হ্যান্ডলার ============
+  const handleImageUpload = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !currentUserId || !supabase) return;
+    
+    setIsUploading(true);
+    try {
+      const webpImage = await compressToWebP(file);
+      setProfileImage(webpImage);
+      
+      const fileName = `avatar-${Date.now()}.webp`;
+      const blob = dataURItoBlob(webpImage);
+      
+      const { error: uploadError } = await supabase.storage
+        .from('avatars')
+        .upload(`users/${currentUserId}/${fileName}`, blob);
+      
+      if (!uploadError) {
+        const { data: urlData } = supabase.storage
+          .from('avatars')
+          .getPublicUrl(`users/${currentUserId}/${fileName}`);
+        
+        if (urlData) {
+          await supabase.from('profiles')
+            .update({ avatar: urlData.publicUrl })
+            .eq('id', currentUserId);
+        }
+      }
+    } catch (error) {
+      console.error('Upload failed:', error);
+    } finally {
+      setIsUploading(false);
+    }
+  }, [currentUserId, supabase]);
+
+  const dataURItoBlob = (dataURI: string): Blob => {
+    const byteString = atob(dataURI.split(',')[1]);
+    const mimeString = dataURI.split(',')[0].split(':')[1].split(';')[0];
+    const ab = new ArrayBuffer(byteString.length);
+    const ia = new Uint8Array(ab);
+    for (let i = 0; i < byteString.length; i++) ia[i] = byteString.charCodeAt(i);
+    return new Blob([ab], { type: mimeString });
+  };
+
+  const handleProfileUpdate = useCallback(async () => {
+    if (!currentUserId || !supabase) return;
+    
+    try {
+      await supabase.from('profiles')
+        .update({
+          name: profile.name,
+          phone: profile.phone,
+          location: profile.location,
+          bio: profile.bio,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', currentUserId);
+      
+      setShowEditModal(false);
+      alert("✅ প্রোফাইল আপডেট করা হয়েছে!");
+    } catch (error) {
+      alert("প্রোফাইল আপডেট করতে সমস্যা হয়েছে!");
+    }
+  }, [profile, currentUserId, supabase]);
+
+  const handleLogout = useCallback(async () => {
+    if (supabase) {
+      await supabase.auth.signOut();
+    }
+    localStorage.clear();
+    router.push("/login");
+  }, [supabase, router]);
 
   const getTimeLeft = useCallback((endTime: string) => {
     const end = new Date(endTime).getTime();
     const now = Date.now();
     const diff = end - now;
     if (diff <= 0) return { text: "সমাপ্ত", isEnded: true };
-    const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+    const days = Math.floor(diff / 86400000);
     const hours = Math.floor((diff % 86400000) / 3600000);
     if (days > 0) return { text: `${days} দিন ${hours} ঘন্টা`, isEnded: false };
     return { text: `${hours} ঘন্টা`, isEnded: false };
   }, []);
 
-  const handleImageUpload = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    setIsUploading(true);
-    try {
-      const webpImage = await compressToWebP(file);
-      setProfileImage(webpImage);
-    } catch (error) {
-      console.error('Image upload failed:', error);
-    } finally {
-      setIsUploading(false);
-    }
-  }, []);
-
-  const handleProfileUpdate = useCallback(() => {
-    setShowEditModal(false);
-    alert("✅ প্রোফাইল আপডেট করা হয়েছে!");
-  }, []);
-
-  const handleLogout = useCallback(() => {
-    localStorage.removeItem("isLoggedIn");
-    router.push("/login");
-  }, [router]);
-
-  const handleViewAuction = useCallback((id: number) => {
-    router.push(`/auction/${id}`);
-  }, [router]);
-
-  const handleViewBids = useCallback((id: number) => {
-    router.push(`/auction/${id}?tab=bids`);
-  }, [router]);
-
-  const handleEditAuction = useCallback((id: number) => {
-    alert(`📝 নিলাম এডিট ফিচার শীঘ্রই আসছে!\nনিলাম আইডি: ${id}`);
-  }, []);
-
-  const handleExtendFeatured = useCallback((postId: number, days: number) => {
-    setFeaturedPosts(prev => prev.map(p => 
-      p.postId === postId 
-        ? { ...p, endDate: new Date(Date.now() + days * 24 * 60 * 60 * 1000).toISOString() } 
-        : p
-    ));
-    setShowExtendModal(null);
-    alert(`✅ ফিচার্ড ${days} দিন বাড়ানো হয়েছে!`);
-  }, []);
-
-  const handleEditMatrimonyProfile = useCallback((id: number) => {
-    router.push(`/category/matrimony/edit/${id}`);
-  }, [router]);
-
-  const handleViewMatrimonyProfile = useCallback((id: number) => {
-    router.push(`/category/matrimony?id=${id}`);
-  }, [router]);
-
-  const handleDeleteMatrimonyProfile = useCallback((id: number) => {
+  const handleViewAuction = useCallback((id: string) => router.push(`/auction/${id}`), [router]);
+  const handleViewMatrimonyProfile = useCallback((id: string) => router.push(`/category/matrimony?id=${id}`), [router]);
+  const handleEditMatrimonyProfile = useCallback((id: string) => router.push(`/category/matrimony/edit/${id}`), [router]);
+  const handleDeleteMatrimonyProfile = useCallback(async (id: string) => {
+    if (!supabase) return;
+    if (!confirm('প্রোফাইল ডিলিট করবেন?')) return;
+    await supabase.from('matrimony_profiles').delete().eq('id', id);
     setMyMatrimonyProfiles(prev => prev.filter(p => p.id !== id));
     alert("✅ প্রোফাইল ডিলিট করা হয়েছে!");
-  }, []);
-
-  const handleBoostProfile = useCallback((id: number) => {
-    alert(`🚀 প্রোফাইল বুস্ট করতে ২০০ টাকা পেমেন্ট করতে হবে!\nপ্রোফাইল আইডি: ${id}`);
-  }, []);
-
-  const handleRenewPremium = useCallback((id: number) => {
-    alert(`👑 প্রিমিয়াম নবায়ন করতে ১০০০ টাকা পেমেন্ট করতে হবে!\nপ্রোফাইল আইডি: ${id}`);
-  }, []);
-
-  const totalSpent = payments.reduce((sum, p) => sum + p.amount, 0);
-  const activeFeaturedCount = featuredPosts.filter(p => p.status === 'active').length;
+  }, [supabase]);
 
   const menuItems = [
-    { icon: <Package size={20} />, label: "আমার পোস্ট", href: "/my-posts", badge: "12", bgColor: "bg-blue-50", iconColor: "text-blue-600" },
-    { icon: <Gavel size={20} />, label: "আমার নিলাম", href: "/my-auctions", badge: String(myAuctions.length), bgColor: "bg-green-50", iconColor: "text-green-600" },
-    { icon: <Heart size={20} />, label: "পাত্র-পাত্রী", href: "/category/matrimony", badge: String(myMatrimonyProfiles.length), bgColor: "bg-pink-50", iconColor: "text-pink-600" },
-    { icon: <Heart size={20} />, label: "সংরক্ষিত পণ্য", href: "/saved", badge: "8", bgColor: "bg-red-50", iconColor: "text-red-600" },
-    { icon: <MessageCircle size={20} />, label: "মেসেজ", href: "/chat", badge: "5", bgColor: "bg-purple-50", iconColor: "text-purple-600" },
-    { icon: <Bell size={20} />, label: "নোটিফিকেশন", href: "/notifications", badge: "2", bgColor: "bg-yellow-50", iconColor: "text-yellow-600" },
+    { icon: <Package size={20} />, label: "আমার পোস্ট", href: "/my-posts", badge: String(stats.totalPosts), bgColor: "bg-blue-50", iconColor: "text-blue-600" },
+    { icon: <Gavel size={20} />, label: "আমার নিলাম", href: "/my-auctions", badge: String(stats.totalAuctions), bgColor: "bg-green-50", iconColor: "text-green-600" },
+    { icon: <Heart size={20} />, label: "পাত্র-পাত্রী", href: "/category/matrimony", badge: String(stats.totalMatrimony), bgColor: "bg-pink-50", iconColor: "text-pink-600" },
+    { icon: <Heart size={20} />, label: "সংরক্ষিত পণ্য", href: "/saved", badge: "0", bgColor: "bg-red-50", iconColor: "text-red-600" },
+    { icon: <MessageCircle size={20} />, label: "মেসেজ", href: "/chat", badge: "0", bgColor: "bg-purple-50", iconColor: "text-purple-600" },
+    { icon: <Bell size={20} />, label: "নোটিফিকেশন", href: "/notifications", badge: "0", bgColor: "bg-yellow-50", iconColor: "text-yellow-600" },
     { icon: <Settings size={20} />, label: "সেটিংস", href: "/settings", bgColor: "bg-gray-50", iconColor: "text-gray-600" },
     { icon: <Shield size={20} />, label: "প্রাইভেসি ও নিরাপত্তা", href: "/privacy", bgColor: "bg-indigo-50", iconColor: "text-indigo-600" },
   ];
 
-  // লোডিং স্টেট
-  if (!mounted) {
+  if (loading || !mounted) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-4 border-[#f85606] border-t-transparent" />
+        <Loader2 className="animate-spin text-[#f85606]" size={40} />
       </div>
     );
   }
@@ -334,7 +427,7 @@ export default function MyAccountPage() {
           <div className="relative inline-block group">
             <div className="absolute inset-0 bg-gradient-to-r from-[#f85606] to-orange-500 rounded-full blur-xl opacity-60 group-hover:opacity-100 transition duration-300" />
             <div className="relative w-28 h-28 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center text-6xl border-4 border-white shadow-2xl overflow-hidden">
-              {profileImage.startsWith('data:') ? (
+              {profileImage.startsWith('data:') || profileImage.startsWith('http') ? (
                 <img src={profileImage} alt="Profile" className="w-full h-full object-cover" loading="eager" />
               ) : (
                 <span>{profileImage}</span>
@@ -350,16 +443,14 @@ export default function MyAccountPage() {
             <input ref={fileInputRef} type="file" accept="image/*" onChange={handleImageUpload} className="hidden" />
           </div>
 
-          <h2 className="text-2xl font-bold mt-4 text-white">{profile.name}</h2>
+          <h2 className="text-2xl font-bold mt-4 text-white">{profile.name || 'ইউজার'}</h2>
           <p className="text-sm text-white/80">{profile.email}</p>
           <div className="flex justify-center gap-6 mt-3">
-            <div className="text-center"><p className="text-xl font-bold text-white">12</p><p className="text-xs text-white/70">পোস্ট</p></div>
+            <div className="text-center"><p className="text-xl font-bold text-white">{stats.totalPosts}</p><p className="text-xs text-white/70">পোস্ট</p></div>
             <div className="w-px bg-white/30" />
-            <div className="text-center"><p className="text-xl font-bold text-white">{myAuctions.length}</p><p className="text-xs text-white/70">নিলাম</p></div>
+            <div className="text-center"><p className="text-xl font-bold text-white">{stats.totalAuctions}</p><p className="text-xs text-white/70">নিলাম</p></div>
             <div className="w-px bg-white/30" />
-            <div className="text-center"><p className="text-xl font-bold text-white">{myMatrimonyProfiles.length}</p><p className="text-xs text-white/70">পাত্র-পাত্রী</p></div>
-            <div className="w-px bg-white/30" />
-            <div className="text-center"><p className="text-xl font-bold text-white">4.8</p><p className="text-xs text-white/70">রেটিং</p></div>
+            <div className="text-center"><p className="text-xl font-bold text-white">{stats.totalMatrimony}</p><p className="text-xs text-white/70">পাত্র-পাত্রী</p></div>
           </div>
           
           <button 
@@ -373,18 +464,17 @@ export default function MyAccountPage() {
 
       {/* স্ট্যাটাস কার্ড */}
       <div className="max-w-3xl mx-auto px-4 mt-4">
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-          <StatCard label="মোট খরচ" value={`${totalSpent} ৳`} isOrange />
-          <StatCard label="সক্রিয় ফিচার্ড" value={activeFeaturedCount} />
-          <StatCard label="মোট পোস্ট" value="12" />
-          <StatCard label="মোট ভিউ" value="4,230" />
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+          <StatCard label="মোট খরচ" value={`${stats.totalSpent} ৳`} isOrange />
+          <StatCard label="মোট পোস্ট" value={stats.totalPosts} />
+          <StatCard label="মোট ভিউ" value={stats.totalViews} />
         </div>
       </div>
 
       {/* ট্যাব মেনু */}
       <div className="max-w-3xl mx-auto px-4 mt-4">
         <div className="flex gap-2 bg-white/80 backdrop-blur-sm rounded-2xl p-1 shadow-md border border-[#f85606]/20 overflow-x-auto">
-          {['overview', 'auctions', 'matrimony', 'featured', 'payments', 'documents'].map((tab) => (
+          {['overview', 'auctions', 'matrimony', 'payments'].map((tab) => (
             <button
               key={tab}
               onClick={() => setActiveTab(tab as any)}
@@ -397,9 +487,7 @@ export default function MyAccountPage() {
               {tab === 'overview' && 'ওভারভিউ'}
               {tab === 'auctions' && 'নিলাম'}
               {tab === 'matrimony' && 'পাত্র-পাত্রী'}
-              {tab === 'featured' && 'ফিচার্ড'}
               {tab === 'payments' && 'পেমেন্ট'}
-              {tab === 'documents' && 'ডকুমেন্ট'}
             </button>
           ))}
         </div>
@@ -408,7 +496,6 @@ export default function MyAccountPage() {
       {/* ট্যাব কন্টেন্ট */}
       <div className="max-w-3xl mx-auto p-4 space-y-3">
         
-        {/* ওভারভিউ ট্যাব */}
         {activeTab === 'overview' && (
           <>
             {menuItems.map((item, idx) => (
@@ -417,7 +504,6 @@ export default function MyAccountPage() {
           </>
         )}
 
-        {/* পাত্র-পাত্রী ট্যাব */}
         {activeTab === 'matrimony' && (
           <div className="space-y-4">
             <div className="bg-white/80 backdrop-blur-sm rounded-2xl p-5 shadow-md border border-[#f85606]/10">
@@ -447,8 +533,8 @@ export default function MyAccountPage() {
                           <div>
                             <h3 className="font-bold text-gray-800 flex items-center gap-2">
                               {prof.name}
-                              {prof.isVerified && <CheckCircle size={12} className="text-green-500" />}
-                              {prof.isPremium && <Crown size={12} className="text-amber-500" />}
+                              {prof.is_verified && <CheckCircle size={12} className="text-green-500" />}
+                              {prof.is_premium && <Crown size={12} className="text-amber-500" />}
                             </h3>
                             <p className="text-xs text-gray-400">{prof.age} বছর • {prof.profession}</p>
                             <p className="text-xs text-gray-400">{prof.district}</p>
@@ -468,7 +554,7 @@ export default function MyAccountPage() {
                       <div className="flex items-center gap-4 mt-3 text-xs text-gray-500">
                         <span>👁️ {prof.views} ভিউ</span>
                         <span>❤️ {prof.interests} আগ্রহ</span>
-                        <span>📅 {prof.createdAt}</span>
+                        <span>📅 {timeAgo(prof.created_at)}</span>
                       </div>
 
                       <div className="flex gap-2 mt-3 pt-3 border-t border-gray-100">
@@ -477,14 +563,6 @@ export default function MyAccountPage() {
                         </button>
                         <button onClick={() => handleEditMatrimonyProfile(prof.id)} className="flex-1 bg-blue-50 hover:bg-blue-100 text-blue-700 py-2 rounded-lg text-xs font-medium flex items-center justify-center gap-1">
                           <Edit2 size={12} /> এডিট
-                        </button>
-                        {!prof.isPremium && (
-                          <button onClick={() => handleRenewPremium(prof.id)} className="flex-1 bg-amber-50 hover:bg-amber-100 text-amber-700 py-2 rounded-lg text-xs font-medium flex items-center justify-center gap-1">
-                            <Crown size={12} /> প্রিমিয়াম
-                          </button>
-                        )}
-                        <button onClick={() => handleBoostProfile(prof.id)} className="flex-1 bg-green-50 hover:bg-green-100 text-green-700 py-2 rounded-lg text-xs font-medium flex items-center justify-center gap-1">
-                          <Zap size={12} /> বুস্ট
                         </button>
                         <button onClick={() => handleDeleteMatrimonyProfile(prof.id)} className="w-8 h-8 bg-red-50 hover:bg-red-100 text-red-600 rounded-lg flex items-center justify-center">
                           <Trash2 size={14} />
@@ -495,62 +573,9 @@ export default function MyAccountPage() {
                 </div>
               )}
             </div>
-
-            {savedProfiles.length > 0 && (
-              <div className="bg-white/80 backdrop-blur-sm rounded-2xl p-5 shadow-md border border-[#f85606]/10">
-                <h2 className="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">
-                  <Bookmark size={20} className="text-[#f85606]" />
-                  সেভ করা প্রোফাইল
-                </h2>
-                <div className="space-y-2">
-                  {savedProfiles.map((prof) => (
-                    <div key={prof.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-xl">
-                      <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-full bg-gradient-to-br from-pink-100 to-rose-100 flex items-center justify-center text-xl">
-                          {prof.gender === 'male' ? '👨' : '👩'}
-                        </div>
-                        <div>
-                          <p className="font-medium text-sm">{prof.name}</p>
-                          <p className="text-xs text-gray-400">{prof.age} বছর • {prof.district}</p>
-                        </div>
-                      </div>
-                      <button onClick={() => handleViewMatrimonyProfile(prof.id)} className="text-[#f85606] text-xs font-semibold">
-                        দেখুন →
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            <div className="bg-white/80 backdrop-blur-sm rounded-2xl p-5 shadow-md border border-[#f85606]/10">
-              <h2 className="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">
-                <CreditCard size={20} className="text-[#f85606]" />
-                পেমেন্ট হিস্ট্রি
-              </h2>
-              {matrimonyPayments.length === 0 ? (
-                <p className="text-center text-gray-400 py-2">কোনো পেমেন্ট নেই</p>
-              ) : (
-                <div className="space-y-2">
-                  {matrimonyPayments.map((pay) => (
-                    <div key={pay.id} className="flex justify-between items-center border-b border-gray-100 py-2">
-                      <div>
-                        <p className="font-medium text-sm">{pay.profileName}</p>
-                        <p className="text-xs text-gray-400">
-                          {pay.type === 'profile_unlock' ? '🔓 প্রোফাইল আনলক' : 
-                           pay.type === 'premium' ? '👑 প্রিমিয়াম' : '⭐ ফিচার্ড'} • {pay.date}
-                        </p>
-                      </div>
-                      <p className="font-bold text-[#f85606]">{pay.amount} ৳</p>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
           </div>
         )}
 
-        {/* নিলাম ট্যাব */}
         {activeTab === 'auctions' && (
           <div className="bg-white/80 backdrop-blur-sm rounded-2xl p-5 shadow-md border border-[#f85606]/10">
             <div className="flex justify-between items-center mb-4">
@@ -570,7 +595,7 @@ export default function MyAccountPage() {
             ) : (
               <div className="space-y-3">
                 {myAuctions.map((auction) => {
-                  const timeInfo = getTimeLeft(auction.endTime);
+                  const timeInfo = getTimeLeft(auction.end_time);
                   return (
                     <div key={auction.id} className="border border-gray-200 rounded-xl p-4 hover:shadow-md transition bg-white">
                       <div className="flex gap-4">
@@ -580,8 +605,8 @@ export default function MyAccountPage() {
                         <div className="flex-1">
                           <h3 className="font-bold text-gray-800">{auction.title}</h3>
                           <div className="flex items-center gap-3 mt-1">
-                            <span className="text-sm font-bold text-[#f85606]">৳{auction.currentPrice.toLocaleString()}</span>
-                            <span className="text-xs text-gray-400">{auction.totalBids} বিড</span>
+                            <span className="text-sm font-bold text-[#f85606]">৳{auction.current_price?.toLocaleString()}</span>
+                            <span className="text-xs text-gray-400">{auction.total_bids} বিড</span>
                           </div>
                           <div className="flex items-center gap-2 mt-1">
                             <Clock size={12} className={timeInfo.isEnded ? "text-red-500" : "text-green-500"} />
@@ -591,10 +616,6 @@ export default function MyAccountPage() {
                       </div>
                       <div className="flex gap-2 mt-3">
                         <button onClick={() => handleViewAuction(auction.id)} className="flex-1 bg-gray-100 text-gray-700 py-2 rounded-lg text-xs">দেখুন</button>
-                        <button onClick={() => handleViewBids(auction.id)} className="flex-1 bg-blue-50 text-blue-700 py-2 rounded-lg text-xs">বিড</button>
-                        {auction.status === 'active' && (
-                          <button onClick={() => handleEditAuction(auction.id)} className="flex-1 bg-orange-50 text-orange-700 py-2 rounded-lg text-xs">এডিট</button>
-                        )}
                       </div>
                     </div>
                   );
@@ -604,74 +625,31 @@ export default function MyAccountPage() {
           </div>
         )}
 
-        {/* ফিচার্ড ট্যাব */}
-        {activeTab === 'featured' && (
-          <div className="bg-white/80 backdrop-blur-sm rounded-2xl p-5 shadow-md border border-[#f85606]/10">
-            <h2 className="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">
-              <Crown size={20} className="text-[#f85606]" /> ফিচার্ড পোস্ট
-            </h2>
-            {featuredPosts.map((post) => (
-              <div key={post.postId} className="border rounded-xl p-3 mb-2">
-                <div className="flex justify-between">
-                  <span className="font-medium">{post.postTitle}</span>
-                  <span className="text-xs text-gray-400">{post.views} ভিউ</span>
-                </div>
-                <div className="flex justify-between items-center mt-2">
-                  <span className="text-xs text-gray-500">{getDaysLeft(post.endDate)} দিন বাকি</span>
-                  <button onClick={() => setShowExtendModal(post.postId)} className="text-xs text-blue-600">সময় বাড়ান</button>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-
-        {/* পেমেন্ট ট্যাব */}
         {activeTab === 'payments' && (
           <div className="bg-white/80 backdrop-blur-sm rounded-2xl p-5 shadow-md border border-[#f85606]/10">
             <h2 className="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">
               <CreditCard size={20} className="text-[#f85606]" /> পেমেন্ট হিস্ট্রি
             </h2>
-            {payments.map((payment) => (
-              <div key={payment.id} className="flex justify-between items-center border-b py-2">
-                <div>
-                  <p className="font-medium text-sm">
-                    {payment.type === 'featured' && '⭐ ফিচার্ড'}
-                    {payment.type === 'matrimony' && '💑 পাত্র-পাত্রী'}
-                    {payment.type === 'bid' && '🔨 বিড'}
-                  </p>
-                  {payment.postTitle && <p className="text-xs text-gray-400">{payment.postTitle}</p>}
-                  <p className="text-xs text-gray-400">{payment.date}</p>
-                </div>
-                <p className="font-bold text-[#f85606]">{payment.amount} ৳</p>
+            {payments.length === 0 ? (
+              <p className="text-center text-gray-400 py-4">কোনো পেমেন্ট নেই</p>
+            ) : (
+              <div className="space-y-2">
+                {payments.map((payment) => (
+                  <div key={payment.id} className="flex justify-between items-center border-b py-2">
+                    <div>
+                      <p className="font-medium text-sm">
+                        {payment.type === 'featured' && '⭐ ফিচার্ড'}
+                        {payment.type === 'matrimony' && '💑 পাত্র-পাত্রী'}
+                        {payment.type === 'bid' && '🔨 বিড'}
+                        {payment.type === 'document' && '📄 ডকুমেন্ট'}
+                      </p>
+                      <p className="text-xs text-gray-400">{payment.date}</p>
+                    </div>
+                    <p className="font-bold text-[#f85606]">{payment.amount} ৳</p>
+                  </div>
+                ))}
               </div>
-            ))}
-          </div>
-        )}
-
-        {/* ডকুমেন্ট ট্যাব */}
-        {activeTab === 'documents' && (
-          <div className="bg-white/80 backdrop-blur-sm rounded-2xl p-5 shadow-md border border-[#f85606]/10">
-            <h2 className="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">
-              <FileText size={20} className="text-[#f85606]" /> ডকুমেন্ট
-            </h2>
-            {documentRequests.map((doc) => (
-              <div key={doc.id} className="border rounded-xl p-3 mb-2">
-                <div className="flex justify-between">
-                  <span className="font-medium">{doc.postTitle}</span>
-                  <span className={`text-xs px-2 py-1 rounded-full ${doc.status === 'released' ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'}`}>
-                    {doc.status === 'released' ? 'রিলিজড' : 'পেন্ডিং'}
-                  </span>
-                </div>
-                <div className="flex justify-between items-center mt-2">
-                  <span className="text-sm text-gray-600">ফি: {doc.fee} ৳</span>
-                  {doc.status === 'released' ? (
-                    <button className="text-sm bg-blue-500 text-white px-3 py-1 rounded-lg">ডাউনলোড</button>
-                  ) : (
-                    <button className="text-sm bg-[#f85606] text-white px-3 py-1 rounded-lg">পেমেন্ট</button>
-                  )}
-                </div>
-              </div>
-            ))}
+            )}
           </div>
         )}
 
@@ -691,8 +669,9 @@ export default function MyAccountPage() {
             <h3 className="text-lg font-bold mb-4">প্রোফাইল এডিট</h3>
             <div className="space-y-3">
               <input type="text" value={profile.name} onChange={(e) => setProfile({...profile, name: e.target.value})} className="w-full p-3 border rounded-xl" placeholder="নাম" />
-              <input type="email" value={profile.email} onChange={(e) => setProfile({...profile, email: e.target.value})} className="w-full p-3 border rounded-xl" placeholder="ইমেইল" />
               <input type="tel" value={profile.phone} onChange={(e) => setProfile({...profile, phone: e.target.value})} className="w-full p-3 border rounded-xl" placeholder="ফোন" />
+              <input type="text" value={profile.location} onChange={(e) => setProfile({...profile, location: e.target.value})} className="w-full p-3 border rounded-xl" placeholder="ঠিকানা" />
+              <textarea value={profile.bio} onChange={(e) => setProfile({...profile, bio: e.target.value})} className="w-full p-3 border rounded-xl" placeholder="বায়ো" rows={3} />
             </div>
             <div className="flex gap-3 mt-4">
               <button onClick={handleProfileUpdate} className="flex-1 bg-[#f85606] text-white py-3 rounded-xl">সংরক্ষণ</button>
@@ -702,29 +681,11 @@ export default function MyAccountPage() {
         </div>
       )}
 
-      {/* ফিচার্ড এক্সটেন্ড মডাল */}
-      {showExtendModal && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl max-w-sm w-full p-6">
-            <h3 className="text-lg font-bold mb-4">ফিচার্ড সময় বাড়ান</h3>
-            <select value={extendDays} onChange={(e) => setExtendDays(Number(e.target.value))} className="w-full p-3 border rounded-xl mb-4">
-              <option value={7}>৭ দিন (১০০ ৳)</option>
-              <option value={15}>১৫ দিন (১৮০ ৳)</option>
-              <option value={30}>৩০ দিন (৩০০ ৳)</option>
-            </select>
-            <div className="flex gap-3">
-              <button onClick={() => handleExtendFeatured(showExtendModal, extendDays)} className="flex-1 bg-[#f85606] text-white py-3 rounded-xl">সংরক্ষণ</button>
-              <button onClick={() => setShowExtendModal(null)} className="flex-1 bg-gray-200 py-3 rounded-xl">বাতিল</button>
-            </div>
-          </div>
-        </div>
-      )}
-
       {/* আপলোডিং ইন্ডিকেটর */}
       {isUploading && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center">
           <div className="bg-white rounded-2xl p-6 text-center">
-            <div className="animate-spin rounded-full h-12 w-12 border-4 border-[#f85606] border-t-transparent mx-auto mb-4" />
+            <Loader2 className="animate-spin text-[#f85606] mx-auto mb-4" size={40} />
             <p className="text-gray-600">ছবি আপলোড হচ্ছে...</p>
           </div>
         </div>

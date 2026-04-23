@@ -1,26 +1,31 @@
 "use client";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { 
   ArrowLeft, Bell, Shield, EyeOff, Save, CheckCircle, X, AlertCircle,
-  User, Mail, Phone, MapPin, CreditCard,
+  User, Mail, Phone, MapPin, CreditCard, Loader2,
   FileText, LogOut, ChevronRight, Eye, Key, Database, Download, Upload, Lock
 } from "lucide-react";
+import { getSupabaseClient } from "@/lib/supabase/client";
 
 export default function UserSettingsPage() {
   const router = useRouter();
   const [activeTab, setActiveTab] = useState<'profile' | 'notification' | 'security' | 'privacy' | 'payment' | 'data'>('profile');
   const [showSuccess, setShowSuccess] = useState(false);
   const [successMessage, setSuccessMessage] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [profileLoading, setProfileLoading] = useState(true);
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   
-  // ============ পাসওয়ার্ড মডার্ন স্টেট ============
+  const supabase = getSupabaseClient();
+  
+  // ============ পাসওয়ার্ড স্টেট ============
   const [passwordData, setPasswordData] = useState({
     currentPassword: "",
     newPassword: "",
     confirmPassword: "",
   });
   
-  // রিয়েল-টাইম এরর ও ভ্যালিডেশন
   const [passwordErrors, setPasswordErrors] = useState({
     current: "",
     new: "",
@@ -31,6 +36,7 @@ export default function UserSettingsPage() {
   const [showCurrentPassword, setShowCurrentPassword] = useState(false);
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [passwordLoading, setPasswordLoading] = useState(false);
 
   // ============ ফরগট পাসওয়ার্ড মডাল ============
   const [showForgotPasswordModal, setShowForgotPasswordModal] = useState(false);
@@ -38,14 +44,15 @@ export default function UserSettingsPage() {
   const [forgotStep, setForgotStep] = useState<'email' | 'otp' | 'newPassword'>('email');
   const [forgotOtp, setForgotOtp] = useState("");
   const [newPasswordData, setNewPasswordData] = useState({ password: "", confirm: "" });
+  const [forgotLoading, setForgotLoading] = useState(false);
 
   const [profile, setProfile] = useState({
-    fullName: "রহিম উদ্দিন",
-    email: "rahim@gmail.com",
-    phone: "01712345678",
+    fullName: "",
+    email: "",
+    phone: "",
     district: "ঢাকা",
-    address: "মিরপুর, ঢাকা",
-    bio: "প্রফেশনাল বিক্রেতা | ৫ বছর অভিজ্ঞতা",
+    address: "",
+    bio: "",
   });
 
   const [notificationSettings, setNotificationSettings] = useState({
@@ -66,10 +73,105 @@ export default function UserSettingsPage() {
     { id: 1, type: 'bkash', number: '01712345678', isDefault: true },
   ]);
 
-  useEffect(() => {
-    const savedProfile = localStorage.getItem("userProfile");
-    if (savedProfile) setProfile(JSON.parse(savedProfile));
-  }, []);
+  // ============ Supabase থেকে প্রোফাইল লোড ============
+useEffect(() => {
+  const loadProfile = async () => {
+    setProfileLoading(true);
+    
+    try {
+      const { data: { user }, error: userError } = await supabase.auth.getUser();
+      
+      // ইউজার চেক
+      if (userError) throw userError;
+      
+      if (!user) {
+        router.push('/login?redirect=/settings');
+        return;
+      }
+      setCurrentUserId(user.id);
+
+      // প্রোফাইল লোড
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', user.id)
+        .single();
+
+      if (error) {
+        // প্রোফাইল না থাকলে নতুন তৈরি
+        if (error.code === 'PGRST116') {
+          console.log('Profile not found, creating new profile');
+          
+          const { data: newProfile, error: createError } = await supabase
+            .from('profiles')
+            .insert({
+              id: user.id,
+              name: user.user_metadata?.name || user.email?.split('@')[0] || 'ইউজার',
+              email: user.email,
+              created_at: new Date().toISOString(),
+            })
+            .select()
+            .single();
+          
+          if (createError) {
+            console.error('Create profile error:', createError.message);
+          } else if (newProfile) {
+            setProfile({
+              fullName: newProfile.name || '',
+              email: user.email || '',
+              phone: newProfile.phone || '',
+              district: newProfile.location || 'ঢাকা',
+              address: newProfile.address || '',
+              bio: newProfile.bio || '',
+            });
+          }
+        } else {
+          console.error('Profile fetch error:', error.message);
+        }
+      } else if (data) {
+        setProfile({
+          fullName: data.name || '',
+          email: user.email || '',
+          phone: data.phone || '',
+          district: data.location || 'ঢাকা',
+          address: data.address || '',
+          bio: data.bio || '',
+        });
+      }
+
+      // লোকাল স্টোরেজ ফলব্যাক
+      const savedProfile = localStorage.getItem("userProfile");
+      if (savedProfile) {
+        try {
+          const parsed = JSON.parse(savedProfile);
+          setProfile(prev => ({
+            ...prev,
+            fullName: parsed.fullName || prev.fullName,
+            phone: parsed.phone || prev.phone,
+            district: parsed.district || prev.district,
+            address: parsed.address || prev.address,
+            bio: parsed.bio || prev.bio,
+          }));
+        } catch {}
+      }
+      
+    } catch (error: any) {
+      console.log('Using local storage fallback');
+      
+      // লোকাল স্টোরেজ থেকে লোড
+      const savedProfile = localStorage.getItem("userProfile");
+      if (savedProfile) {
+        try {
+          setProfile(JSON.parse(savedProfile));
+        } catch {}
+      }
+    } finally {
+      setProfileLoading(false);
+    }
+  };
+
+  loadProfile();
+}, [router]);
 
   // ============ রিয়েল-টাইম পাসওয়ার্ড ভ্যালিডেশন ============
   useEffect(() => {
@@ -101,35 +203,59 @@ export default function UserSettingsPage() {
     setTimeout(() => setShowSuccess(false), 3000);
   };
 
-  // ============ মডার্ন পাসওয়ার্ড পরিবর্তন ============
-  const handlePasswordChange = () => {
+  // ============ Supabase পাসওয়ার্ড পরিবর্তন ============
+  const handlePasswordChange = useCallback(async () => {
     if (!isPasswordValid) return;
     
-    // লোকাল স্টোরেজে পাসওয়ার্ড সেভ (Supabase রেডি হলে এখানে API কল হবে)
-    localStorage.setItem("userPassword", passwordData.newPassword);
-    setPasswordData({ currentPassword: "", newPassword: "", confirmPassword: "" });
-    showSuccessMessage("✅ পাসওয়ার্ড সফলভাবে পরিবর্তন করা হয়েছে!");
-  };
+    setPasswordLoading(true);
+    
+    try {
+      const { error } = await supabase.auth.updateUser({
+        password: passwordData.newPassword
+      });
 
-  // ============ ফরগট পাসওয়ার্ড ফাংশন ============
-  const handleSendResetEmail = () => {
+      if (error) throw error;
+
+      setPasswordData({ currentPassword: "", newPassword: "", confirmPassword: "" });
+      showSuccessMessage("✅ পাসওয়ার্ড সফলভাবে পরিবর্তন করা হয়েছে!");
+    } catch (error: any) {
+      alert(error.message || "পাসওয়ার্ড পরিবর্তন করতে সমস্যা হয়েছে!");
+    } finally {
+      setPasswordLoading(false);
+    }
+  }, [isPasswordValid, passwordData.newPassword]);
+
+  // ============ Supabase ফরগট পাসওয়ার্ড ============
+  const handleSendResetEmail = useCallback(async () => {
     if (!forgotEmail) {
       alert("ইমেইল ঠিকানা দিন");
       return;
     }
-    setForgotStep('otp');
-    alert(`📧 ${forgotEmail} এ একটি OTP পাঠানো হয়েছে!\n🔐 ডেমো OTP: 123456`);
-  };
+    
+    setForgotLoading(true);
+    
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(forgotEmail, {
+        redirectTo: `${window.location.origin}/reset-password`,
+      });
+
+      if (error) throw error;
+
+      setForgotStep('otp');
+      alert(`📧 ${forgotEmail} এ পাসওয়ার্ড রিসেট লিংক পাঠানো হয়েছে!`);
+    } catch (error: any) {
+      alert(error.message || "ইমেইল পাঠাতে সমস্যা হয়েছে!");
+    } finally {
+      setForgotLoading(false);
+    }
+  }, [forgotEmail]);
 
   const handleVerifyOtp = () => {
-    if (forgotOtp === "123456") {
-      setForgotStep('newPassword');
-    } else {
-      alert("❌ ভুল OTP! সঠিক OTP: 123456");
-    }
+    // Supabase ম্যাজিক লিংক ব্যবহার করলে OTP দরকার নেই
+    alert("আপনার ইমেইলে পাঠানো লিংকে ক্লিক করুন!");
   };
 
-  const handleSetNewPassword = () => {
+  const handleSetNewPassword = useCallback(async () => {
     if (newPasswordData.password !== newPasswordData.confirm) {
       alert("পাসওয়ার্ড মিলছে না");
       return;
@@ -139,19 +265,62 @@ export default function UserSettingsPage() {
       return;
     }
     
-    localStorage.setItem("userPassword", newPasswordData.password);
-    setShowForgotPasswordModal(false);
-    setForgotStep('email');
-    setForgotEmail("");
-    setForgotOtp("");
-    setNewPasswordData({ password: "", confirm: "" });
-    showSuccessMessage("✅ নতুন পাসওয়ার্ড সেট করা হয়েছে! এখন লগইন করুন।");
-  };
+    setForgotLoading(true);
+    
+    try {
+      const { error } = await supabase.auth.updateUser({
+        password: newPasswordData.password
+      });
 
-  const handleSaveProfile = () => {
-    localStorage.setItem("userProfile", JSON.stringify(profile));
-    showSuccessMessage("✅ প্রোফাইল তথ্য সংরক্ষণ করা হয়েছে!");
-  };
+      if (error) throw error;
+
+      setShowForgotPasswordModal(false);
+      setForgotStep('email');
+      setForgotEmail("");
+      setForgotOtp("");
+      setNewPasswordData({ password: "", confirm: "" });
+      showSuccessMessage("✅ নতুন পাসওয়ার্ড সেট করা হয়েছে!");
+    } catch (error: any) {
+      alert(error.message || "পাসওয়ার্ড সেট করতে সমস্যা হয়েছে!");
+    } finally {
+      setForgotLoading(false);
+    }
+  }, [newPasswordData]);
+
+  // ============ Supabase প্রোফাইল সেভ ============
+  const handleSaveProfile = useCallback(async () => {
+    if (!currentUserId) {
+      alert("লগইন করা নেই!");
+      return;
+    }
+    
+    setLoading(true);
+    
+    try {
+      const { error } = await supabase
+        .from('profiles')
+        .update({
+          name: profile.fullName,
+          phone: profile.phone,
+          location: profile.district,
+          address: profile.address,
+          bio: profile.bio,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', currentUserId);
+
+      if (error) throw error;
+
+      localStorage.setItem("userProfile", JSON.stringify(profile));
+      showSuccessMessage("✅ প্রোফাইল তথ্য সংরক্ষণ করা হয়েছে!");
+    } catch (error: any) {
+      alert(error.message || "প্রোফাইল সেভ করতে সমস্যা হয়েছে!");
+      // লোকাল স্টোরেজে সেভ
+      localStorage.setItem("userProfile", JSON.stringify(profile));
+    } finally {
+      setLoading(false);
+    }
+  }, [profile, currentUserId]);
 
   const handleSaveNotifications = () => {
     localStorage.setItem("userNotifications", JSON.stringify(notificationSettings));
@@ -174,14 +343,29 @@ export default function UserSettingsPage() {
     showSuccessMessage("✅ আপনার ডাটা এক্সপোর্ট করা হয়েছে!");
   };
 
-  const handleLogoutAllDevices = () => {
+  const handleLogoutAllDevices = useCallback(async () => {
     if (confirm("সব ডিভাইস থেকে লগআউট করবেন?")) {
-      localStorage.clear();
-      router.push("/login");
+      try {
+        await supabase.auth.signOut({ scope: 'global' });
+        localStorage.clear();
+        router.push("/login");
+      } catch (error) {
+        localStorage.clear();
+        router.push("/login");
+      }
     }
-  };
+  }, [router]);
 
-  const bangladeshDistricts = ["ঢাকা", "চট্টগ্রাম", "খুলনা", "রাজশাহী", "সিলেট", "বরিশাল", "রংপুর", "ময়মনসিংহ"];
+  const bangladeshDistricts = ["ঢাকা", "চট্টগ্রাম", "খুলনা", "রাজশাহী", "সিলেট", "বরিশাল", "রংপুর", "ময়মনসিংহ", "কুষ্টিয়া", "যশোর", "কুমিল্লা"];
+
+  // লোডিং স্টেট
+  if (profileLoading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-b from-gray-50 to-gray-100 flex items-center justify-center">
+        <Loader2 className="animate-spin text-[#f85606]" size={40} />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-gray-50 to-gray-100 pb-20">
@@ -189,7 +373,7 @@ export default function UserSettingsPage() {
         
         {/* হেডার */}
         <div className="flex items-center gap-3 mb-6">
-          <button onClick={() => router.back()} className="p-2 bg-white rounded-full shadow-md hover:shadow-lg transition">
+          <button onClick={() => router.back()} className="p-2 bg-white rounded-full shadow-md hover:shadow-lg transition active:scale-95">
             <ArrowLeft size={20} className="text-gray-600" />
           </button>
           <h1 className="text-2xl font-bold bg-gradient-to-r from-[#f85606] to-orange-500 bg-clip-text text-transparent">
@@ -251,7 +435,8 @@ export default function UserSettingsPage() {
                     </div>
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">ইমেইল</label>
-                      <input type="email" value={profile.email} onChange={(e) => setProfile({...profile, email: e.target.value})} className="w-full p-3 border border-gray-200 rounded-xl focus:border-[#f85606] outline-none transition" />
+                      <input type="email" value={profile.email} disabled className="w-full p-3 border border-gray-200 rounded-xl bg-gray-50 outline-none transition" />
+                      <p className="text-[10px] text-gray-400 mt-1">ইমেইল পরিবর্তন করা যাবে না</p>
                     </div>
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">ফোন নম্বর</label>
@@ -276,8 +461,9 @@ export default function UserSettingsPage() {
                   </div>
                 </div>
 
-                <button onClick={handleSaveProfile} className="mt-6 w-full bg-gradient-to-r from-[#f85606] to-orange-500 text-white py-3 rounded-xl font-semibold flex items-center justify-center gap-2 hover:shadow-lg transition">
-                  <Save size={18} /> সংরক্ষণ করুন
+                <button onClick={handleSaveProfile} disabled={loading} className="mt-6 w-full bg-gradient-to-r from-[#f85606] to-orange-500 text-white py-3 rounded-xl font-semibold flex items-center justify-center gap-2 hover:shadow-lg transition disabled:opacity-50">
+                  {loading ? <Loader2 size={18} className="animate-spin" /> : <Save size={18} />}
+                  {loading ? "সংরক্ষণ হচ্ছে..." : "সংরক্ষণ করুন"}
                 </button>
               </div>
             )}
@@ -305,21 +491,19 @@ export default function UserSettingsPage() {
               </div>
             )}
 
-            {/* ============ নিরাপত্তা ট্যাব (মডার্ন পাসওয়ার্ড) ============ */}
+            {/* ============ নিরাপত্তা ট্যাব ============ */}
             {activeTab === 'security' && (
               <div className="bg-white rounded-2xl shadow-lg p-6">
                 <h2 className="text-lg font-bold text-gray-800 mb-6 flex items-center gap-2">
                   <Shield size={20} className="text-[#f85606]" /> নিরাপত্তা সেটিংস
                 </h2>
                 
-                {/* মডার্ন পাসওয়ার্ড চেঞ্জ ফর্ম */}
                 <div className="bg-gray-50 rounded-xl p-5 mb-4">
                   <h3 className="font-medium text-gray-700 mb-4 flex items-center gap-2">
                     <Lock size={16} className="text-[#f85606]" /> পাসওয়ার্ড পরিবর্তন
                   </h3>
                   
                   <div className="space-y-4">
-                    {/* Current Password */}
                     <div>
                       <label className="block text-xs font-medium text-gray-500 mb-1">বর্তমান পাসওয়ার্ড</label>
                       <div className="relative">
@@ -338,7 +522,6 @@ export default function UserSettingsPage() {
                       </div>
                     </div>
 
-                    {/* New Password */}
                     <div>
                       <label className="block text-xs font-medium text-gray-500 mb-1">নতুন পাসওয়ার্ড</label>
                       <div className="relative">
@@ -362,7 +545,6 @@ export default function UserSettingsPage() {
                       )}
                     </div>
 
-                    {/* Confirm Password */}
                     <div>
                       <label className="block text-xs font-medium text-gray-500 mb-1">পাসওয়ার্ড নিশ্চিত করুন</label>
                       <div className="relative">
@@ -386,7 +568,6 @@ export default function UserSettingsPage() {
                       )}
                     </div>
 
-                    {/* Password Strength Indicator */}
                     {passwordData.newPassword && (
                       <div className="mt-2">
                         <div className="flex items-center gap-2">
@@ -402,20 +583,20 @@ export default function UserSettingsPage() {
 
                     <button 
                       onClick={handlePasswordChange} 
-                      disabled={!isPasswordValid}
+                      disabled={!isPasswordValid || passwordLoading}
                       className={`w-full py-3 rounded-xl font-semibold transition flex items-center justify-center gap-2 ${
                         isPasswordValid 
                           ? 'bg-gradient-to-r from-[#f85606] to-orange-500 text-white hover:shadow-lg' 
                           : 'bg-gray-200 text-gray-400 cursor-not-allowed'
                       }`}
                     >
-                      <Key size={16} /> পাসওয়ার্ড আপডেট করুন
+                      {passwordLoading ? <Loader2 size={16} className="animate-spin" /> : <Key size={16} />}
+                      {passwordLoading ? "আপডেট হচ্ছে..." : "পাসওয়ার্ড আপডেট করুন"}
                     </button>
                   </div>
                 </div>
 
                 <div className="space-y-3">
-                  {/* ফরগট পাসওয়ার্ড */}
                   <button onClick={() => setShowForgotPasswordModal(true)} className="w-full p-4 bg-gray-50 rounded-xl flex items-center justify-between hover:bg-gray-100 transition">
                     <div className="flex items-center gap-3">
                       <Lock size={18} className="text-[#f85606]" />
@@ -427,7 +608,6 @@ export default function UserSettingsPage() {
                     <ChevronRight size={16} />
                   </button>
 
-                  {/* সব ডিভাইস লগআউট */}
                   <button onClick={handleLogoutAllDevices} className="w-full p-4 bg-gray-50 rounded-xl flex items-center justify-between hover:bg-gray-100 transition">
                     <div className="flex items-center gap-3">
                       <LogOut size={18} className="text-red-500" />
@@ -520,8 +700,8 @@ export default function UserSettingsPage() {
 
       {/* ============ ফরগট পাসওয়ার্ড মডাল ============ */}
       {showForgotPasswordModal && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl max-w-md w-full p-6">
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={() => setShowForgotPasswordModal(false)}>
+          <div className="bg-white rounded-2xl max-w-md w-full p-6" onClick={e => e.stopPropagation()}>
             <div className="flex justify-between items-center mb-4">
               <h3 className="text-lg font-bold">পাসওয়ার্ড রিসেট</h3>
               <button onClick={() => { setShowForgotPasswordModal(false); setForgotStep('email'); }}><X size={20} /></button>
@@ -529,17 +709,19 @@ export default function UserSettingsPage() {
 
             {forgotStep === 'email' && (
               <div className="space-y-4">
-                <p className="text-sm text-gray-600">আপনার ইমেইল ঠিকানা দিন। আমরা একটি OTP পাঠাবো।</p>
+                <p className="text-sm text-gray-600">আপনার ইমেইল ঠিকানা দিন। আমরা একটি রিসেট লিংক পাঠাবো।</p>
                 <input type="email" value={forgotEmail} onChange={(e) => setForgotEmail(e.target.value)} placeholder="your@email.com" className="w-full p-3 border rounded-xl" />
-                <button onClick={handleSendResetEmail} className="w-full bg-[#f85606] text-white py-3 rounded-xl font-semibold">OTP পাঠান</button>
+                <button onClick={handleSendResetEmail} disabled={forgotLoading} className="w-full bg-[#f85606] text-white py-3 rounded-xl font-semibold flex items-center justify-center gap-2 disabled:opacity-50">
+                  {forgotLoading ? <Loader2 size={18} className="animate-spin" /> : null}
+                  {forgotLoading ? "পাঠানো হচ্ছে..." : "রিসেট লিংক পাঠান"}
+                </button>
               </div>
             )}
 
             {forgotStep === 'otp' && (
               <div className="space-y-4">
-                <p className="text-sm text-gray-600">{forgotEmail} এ পাঠানো ৬ ডিজিটের OTP দিন।</p>
-                <input type="text" value={forgotOtp} onChange={(e) => setForgotOtp(e.target.value)} placeholder="123456" maxLength={6} className="w-full p-3 border rounded-xl text-center text-2xl" />
-                <button onClick={handleVerifyOtp} className="w-full bg-[#f85606] text-white py-3 rounded-xl font-semibold">ভেরিফাই করুন</button>
+                <p className="text-sm text-gray-600">{forgotEmail} এ পাঠানো লিংকে ক্লিক করুন।</p>
+                <button onClick={handleVerifyOtp} className="w-full bg-[#f85606] text-white py-3 rounded-xl font-semibold">আমি লিংকে ক্লিক করেছি</button>
                 <button onClick={() => setForgotStep('email')} className="w-full text-gray-500 text-sm">↩️ ইমেইল পরিবর্তন</button>
               </div>
             )}
@@ -549,7 +731,10 @@ export default function UserSettingsPage() {
                 <p className="text-sm text-gray-600">নতুন পাসওয়ার্ড সেট করুন।</p>
                 <input type="password" value={newPasswordData.password} onChange={(e) => setNewPasswordData({...newPasswordData, password: e.target.value})} placeholder="নতুন পাসওয়ার্ড" className="w-full p-3 border rounded-xl" />
                 <input type="password" value={newPasswordData.confirm} onChange={(e) => setNewPasswordData({...newPasswordData, confirm: e.target.value})} placeholder="পাসওয়ার্ড নিশ্চিত করুন" className="w-full p-3 border rounded-xl" />
-                <button onClick={handleSetNewPassword} className="w-full bg-[#f85606] text-white py-3 rounded-xl font-semibold">পাসওয়ার্ড সেট করুন</button>
+                <button onClick={handleSetNewPassword} disabled={forgotLoading} className="w-full bg-[#f85606] text-white py-3 rounded-xl font-semibold flex items-center justify-center gap-2">
+                  {forgotLoading ? <Loader2 size={18} className="animate-spin" /> : null}
+                  {forgotLoading ? "সেট হচ্ছে..." : "পাসওয়ার্ড সেট করুন"}
+                </button>
               </div>
             )}
           </div>

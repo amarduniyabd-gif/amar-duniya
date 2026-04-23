@@ -4,10 +4,11 @@ import { useParams, useRouter } from "next/navigation";
 import { 
   ArrowLeft, Heart, Share2, MapPin, Phone, User, 
   Shield, CheckCircle, Flag, X, MessageCircle, Star,
-  ChevronLeft, ChevronRight, Play, Calendar, Truck, BadgeCheck,
+  ChevronLeft, ChevronRight, Calendar, Truck, BadgeCheck,
   FileText, Lock, Eye, ZoomIn, ZoomOut, RotateCcw, Maximize2
 } from "lucide-react";
 import PaymentModal from "@/components/PaymentModal";
+import { getSupabaseClient } from "@/lib/supabase/client";
 
 type Comment = {
   id: number;
@@ -87,7 +88,6 @@ const ZoomableImage = memo(({ src, alt, onClose }: { src: string; alt: string; o
     }
   }, [handleWheel]);
 
-  // ESC key handler
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') onClose();
@@ -97,11 +97,7 @@ const ZoomableImage = memo(({ src, alt, onClose }: { src: string; alt: string; o
   }, [onClose]);
 
   return (
-    <div 
-      className="fixed inset-0 bg-black/95 z-50 flex items-center justify-center"
-      onClick={onClose}
-    >
-      {/* কন্ট্রোল বার */}
+    <div className="fixed inset-0 bg-black/95 z-50 flex items-center justify-center" onClick={onClose}>
       <div className="absolute top-4 right-4 flex items-center gap-2 z-10">
         <button onClick={handleZoomIn} className="p-2 bg-black/50 text-white rounded-full hover:bg-black/70 transition">
           <ZoomIn size={20} />
@@ -116,41 +112,14 @@ const ZoomableImage = memo(({ src, alt, onClose }: { src: string; alt: string; o
           <X size={20} />
         </button>
       </div>
-
-      {/* জুম লেভেল ইন্ডিকেটর */}
       <div className="absolute bottom-4 left-1/2 -translate-x-1/2 bg-black/50 text-white text-xs px-3 py-1.5 rounded-full z-10">
         {Math.round(scale * 100)}%
       </div>
-
-      {/* ইমেজ */}
-      <div 
-        className="w-full h-full flex items-center justify-center overflow-hidden"
-        onMouseDown={handleMouseDown}
-        onMouseMove={handleMouseMove}
-        onMouseUp={handleMouseUp}
-        onMouseLeave={handleMouseUp}
-      >
-        <img
-          ref={imgRef}
-          src={src}
-          alt={alt}
-          draggable={false}
-          onContextMenu={(e) => e.preventDefault()}
-          onDoubleClick={handleDoubleClick}
-          style={{
-            transform: `translate(${position.x}px, ${position.y}px) scale(${scale})`,
-            transition: isDragging ? 'none' : 'transform 0.2s ease-out',
-            cursor: scale > 1 ? (isDragging ? 'grabbing' : 'grab') : 'zoom-in',
-            maxWidth: '90vw',
-            maxHeight: '90vh',
-            objectFit: 'contain',
-          }}
-          className="select-none"
-          onClick={(e) => e.stopPropagation()}
-        />
+      <div className="w-full h-full flex items-center justify-center overflow-hidden" onMouseDown={handleMouseDown} onMouseMove={handleMouseMove} onMouseUp={handleMouseUp} onMouseLeave={handleMouseUp}>
+        <img ref={imgRef} src={src} alt={alt} draggable={false} onContextMenu={(e) => e.preventDefault()} onDoubleClick={handleDoubleClick}
+          style={{ transform: `translate(${position.x}px, ${position.y}px) scale(${scale})`, transition: isDragging ? 'none' : 'transform 0.2s ease-out', cursor: scale > 1 ? (isDragging ? 'grabbing' : 'grab') : 'zoom-in', maxWidth: '90vw', maxHeight: '90vh', objectFit: 'contain' }}
+          className="select-none" onClick={(e) => e.stopPropagation()} />
       </div>
-
-      {/* গাইড টেক্সট */}
       <div className="absolute bottom-4 left-4 text-white/60 text-xs bg-black/30 px-3 py-1.5 rounded-full">
         🖱️ স্ক্রল করে জুম • ডাবল ক্লিক • ড্র্যাগ করে মুভ
       </div>
@@ -168,11 +137,11 @@ const SellerInfo = memo(({ seller }: { seller: any }) => (
     </h2>
     <div className="flex items-center justify-between">
       <div>
-        <p className="font-medium text-gray-800">{seller.name}</p>
+        <p className="font-medium text-gray-800">{seller.name || 'বিক্রেতা'}</p>
         <div className="flex items-center gap-2 text-xs text-gray-500 mt-1">
-          <span>⭐ {seller.rating}</span>
+          <span>⭐ {seller.rating || '৪.৮'}</span>
           <span>•</span>
-          <span>{seller.totalAds} টি পোস্ট</span>
+          <span>{seller.totalAds || '১২'} টি পোস্ট</span>
         </div>
       </div>
       {seller.verified && (
@@ -207,7 +176,7 @@ const CommentItem = memo(({ comment }: { comment: Comment }) => (
         <p className="text-sm text-gray-600 mt-1 break-words">{comment.text}</p>
       </div>
     </div>
-    {comment.replies?.map((reply) => (
+    {comment.replies?.map((reply: any) => (
       <div key={reply.id} className="ml-8 md:ml-12 mt-3">
         <div className="flex gap-3">
           <div className="w-8 h-8 rounded-full bg-gradient-to-br from-orange-100 to-orange-200 flex items-center justify-center text-lg flex-shrink-0">
@@ -234,75 +203,23 @@ export default function PostDetailsPage() {
   const postId = params.id as string;
   
   const [mounted, setMounted] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [showFullscreen, setShowFullscreen] = useState(false);
   const [fullscreenImage, setFullscreenImage] = useState<string | null>(null);
   
-  // পোস্ট ডাটা (লোকাল স্টোরেজ থেকে লোড)
-  const [post, setPost] = useState(() => {
-    // লোকাল স্টোরেজ থেকে খোঁজা
-    if (typeof window !== 'undefined') {
-      const posts = JSON.parse(localStorage.getItem('amarDuniyaPosts') || '[]');
-      const found = posts.find((p: any) => p.id === postId);
-      if (found) {
-        return {
-          ...found,
-          seller: {
-            name: "রহিম উদ্দিন",
-            phone: found.phone || "০১৭XXXXXXXX",
-            whatsapp: found.phone || "017XXXXXXXX",
-            verified: true,
-            rating: 4.8,
-            totalAds: 12,
-          },
-          originalPrice: found.price ? found.price + 10000 : 85000,
-          time: "২ ঘন্টা আগে",
-          urgent: found.isFeatured || false,
-          featured: found.isFeatured || false,
-        };
-      }
-    }
-    // ডিফল্ট
-    return {
-      id: parseInt(postId),
-      title: "iPhone 15 Pro Max - 128GB",
-      price: 75000,
-      originalPrice: 85000,
-      location: "ঢাকা",
-      time: "২ ঘন্টা আগে",
-      condition: "new",
-      brand: "Apple",
-      warranty: "12",
-      delivery: "pickup",
-      seller: {
-        name: "রহিম উদ্দিন",
-        phone: "০১৭XXXXXXXX",
-        whatsapp: "017XXXXXXXX",
-        verified: true,
-        rating: 4.8,
-        totalAds: 12,
-      },
-      description: "ব্র্যান্ড নতুন iPhone 15 Pro Max। 128GB স্টোরেজ।",
-      images: [{ thumbnail: "📱", full: "📱", width: 400, height: 400 }],
-      views: 1240,
-      likes: 56,
-    };
+  const [post, setPost] = useState<any>({
+    id: postId,
+    title: "লোড হচ্ছে...",
+    price: 0,
+    location: "ঢাকা",
+    condition: "new",
+    seller: { name: "", verified: false },
+    images: [],
+    views: 0,
+    likes: 0,
   });
 
-  const [comments, setComments] = useState<Comment[]>(() => [
-    {
-      id: 1, userName: "করিম মিয়া", userAvatar: "👨", rating: 5,
-      text: "দাম একটু কম হবে? আগ্রহী আছি।", time: "১ ঘন্টা আগে", likes: 5, isLiked: false,
-      replies: [{
-        id: 11, userName: "রহিম উদ্দিন (বিক্রেতা)", userAvatar: "👨‍💼", rating: 0,
-        text: "হ্যাঁ, নগদে নিলে ২০০০ টাকা ছাড় দিতে পারি।", time: "৩০ মিনিট আগে", likes: 3, isLiked: false,
-      }],
-    },
-    {
-      id: 2, userName: "শাহিনুর রহমান", userAvatar: "👨", rating: 4,
-      text: "প্রোডাক্ট দেখতে কেমন?", time: "৩ ঘন্টা আগে", likes: 2, isLiked: false, replies: [],
-    },
-  ]);
-
+  const [comments, setComments] = useState<Comment[]>([]);
   const [isLiked, setIsLiked] = useState(false);
   const [showPhone, setShowPhone] = useState(false);
   const [showReportModal, setShowReportModal] = useState(false);
@@ -311,9 +228,97 @@ export default function PostDetailsPage() {
   const [newComment, setNewComment] = useState("");
   const [newRating, setNewRating] = useState(0);
 
+  // ✅ Supabase থেকে পোস্ট লোড
   useEffect(() => {
+    const loadPost = async () => {
+      setLoading(true);
+      const supabase = getSupabaseClient();
+      
+      const { data, error } = await supabase
+        .from('posts')
+        .select(`
+          *,
+          seller:profiles!seller_id(id, name, phone, is_verified),
+          images:post_images(thumbnail_url, full_url, width, height, order_index)
+        `)
+        .eq('id', postId)
+        .single();
+      
+      if (data && !error) {
+        setPost({
+          ...data,
+          originalPrice: data.original_price,
+          seller: {
+            name: data.seller?.name || 'বিক্রেতা',
+            phone: data.seller?.phone || '০১৭XXXXXXXX',
+            verified: data.seller?.is_verified || false,
+            rating: 4.8,
+            totalAds: 12,
+          },
+          images: data.images?.sort((a: any, b: any) => a.order_index - b.order_index).map((img: any) => ({
+            thumbnail: img.thumbnail_url,
+            full: img.full_url,
+            width: img.width || 400,
+            height: img.height || 400,
+          })) || [{ thumbnail: "📱", full: "📱", width: 400, height: 400 }],
+          time: timeAgo(data.created_at),
+          urgent: data.is_urgent,
+          featured: data.is_featured,
+        });
+        
+        // ভিউ কাউন্ট বাড়ান
+        await supabase
+          .from('posts')
+          .update({ views: (data.views || 0) + 1 })
+          .eq('id', postId);
+      } else {
+        // লোকাল স্টোরেজ ফলব্যাক
+        loadFromLocalStorage();
+      }
+      
+      setLoading(false);
+    };
+    
+    const loadFromLocalStorage = () => {
+      if (typeof window !== 'undefined') {
+        const posts = JSON.parse(localStorage.getItem('amarDuniyaPosts') || '[]');
+        const found = posts.find((p: any) => String(p.id) === String(postId));
+        if (found) {
+          setPost({
+            ...found,
+            seller: {
+              name: found.seller?.name || "রহিম উদ্দিন",
+              phone: found.phone || "০১৭XXXXXXXX",
+              verified: true,
+              rating: 4.8,
+              totalAds: 12,
+            },
+            originalPrice: found.price ? found.price + 10000 : 85000,
+            time: "২ ঘন্টা আগে",
+            urgent: found.isFeatured || false,
+            featured: found.isFeatured || false,
+            images: found.images || [{ thumbnail: "📱", full: "📱", width: 400, height: 400 }],
+          });
+        }
+      }
+      setLoading(false);
+    };
+    
+    loadPost();
     setMounted(true);
-  }, []);
+  }, [postId]);
+
+  // টাইম এগো হেল্পার
+  const timeAgo = (date: string): string => {
+    const diff = Date.now() - new Date(date).getTime();
+    const minutes = Math.floor(diff / 60000);
+    const hours = Math.floor(diff / 3600000);
+    const days = Math.floor(diff / 86400000);
+    if (days > 0) return `${days} দিন আগে`;
+    if (hours > 0) return `${hours} ঘন্টা আগে`;
+    if (minutes > 0) return `${minutes} মিনিট আগে`;
+    return 'এইমাত্র';
+  };
 
   const warrantyText = useMemo(() => {
     switch(post.warranty) {
@@ -335,7 +340,7 @@ export default function PostDetailsPage() {
 
   const handleLike = useCallback(() => {
     setIsLiked(prev => !prev);
-    setPost((prev: any) => ({ ...prev, likes: isLiked ? prev.likes - 1 : prev.likes + 1 }));
+    setPost((prev: any) => ({ ...prev, likes: isLiked ? (prev.likes || 0) - 1 : (prev.likes || 0) + 1 }));
   }, [isLiked]);
 
   const handleShare = useCallback(async () => {
@@ -352,7 +357,7 @@ export default function PostDetailsPage() {
   }, [router, post.id]);
 
   const handleWhatsAppChat = useCallback(() => {
-    const phone = post.seller.whatsapp || post.seller.phone;
+    const phone = post.seller?.phone || "017XXXXXXXX";
     const message = `হ্যালো, আমি "${post.title}" পণ্যটি সম্পর্কে জানতে চাই।`;
     window.open(`https://wa.me/${phone.replace(/[^0-9]/g, '')}?text=${encodeURIComponent(message)}`, '_blank');
   }, [post.seller, post.title]);
@@ -397,7 +402,13 @@ export default function PostDetailsPage() {
     setShowReportModal(false);
   }, []);
 
-  if (!mounted) return null;
+  if (!mounted || loading) {
+    return (
+      <div className="min-h-screen bg-gray-100 flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-4 border-[#f85606] border-t-transparent" />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gray-100 pb-6">
@@ -423,77 +434,68 @@ export default function PostDetailsPage() {
       <div className="max-w-3xl mx-auto">
         
         {/* ইমেজ গ্যালারি */}
-<div className="bg-white">
-  <div className="relative">
-    <div 
-      className="relative h-72 md:h-80 bg-gradient-to-br from-orange-50 to-orange-100 flex items-center justify-center cursor-zoom-in"
-      onClick={() => handleImageClick(images[activeImage]?.full || images[activeImage]?.thumbnail)}
-    >
-      {images[activeImage]?.thumbnail?.startsWith('data:') ? (
-        <img 
-          src={images[activeImage].thumbnail} 
-          alt={post.title} 
-          className="w-full h-full object-contain"
-        />
-      ) : (
-        <div className="text-8xl">{images[activeImage]?.thumbnail || "📱"}</div>
-      )}
-      
-      {post.urgent && <div className="absolute top-4 left-4 bg-red-500 text-white text-xs font-bold px-2 py-1 rounded-full">Urgent</div>}
-      {post.featured && <div className="absolute top-4 right-4 bg-amber-500 text-white text-xs font-bold px-2 py-1 rounded-full">⭐ ফিচার্ড</div>}
-      
-      {/* জুম ইন্ডিকেটর */}
-      <div className="absolute bottom-3 right-3 bg-black/50 text-white text-xs px-2 py-1 rounded-full flex items-center gap-1">
-        <Maximize2 size={12} />
-        ক্লিক করে বড় দেখুন
-      </div>
-    </div>
-    
-    {images.length > 1 && (
-      <>
-        <button onClick={handlePrevImage} className="absolute left-2 top-1/2 -translate-y-1/2 bg-white/90 rounded-full p-1.5 shadow-md active:scale-95">
-          <ChevronLeft size={20} className="text-gray-600" />
-        </button>
-        <button onClick={handleNextImage} className="absolute right-2 top-1/2 -translate-y-1/2 bg-white/90 rounded-full p-1.5 shadow-md active:scale-95">
-          <ChevronRight size={20} className="text-gray-600" />
-        </button>
-      </>
-    )}
+        <div className="bg-white">
+          <div className="relative">
+            <div 
+              className="relative h-72 md:h-80 bg-gradient-to-br from-orange-50 to-orange-100 flex items-center justify-center cursor-zoom-in"
+              onClick={() => handleImageClick(images[activeImage]?.full || images[activeImage]?.thumbnail)}
+            >
+              {images[activeImage]?.thumbnail?.startsWith('http') || images[activeImage]?.thumbnail?.startsWith('data:') ? (
+                <img 
+                  src={images[activeImage].thumbnail} 
+                  alt={post.title} 
+                  className="w-full h-full object-contain"
+                />
+              ) : (
+                <div className="text-8xl">{images[activeImage]?.thumbnail || "📱"}</div>
+              )}
+              
+              {post.urgent && <div className="absolute top-4 left-4 bg-red-500 text-white text-xs font-bold px-2 py-1 rounded-full">Urgent</div>}
+              {post.featured && <div className="absolute top-4 right-4 bg-amber-500 text-white text-xs font-bold px-2 py-1 rounded-full">⭐ ফিচার্ড</div>}
+              
+              <div className="absolute bottom-3 right-3 bg-black/50 text-white text-xs px-2 py-1 rounded-full flex items-center gap-1">
+                <Maximize2 size={12} />
+                ক্লিক করে বড় দেখুন
+              </div>
+            </div>
+            
+            {images.length > 1 && (
+              <>
+                <button onClick={handlePrevImage} className="absolute left-2 top-1/2 -translate-y-1/2 bg-white/90 rounded-full p-1.5 shadow-md active:scale-95">
+                  <ChevronLeft size={20} className="text-gray-600" />
+                </button>
+                <button onClick={handleNextImage} className="absolute right-2 top-1/2 -translate-y-1/2 bg-white/90 rounded-full p-1.5 shadow-md active:scale-95">
+                  <ChevronRight size={20} className="text-gray-600" />
+                </button>
+              </>
+            )}
 
-    {images.length > 1 && (
-      <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-1.5">
-        {images.map((_: any, idx: number) => (
-          <button
-            key={idx}
-            onClick={() => setActiveImage(idx)}
-            className={`h-1.5 rounded-full transition-all ${
-              activeImage === idx ? "w-6 bg-[#f85606]" : "w-1.5 bg-gray-400"
-            }`}
-          />
-        ))}
-      </div>
-    )}
-  </div>
+            {images.length > 1 && (
+              <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-1.5">
+                {images.map((_: any, idx: number) => (
+                  <button key={idx} onClick={() => setActiveImage(idx)}
+                    className={`h-1.5 rounded-full transition-all ${activeImage === idx ? "w-6 bg-[#f85606]" : "w-1.5 bg-gray-400"}`} />
+                ))}
+              </div>
+            )}
+          </div>
 
-  {/* নিচের থাম্বনেইল গ্যালারি - সর্বোচ্চ ৪টি ইমেজ */}
-  <div className="flex gap-2 p-3 overflow-x-auto border-t">
-    {images.slice(0, 4).map((img: any, idx: number) => (
-      <button
-        key={idx}
-        onClick={() => setActiveImage(idx)}
-        className={`w-16 h-16 md:w-20 md:h-20 rounded-lg bg-gradient-to-br from-orange-50 to-orange-100 flex items-center justify-center border-2 transition flex-shrink-0 ${
-          activeImage === idx ? "border-[#f85606]" : "border-gray-200"
-        }`}
-      >
-        {img.thumbnail?.startsWith('data:') ? (
-          <img src={img.thumbnail} alt={`থাম্বনেইল ${idx + 1}`} className="w-full h-full object-cover rounded-lg" />
-        ) : (
-          <span className="text-2xl">{img.thumbnail}</span>
-        )}
-      </button>
-    ))}
-  </div>
-</div>
+          {images.length > 1 && (
+            <div className="flex gap-2 p-3 overflow-x-auto border-t">
+              {images.slice(0, 4).map((img: any, idx: number) => (
+                <button key={idx} onClick={() => setActiveImage(idx)}
+                  className={`w-16 h-16 md:w-20 md:h-20 rounded-lg bg-gradient-to-br from-orange-50 to-orange-100 flex items-center justify-center border-2 transition flex-shrink-0 ${activeImage === idx ? "border-[#f85606]" : "border-gray-200"}`}>
+                  {img.thumbnail?.startsWith('http') || img.thumbnail?.startsWith('data:') ? (
+                    <img src={img.thumbnail} alt={`থাম্বনেইল ${idx + 1}`} className="w-full h-full object-cover rounded-lg" />
+                  ) : (
+                    <span className="text-2xl">{img.thumbnail}</span>
+                  )}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+
         {/* চ্যাট বাটন */}
         <div className="p-4">
           <div className="flex gap-2">
@@ -512,7 +514,7 @@ export default function PostDetailsPage() {
           </div>
           {showPhone && (
             <div className="mt-2 text-center bg-white rounded-xl p-2 shadow">
-              <a href={`tel:${post.seller.phone}`} className="text-sm text-[#f85606] font-medium">{post.seller.phone}</a>
+              <a href={`tel:${post.seller?.phone || '০১৭XXXXXXXX'}`} className="text-sm text-[#f85606] font-medium">{post.seller?.phone || '০১৭XXXXXXXX'}</a>
             </div>
           )}
         </div>
@@ -523,7 +525,7 @@ export default function PostDetailsPage() {
           <div className="bg-white rounded-xl p-4 shadow-sm">
             <h1 className="text-xl font-bold text-gray-800">{post.title}</h1>
             <div className="flex items-center gap-2 mt-2">
-              <span className="text-2xl font-black text-[#f85606]">৳{post.price.toLocaleString()}</span>
+              <span className="text-2xl font-black text-[#f85606]">৳{post.price?.toLocaleString() || '০'}</span>
               {post.originalPrice && <span className="text-sm text-gray-400 line-through">৳{post.originalPrice.toLocaleString()}</span>}
             </div>
             
@@ -549,13 +551,13 @@ export default function PostDetailsPage() {
             </div>
             
             <div className="flex items-center gap-3 mt-2 text-xs text-gray-500">
-              <span>🔍 {post.views} বার দেখা</span>
-              <span>❤️ {post.likes} লাইক</span>
-              <span>📅 {post.time}</span>
+              <span>🔍 {post.views || 0} বার দেখা</span>
+              <span>❤️ {post.likes || 0} লাইক</span>
+              <span>📅 {post.time || 'এইমাত্র'}</span>
             </div>
           </div>
 
-          <SellerInfo seller={post.seller} />
+          <SellerInfo seller={post.seller || {}} />
 
           {/* ডকুমেন্ট সার্ভিস */}
           <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl p-4 shadow-sm border border-blue-100">
@@ -570,7 +572,7 @@ export default function PostDetailsPage() {
                 </div>
               </div>
               <button onClick={() => setShowDocumentModal(true)} className="bg-[#f85606] text-white px-4 py-2 rounded-xl text-sm font-semibold flex items-center gap-2 shadow-md active:scale-95 transition">
-                <Lock size={14} /> ডকুমেন্ট নিন ({Math.round(post.price * 0.02)} টাকা)
+                <Lock size={14} /> ডকুমেন্ট নিন ({Math.round((post.price || 0) * 0.02)} টাকা)
               </button>
             </div>
           </div>
@@ -580,7 +582,7 @@ export default function PostDetailsPage() {
             <h2 className="font-semibold text-gray-800 mb-3 flex items-center gap-2">
               <Eye size={18} className="text-[#f85606]" /> পণ্যের বিবরণ
             </h2>
-            <p className="text-sm text-gray-600 leading-relaxed">{post.description}</p>
+            <p className="text-sm text-gray-600 leading-relaxed">{post.description || 'কোনো বিবরণ নেই'}</p>
           </div>
 
           {/* লোকেশন */}
@@ -588,7 +590,7 @@ export default function PostDetailsPage() {
             <h2 className="font-semibold text-gray-800 mb-3 flex items-center gap-2">
               <MapPin size={18} className="text-[#f85606]" /> অবস্থান
             </h2>
-            <p className="text-sm text-gray-600">{post.location}</p>
+            <p className="text-sm text-gray-600">{post.location || 'ঢাকা'}</p>
           </div>
 
           {/* কমেন্ট */}
@@ -600,13 +602,8 @@ export default function PostDetailsPage() {
             <div className="mb-6">
               <div className="flex items-center gap-2 mb-3">
                 <div className="w-8 h-8 rounded-full bg-gradient-to-br from-orange-100 to-orange-200 flex items-center justify-center text-lg flex-shrink-0">👤</div>
-                <input
-                  type="text"
-                  value={newComment}
-                  onChange={(e) => setNewComment(e.target.value)}
-                  placeholder="আপনার মন্তব্য লিখুন..."
-                  className="flex-1 p-2 text-sm border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#f85606]"
-                />
+                <input type="text" value={newComment} onChange={(e) => setNewComment(e.target.value)}
+                  placeholder="আপনার মন্তব্য লিখুন..." className="flex-1 p-2 text-sm border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#f85606]" />
                 <button onClick={handleAddComment} disabled={!newComment.trim()} className="bg-[#f85606] text-white px-4 py-2 rounded-xl text-sm disabled:opacity-50 active:scale-95 transition">
                   পোস্ট
                 </button>
@@ -624,9 +621,7 @@ export default function PostDetailsPage() {
             </div>
 
             <div className="space-y-4">
-              {comments.map((comment) => (
-                <CommentItem key={comment.id} comment={comment} />
-              ))}
+              {comments.map((comment) => <CommentItem key={comment.id} comment={comment} />)}
             </div>
           </div>
 
@@ -647,26 +642,10 @@ export default function PostDetailsPage() {
         </div>
       </div>
 
-      {/* ফুলস্ক্রিন জুম মডাল */}
-      {showFullscreen && fullscreenImage && (
-        <ZoomableImage 
-          src={fullscreenImage} 
-          alt={post.title} 
-          onClose={() => setShowFullscreen(false)} 
-        />
-      )}
-
-      {/* পেমেন্ট মডাল */}
-      <PaymentModal
-        isOpen={showDocumentModal}
-        onClose={() => setShowDocumentModal(false)}
-        onSuccess={handleDocumentSuccess}
-        title="ডকুমেন্ট সার্ভিস"
-        amount={post.price * 0.02}
-        description="পণ্যের কাগজপত্র নিরাপদে সংরক্ষণ ও ডেলিভারির পর রিলিজ"
-      />
-
-      {/* রিপোর্ট মডাল */}
+      {showFullscreen && fullscreenImage && <ZoomableImage src={fullscreenImage} alt={post.title} onClose={() => setShowFullscreen(false)} />}
+      <PaymentModal isOpen={showDocumentModal} onClose={() => setShowDocumentModal(false)} onSuccess={handleDocumentSuccess}
+        title="ডকুমেন্ট সার্ভিস" amount={(post.price || 0) * 0.02} description="পণ্যের কাগজপত্র নিরাপদে সংরক্ষণ" />
+      
       {showReportModal && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={() => setShowReportModal(false)}>
           <div className="bg-white rounded-2xl max-w-md w-full p-5" onClick={e => e.stopPropagation()}>

@@ -8,15 +8,19 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { getRootCategories } from '@/data/categories';
+import { getSupabaseClient } from '@/lib/supabase/client';
 
 type AdItem = {
-  id: number;
+  id: number | string;
   title: string;
   price: number;
   condition: string;
   time: string;
   image: string;
   urgent: boolean;
+  created_at?: string;
+  images?: any[];
+  is_urgent?: boolean;
 };
 
 type SliderItem = {
@@ -26,10 +30,78 @@ type SliderItem = {
   emoji: string;
   link: string;
   status?: string;
-  image?: string; // 🆕 ইমেজ ফিল্ড
+  image?: string;
+  id?: string | number;
+  order_index?: number;
 };
 
-// ডামি অ্যাড ডাটা জেনারেটর (ইমোজি ব্যবহার করে)
+// Supabase থেকে স্লাইডার লোড
+const loadSlidersFromSupabase = async (): Promise<SliderItem[]> => {
+  const supabase = getSupabaseClient();
+  const { data } = await supabase
+    .from('sliders')
+    .select('*')
+    .eq('is_active', true)
+    .order('order_index', { ascending: true });
+  
+  if (data && data.length > 0) {
+    return data.map((s: any) => ({
+      title: s.title || 'আমার দুনিয়া',
+      discount: 'সেরা ডিল',
+      color: 'from-[#f85606] to-orange-500',
+      emoji: '🛍️',
+      link: s.link || '/',
+      status: 'active',
+      image: s.image_url,
+    }));
+  }
+  return [];
+};
+
+// Supabase থেকে পোস্ট লোড
+const loadPostsFromSupabase = async (page: number, limit: number): Promise<AdItem[]> => {
+  const supabase = getSupabaseClient();
+  const from = (page - 1) * limit;
+  const to = from + limit - 1;
+  
+  const { data } = await supabase
+    .from('posts')
+    .select(`
+      id, title, price, condition, created_at, is_urgent,
+      images:post_images(thumbnail_url, order_index)
+    `)
+    .eq('status', 'approved')
+    .order('created_at', { ascending: false })
+    .range(from, to);
+  
+  if (data) {
+    return data.map((post: any) => ({
+      id: post.id,
+      title: post.title,
+      price: post.price,
+      condition: post.condition === 'new' ? 'নতুন' : 'পুরাতন',
+      time: timeAgo(post.created_at),
+      image: post.images?.[0]?.thumbnail_url || '📱',
+      urgent: post.is_urgent || false,
+    }));
+  }
+  return [];
+};
+
+// টাইম এগো হেল্পার
+const timeAgo = (date: string): string => {
+  const diff = Date.now() - new Date(date).getTime();
+  const minutes = Math.floor(diff / 60000);
+  const hours = Math.floor(diff / 3600000);
+  const days = Math.floor(diff / 86400000);
+  
+  if (days > 0) return `${days} দিন আগে`;
+  if (hours > 0) return `${hours} ঘন্টা আগে`;
+  if (minutes > 0) return `${minutes} মিনিট আগে`;
+  return 'এইমাত্র';
+};
+
+// ডামি জেনারেটর (ফলব্যাক)
 const generateMockAds = (page: number, limit: number): AdItem[] => {
   const items = [];
   const startId = (page - 1) * limit;
@@ -51,13 +123,17 @@ const generateMockAds = (page: number, limit: number): AdItem[] => {
   return items;
 };
 
-// অ্যাড কার্ড (৩ কলামের জন্য)
+// অ্যাড কার্ড
 const AdCard = ({ ad }: { ad: AdItem }) => {
   return (
     <Link href={`/post/${ad.id}`}>
       <div className="rounded-xl overflow-hidden shadow-sm border cursor-pointer hover:shadow-md transition-all group bg-white border-gray-100">
         <div className="relative p-6 flex items-center justify-center h-40 bg-gradient-to-br from-orange-50 to-orange-100">
-          <div className="text-6xl">{ad.image}</div>
+          {ad.image.startsWith('http') ? (
+            <img src={ad.image} alt={ad.title} className="w-full h-full object-contain" />
+          ) : (
+            <div className="text-6xl">{ad.image}</div>
+          )}
           {ad.urgent && (
             <div className="absolute top-2 left-2 bg-red-500 text-white text-[9px] font-bold px-1.5 py-0.5 rounded shadow-sm z-10">
               জরুরি
@@ -107,8 +183,9 @@ const AmarDuniyaHome = () => {
   const router = useRouter();
   const [currentSlide, setCurrentSlide] = useState(0);
   const [searchQuery, setSearchQuery] = useState('');
+  const [mounted, setMounted] = useState(false);
   
-  // ডিফল্ট স্লাইড (ফলব্যাক হিসেবে)
+  // ডিফল্ট স্লাইড (ফলব্যাক)
   const defaultSlides: SliderItem[] = [
     { title: "সব ধরণের পণ্য পাচ্ছেন", discount: "১৫% পর্যন্ত ছাড়", color: "from-[#f85606] to-orange-500", emoji: "🛍️", link: "/category/offer" },
     { title: "মোবাইল মেলায় স্বাগতম", discount: "সর্বোচ্চ ৩০% ছাড়", color: "from-[#e65c00] to-[#ff9933]", emoji: "📱", link: "/category/mobile" },
@@ -127,43 +204,50 @@ const AmarDuniyaHome = () => {
     { title: "উইকেন্ড স্পেশাল", discount: "শনি-রবিবার ৩৫% ছাড়", color: "from-[#9c89b8] to-[#b8a9c9]", emoji: "🎊", link: "/category/offer" },
   ];
 
-  // স্লাইড স্টেট
   const [slides, setSlides] = useState<SliderItem[]>(defaultSlides);
-
-  // লোকাল স্টোরেজ থেকে স্লাইডার লোড
-  useEffect(() => {
-    if (typeof window !== 'undefined') {
-      const savedSliders = localStorage.getItem("homeSliders");
-      if (savedSliders) {
-        try {
-          const allSliders = JSON.parse(savedSliders);
-          const activeSliders = allSliders.filter((s: SliderItem) => s.status === 'active');
-          if (activeSliders.length > 0) {
-            setSlides(activeSliders);
-          } else {
-            const defaultWithStatus = defaultSlides.map((s, i) => ({ ...s, status: 'active', id: i + 1, order: i + 1 }));
-            localStorage.setItem("homeSliders", JSON.stringify(defaultWithStatus));
-          }
-        } catch (e) {
-          console.error("স্লাইডার লোড করতে সমস্যা:", e);
-        }
-      } else {
-        const defaultWithStatus = defaultSlides.map((s, i) => ({ ...s, status: 'active', id: i + 1, order: i + 1 }));
-        localStorage.setItem("homeSliders", JSON.stringify(defaultWithStatus));
-      }
-    }
-  }, []);
-
-  // রিসেন্ট অ্যাডস
   const [recentAds, setRecentAds] = useState<AdItem[]>([]);
   const [recentPage, setRecentPage] = useState(1);
   const [loadingRecent, setLoadingRecent] = useState(false);
   const [hasMoreRecent, setHasMoreRecent] = useState(true);
   const recentObserverRef = useRef<HTMLDivElement | null>(null);
   const isLoadingRecent = useRef(false);
+  
+  // Supabase ডাটা লোড হয়েছে কিনা ট্র্যাক
+  const [supabaseSlidersLoaded, setSupabaseSlidersLoaded] = useState(false);
+  const [supabasePostsLoaded, setSupabasePostsLoaded] = useState(false);
 
-  // মূল ক্যাটাগরি গুলো (ডাটা ফাইল থেকে)
   const rootCategories = getRootCategories();
+
+  // mounted state
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  // Supabase থেকে স্লাইডার লোড (প্রথম priority)
+  useEffect(() => {
+    const loadSliders = async () => {
+      try {
+        const supabaseSliders = await loadSlidersFromSupabase();
+        if (supabaseSliders.length > 0) {
+          setSlides(supabaseSliders);
+          setSupabaseSlidersLoaded(true);
+        } else {
+          // লোকাল স্টোরেজ থেকে লোড (আগের সিস্টেম)
+          const savedSliders = localStorage.getItem("homeSliders");
+          if (savedSliders) {
+            try {
+              const allSliders = JSON.parse(savedSliders);
+              const activeSliders = allSliders.filter((s: SliderItem) => s.status === 'active');
+              if (activeSliders.length > 0) {
+                setSlides(activeSliders);
+              }
+            } catch (e) {}
+          }
+        }
+      } catch (e) {}
+    };
+    loadSliders();
+  }, []);
 
   // অটো স্লাইড টাইমার
   useEffect(() => {
@@ -174,27 +258,49 @@ const AmarDuniyaHome = () => {
     return () => clearInterval(timer);
   }, [slides.length]);
 
+  // পোস্ট লোড
   const loadRecentAds = useCallback(async (reset: boolean = false) => {
     if (isLoadingRecent.current || (reset === false && !hasMoreRecent)) return;
     isLoadingRecent.current = true;
     setLoadingRecent(true);
     
-    const currentPage = reset ? 1 : recentPage + 1;
-    await new Promise(r => setTimeout(r, 500));
-    const newAds = generateMockAds(currentPage, 3);
-    
-    if (reset) {
-      setRecentAds(newAds);
-      setRecentPage(1);
-      setHasMoreRecent(true);
-    } else {
-      setRecentAds(prev => [...prev, ...newAds]);
-      setRecentPage(currentPage);
+    try {
+      const currentPage = reset ? 1 : recentPage + 1;
+      
+      // Supabase থেকে লোড করার চেষ্টা
+      const supabasePosts = await loadPostsFromSupabase(currentPage, 3);
+      
+      if (supabasePosts.length > 0) {
+        setSupabasePostsLoaded(true);
+        if (reset) {
+          setRecentAds(supabasePosts);
+          setRecentPage(1);
+          setHasMoreRecent(supabasePosts.length === 3);
+        } else {
+          setRecentAds(prev => [...prev, ...supabasePosts]);
+          setRecentPage(currentPage);
+          setHasMoreRecent(supabasePosts.length === 3);
+        }
+      } else {
+        // ফলব্যাক: ডামি ডাটা
+        await new Promise(r => setTimeout(r, 500));
+        const newAds = generateMockAds(currentPage, 3);
+        
+        if (reset) {
+          setRecentAds(newAds);
+          setRecentPage(1);
+          setHasMoreRecent(true);
+        } else {
+          setRecentAds(prev => [...prev, ...newAds]);
+          setRecentPage(currentPage);
+        }
+        
+        if (newAds.length < 3) setHasMoreRecent(false);
+      }
+    } catch (e) {} finally {
+      setLoadingRecent(false);
+      isLoadingRecent.current = false;
     }
-    
-    if (newAds.length < 3) setHasMoreRecent(false);
-    setLoadingRecent(false);
-    isLoadingRecent.current = false;
   }, [recentPage, hasMoreRecent]);
 
   useEffect(() => {
@@ -224,7 +330,6 @@ const AmarDuniyaHome = () => {
     }
   };
 
-  // সার্চ হ্যান্ডলার
   const handleSearch = () => {
     if (searchQuery.trim()) {
       router.push(`/search?q=${encodeURIComponent(searchQuery.trim())}`);
@@ -237,7 +342,14 @@ const AmarDuniyaHome = () => {
     }
   };
 
-  // যদি কোনো স্লাইড না থাকে
+  if (!mounted) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-[#f2f3f7]">
+        <Loader2 className="animate-spin text-[#f85606]" size={40} />
+      </div>
+    );
+  }
+
   if (slides.length === 0) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-[#f2f3f7]">
@@ -247,7 +359,7 @@ const AmarDuniyaHome = () => {
   }
 
   return (
-    <div className="min-h-screen pb-24 font-sans w-full overflow-x-hidden transition-colors duration-300 bg-[#f2f3f7]">
+    <div className="min-h-screen pb-24 font-sans w-full overflow-x-hidden transition-colors duration-300 bg-[#f2f3f7]" suppressHydrationWarning>
       
       {/* হেডার */}
       <header className="px-4 py-3 sticky top-0 z-[100] border-b shadow-sm transition-colors duration-300 bg-white border-gray-100">
@@ -275,7 +387,7 @@ const AmarDuniyaHome = () => {
 
       <div className="max-w-[1200px] mx-auto">
         
-        {/* ব্যানার স্লাইডার - সুইপ সিস্টেম সহ */}
+        {/* ব্যানার স্লাইডার */}
         <div className="mx-2 md:mx-0">
           <div className="relative h-44 md:h-80 overflow-hidden md:mt-4 md:rounded-3xl shadow-sm">
             <div className="relative w-full h-full">
@@ -296,13 +408,11 @@ const AmarDuniyaHome = () => {
                   }}
                   initial={{ opacity: 0, x: 100 }}
                   animate={{ opacity: 1, x: 0 }}
-                  exit={{ opacity: 0, x: -100 }}
                   transition={{ duration: 0.3, ease: "easeInOut" }}
                   className="absolute inset-0 cursor-grab active:cursor-grabbing"
                 >
                   <Link href={slides[currentSlide].link}>
                     <div className={`w-full h-full bg-gradient-to-r ${slides[currentSlide].color} flex flex-col items-center justify-center text-white`}>
-                      {/* 🔥 স্লাইডার ইমেজ সাপোর্ট */}
                       {slides[currentSlide].image ? (
                         <img 
                           src={slides[currentSlide].image} 

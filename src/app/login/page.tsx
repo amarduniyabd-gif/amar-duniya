@@ -1,180 +1,186 @@
 "use client";
-import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useState, useEffect, useCallback } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
-import { Loader2, Shield, CheckCircle } from "lucide-react";
+import { ArrowLeft, Loader2, AlertCircle, Shield, CheckCircle } from "lucide-react";
 
 export default function LoginPage() {
   const router = useRouter();
-  const [mounted, setMounted] = useState(false);
+  const searchParams = useSearchParams();
+  const redirectTo = searchParams.get("redirect") || "/";
+  const registered = searchParams.get("registered") === "true";
+  
   const [googleLoading, setGoogleLoading] = useState(false);
   const [facebookLoading, setFacebookLoading] = useState(false);
-  const [success, setSuccess] = useState(false);
-  const [redirectPath, setRedirectPath] = useState<string | null>(null);
+  const [error, setError] = useState("");
+  const [success, setSuccess] = useState(registered);
+  const [supabase, setSupabase] = useState<any>(null);
+  const [mounted, setMounted] = useState(false);
 
+  // ✅ Supabase ক্লায়েন্ট লোড
   useEffect(() => {
-    setMounted(true);
-    const redirect = localStorage.getItem("redirectAfterLogin");
-    if (redirect) setRedirectPath(redirect);
+    const loadSupabase = async () => {
+      try {
+        const { getSupabaseClient } = await import('@/lib/supabase/client');
+        const client = getSupabaseClient();
+        setSupabase(client);
+      } catch (error) {
+        console.error('Failed to load Supabase:', error);
+      } finally {
+        setMounted(true);
+      }
+    };
+    
+    loadSupabase();
   }, []);
 
-  const handleSkip = () => {
-    localStorage.setItem("isGuest", "true");
-    const redirect = localStorage.getItem("redirectAfterLogin");
-    if (redirect) {
-      localStorage.removeItem("redirectAfterLogin");
-      router.push(redirect);
-    } else {
-      router.push("/");
+  // সাকসেস মেসেজ অটো হাইড
+  useEffect(() => {
+    if (success) {
+      const timer = setTimeout(() => setSuccess(false), 5000);
+      return () => clearTimeout(timer);
     }
-  };
+  }, [success]);
 
-  const handleGoogleLogin = async () => {
+  // Google Login
+  const handleGoogleLogin = useCallback(async () => {
+    if (!supabase) return;
+    
     setGoogleLoading(true);
-    setTimeout(() => {
-      setSuccess(true);
-      localStorage.setItem("isLoggedIn", "true");
-      localStorage.removeItem("isGuest");
-      localStorage.setItem("userEmail", "user@gmail.com");
-      localStorage.setItem("loginMethod", "google");
-      
-      const redirectTo = localStorage.getItem("redirectAfterLogin");
-      setTimeout(() => {
-        if (redirectTo) {
-          localStorage.removeItem("redirectAfterLogin");
-          router.push(redirectTo);
-        } else {
-          router.push("/");
-        }
-      }, 800);
-    }, 1200);
-  };
+    setError("");
 
-  const handleFacebookLogin = async () => {
+    try {
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo: `${window.location.origin}/auth/callback?redirect=${encodeURIComponent(redirectTo)}`,
+        },
+      });
+
+      if (error) throw error;
+    } catch (err: any) {
+      console.error('Google login error:', err);
+      setError('Google লগইন করতে সমস্যা হয়েছে!');
+      setGoogleLoading(false);
+    }
+  }, [redirectTo, supabase]);
+
+  // Facebook Login
+  const handleFacebookLogin = useCallback(async () => {
+    if (!supabase) return;
+    
     setFacebookLoading(true);
-    setTimeout(() => {
-      setSuccess(true);
-      localStorage.setItem("isLoggedIn", "true");
-      localStorage.removeItem("isGuest");
-      localStorage.setItem("userFacebook", "facebook_user");
-      localStorage.setItem("loginMethod", "facebook");
-      
-      const redirectTo = localStorage.getItem("redirectAfterLogin");
-      setTimeout(() => {
-        if (redirectTo) {
-          localStorage.removeItem("redirectAfterLogin");
-          router.push(redirectTo);
-        } else {
-          router.push("/");
-        }
-      }, 800);
-    }, 1200);
-  };
+    setError("");
+
+    try {
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: 'facebook',
+        options: {
+          redirectTo: `${window.location.origin}/auth/callback?redirect=${encodeURIComponent(redirectTo)}`,
+        },
+      });
+
+      if (error) throw error;
+    } catch (err: any) {
+      console.error('Facebook login error:', err);
+      setError('Facebook লগইন করতে সমস্যা হয়েছে!');
+      setFacebookLoading(false);
+    }
+  }, [redirectTo, supabase]);
 
   if (!mounted) {
     return (
-      <div className="min-h-screen bg-white flex items-center justify-center">
-        <Loader2 size={32} className="text-[#f85606] animate-spin" />
+      <div className="min-h-screen flex items-center justify-center">
+        <Loader2 className="animate-spin text-[#f85606]" size={40} />
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-white flex flex-col">
-      
-      {/* সিম্পল হেডার */}
-      <div className="px-5 py-4 flex items-center justify-between border-b border-gray-100">
-        <Link href="/" className="flex items-center gap-2">
-          <div className="w-9 h-9 bg-gradient-to-br from-[#f85606] to-orange-500 rounded-xl flex items-center justify-center shadow-sm">
-            <Shield size={18} className="text-white" />
-          </div>
-          <span className="text-xl font-bold text-gray-900">আমার দুনিয়া</span>
-        </Link>
+    <div className="min-h-screen bg-gradient-to-b from-orange-50 via-white to-amber-50 flex items-center justify-center p-4">
+      <div className="max-w-md w-full">
+        
         <button 
-          onClick={handleSkip}
-          className="text-sm font-medium text-gray-500 hover:text-[#f85606] transition"
+          onClick={() => router.back()} 
+          className="mb-4 p-2.5 bg-white rounded-xl shadow-md hover:shadow-lg transition-all duration-200 active:scale-95"
         >
-          এড়িয়ে যান
+          <ArrowLeft size={20} className="text-gray-600" />
         </button>
-      </div>
-
-      {/* মেইন কন্টেন্ট */}
-      <div className="flex-1 flex items-center justify-center p-5">
-        <div className="w-full max-w-sm">
+        
+        <div className="bg-white rounded-3xl shadow-xl p-6 md:p-8 border border-gray-100">
           
-          {/* হেডিং */}
           <div className="text-center mb-8">
-            <h1 className="text-3xl font-bold text-gray-900 mb-2">স্বাগতম</h1>
-            <p className="text-gray-500 text-sm">আপনার অ্যাকাউন্টে প্রবেশ করুন</p>
+            <div className="w-20 h-20 bg-gradient-to-r from-[#f85606] to-orange-500 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg">
+              <Shield size={36} className="text-white" />
+            </div>
+            <h1 className="text-2xl font-bold text-gray-800">আমার দুনিয়া</h1>
+            <p className="text-gray-500 text-sm mt-2">লগইন করে সব ফিচার ব্যবহার করুন</p>
           </div>
 
-          {/* রিডাইরেক্ট মেসেজ */}
-          {redirectPath && (
-            <div className="mb-5 bg-blue-50 border border-blue-100 rounded-xl p-4">
-              <p className="text-sm text-blue-700">🔐 লগইন করে আপনার কাজ চালিয়ে যান</p>
-            </div>
-          )}
-
-          {/* সাকসেস মেসেজ */}
           {success && (
-            <div className="mb-5 bg-green-50 border border-green-100 rounded-xl p-4 flex items-center gap-3">
-              <CheckCircle size={20} className="text-green-600" />
-              <p className="text-sm text-green-700">লগইন সফল! রিডাইরেক্ট করা হচ্ছে...</p>
+            <div className="mb-4 bg-green-50 border border-green-200 rounded-xl p-3 flex items-center gap-2">
+              <CheckCircle size={16} className="text-green-600" />
+              <p className="text-sm text-green-700">রেজিস্ট্রেশন সফল হয়েছে! এখন লগইন করুন।</p>
+            </div>
+          )}
+          
+          {error && (
+            <div className="mb-4 bg-red-50 border border-red-200 rounded-xl p-3 flex items-center gap-2">
+              <AlertCircle size={16} className="text-red-500 flex-shrink-0" />
+              <p className="text-sm text-red-600">{error}</p>
             </div>
           )}
 
-          {/* লগইন বাটন */}
-          <div className="space-y-3">
-            {/* Google */}
-            <button
-              onClick={handleGoogleLogin}
-              disabled={googleLoading || facebookLoading}
-              className="w-full bg-white border border-gray-200 text-gray-800 py-3.5 rounded-xl font-medium flex items-center justify-center gap-3 hover:border-[#f85606] hover:shadow-sm transition-all duration-200"
-            >
-              {googleLoading ? (
-                <Loader2 size={20} className="animate-spin text-[#f85606]" />
-              ) : (
-                <>
-                  <svg className="w-5 h-5" viewBox="0 0 24 24">
-                    <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
-                    <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
-                    <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
-                    <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
-                  </svg>
-                  <span>Google দিয়ে চালিয়ে যান</span>
-                </>
-              )}
-            </button>
+          {/* Google Login Button */}
+          <button
+            type="button"
+            onClick={handleGoogleLogin}
+            disabled={googleLoading || facebookLoading}
+            className="w-full bg-white border border-gray-300 text-gray-700 py-4 rounded-xl font-medium flex items-center justify-center gap-3 shadow-sm hover:shadow-md hover:bg-gray-50 transition-all duration-200 active:scale-[0.99] disabled:opacity-50 mb-4"
+          >
+            {googleLoading ? (
+              <Loader2 size={22} className="animate-spin" />
+            ) : (
+              <svg className="w-5 h-5" viewBox="0 0 24 24">
+                <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+                <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+                <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
+                <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+              </svg>
+            )}
+            {googleLoading ? "Google লগইন হচ্ছে..." : "Google দিয়ে লগইন করুন"}
+          </button>
 
-            {/* Facebook */}
-            <button
-              onClick={handleFacebookLogin}
-              disabled={googleLoading || facebookLoading}
-              className="w-full bg-[#1877f2] text-white py-3.5 rounded-xl font-medium flex items-center justify-center gap-3 hover:bg-[#166fe5] transition-all duration-200"
-            >
-              {facebookLoading ? (
-                <Loader2 size={20} className="animate-spin" />
-              ) : (
-                <>
-                  <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
-                    <path d="M24 12.07C24 5.41 18.63 0 12 0S0 5.4 0 12.07C0 18.1 4.39 23.1 10.13 24v-8.44H7.08v-3.49h3.05V9.41c0-3.02 1.8-4.7 4.54-4.7 1.31 0 2.68.24 2.68.24v2.96h-1.51c-1.49 0-1.95.93-1.95 1.89v2.26h3.32l-.53 3.49h-2.79V24C19.62 23.1 24 18.1 24 12.07z"/>
-                  </svg>
-                  <span>Facebook দিয়ে চালিয়ে যান</span>
-                </>
-              )}
-            </button>
-          </div>
+          {/* Facebook Login Button */}
+          <button
+            type="button"
+            onClick={handleFacebookLogin}
+            disabled={googleLoading || facebookLoading}
+            className="w-full bg-[#1877F2] text-white py-4 rounded-xl font-medium flex items-center justify-center gap-3 shadow-md hover:shadow-lg hover:bg-[#166fe5] transition-all duration-200 active:scale-[0.99] disabled:opacity-50"
+          >
+            {facebookLoading ? (
+              <Loader2 size={22} className="animate-spin" />
+            ) : (
+              <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
+              </svg>
+            )}
+            {facebookLoading ? "Facebook লগইন হচ্ছে..." : "Facebook দিয়ে লগইন করুন"}
+          </button>
 
-          {/* টার্মস */}
-          <p className="text-center text-xs text-gray-400 mt-8">
-            চালিয়ে যাওয়ার মাধ্যমে আপনি আমাদের{" "}
-            <Link href="/terms" className="text-[#f85606] hover:underline">শর্তাবলী</Link> ও{" "}
-            <Link href="/privacy" className="text-[#f85606] hover:underline">গোপনীয়তা নীতি</Link> মেনে নিচ্ছেন
+          <p className="text-center text-xs text-gray-400 mt-6">
+            লগইন করার মাধ্যমে আপনি আমাদের{" "}
+            <Link href="/terms" className="text-[#f85606] hover:underline">শর্তাবলী</Link>
+            {" "}এবং{" "}
+            <Link href="/privacy" className="text-[#f85606] hover:underline">প্রাইভেসি পলিসি</Link>
+            {" "}মেনে নিচ্ছেন
           </p>
-
         </div>
-      </div>
 
+        <p className="text-center text-xs text-gray-400 mt-4">
+          🔒 Supabase Auth দ্বারা সুরক্ষিত • সম্পূর্ণ ফ্রি
+        </p>
+      </div>
     </div>
   );
 }
