@@ -175,42 +175,79 @@ const AmarDuniyaHome = () => {
     return () => clearInterval(timer);
   }, [slides.length]);
 
-  // ✅ পোস্ট লোড
+  // ✅ পোস্ট লোড (Super Sonic Fast)
   const loadRecentAds = useCallback(async (reset: boolean = false) => {
     if (!supabase || isLoadingRecent.current || (!reset && !hasMoreRecent)) return;
     isLoadingRecent.current = true;
     setLoadingRecent(true);
+    
     try {
       const currentPage = reset ? 1 : recentPage + 1;
-      const from = (currentPage - 1) * 3, to = from + 2;
-      const { data } = await supabase.from('posts')
-        .select(`id, title, price, condition, created_at, is_urgent, images:post_images(thumbnail_url, order_index)`)
-        .eq('status', 'approved').order('created_at', { ascending: false }).range(from, to);
+      const from = (currentPage - 1) * 3;
+      const to = from + 2;
       
-      if (data && data.length > 0) {
-        const newAds = data.map((post: any) => ({
-          id: post.id, title: post.title, price: post.price,
+      // Supabase থেকে লোড
+      const { data, error } = await supabase
+        .from('posts')
+        .select(`id, title, price, condition, created_at, is_urgent, images:post_images(thumbnail_url, order_index)`)
+        .eq('status', 'approved')
+        .order('created_at', { ascending: false })
+        .range(from, to);
+      
+      if (!error && data && data.length > 0) {
+        const newAds: AdItem[] = data.map((post: any) => ({
+          id: post.id,
+          title: post.title,
+          price: post.price,
           condition: post.condition === 'new' ? 'নতুন' : 'পুরাতন',
           time: timeAgo(post.created_at),
           image: post.images?.[0]?.thumbnail_url || '📱',
           urgent: post.is_urgent || false,
         }));
-        if (reset) { setRecentAds(newAds); setRecentPage(1); setHasMoreRecent(newAds.length === 3); }
-        else { setRecentAds(prev => [...prev, ...newAds]); setRecentPage(currentPage); setHasMoreRecent(newAds.length === 3); }
+        
+        if (reset) {
+          setRecentAds(newAds);
+          setRecentPage(1);
+          setHasMoreRecent(newAds.length === 3);
+        } else {
+          setRecentAds(prev => [...prev, ...newAds]);
+          setRecentPage(currentPage);
+          setHasMoreRecent(newAds.length === 3);
+        }
       } else {
-        const mockAds = generateMockAds(currentPage, 3);
-        if (reset) { setRecentAds(mockAds); setRecentPage(1); setHasMoreRecent(true); }
-        else { setRecentAds(prev => [...prev, ...mockAds]); setRecentPage(currentPage); if (mockAds.length < 3) setHasMoreRecent(false); }
+        // ফলব্যাক: ডামি ডাটা
+        await new Promise(r => setTimeout(r, 500));
+        const newAds = generateMockAds(currentPage, 3);
+        
+        if (reset) {
+          setRecentAds(newAds);
+          setRecentPage(1);
+          setHasMoreRecent(true);
+        } else {
+          setRecentAds(prev => [...prev, ...newAds]);
+          setRecentPage(currentPage);
+        }
+        if (newAds.length < 3) setHasMoreRecent(false);
       }
-    } catch (e) {} finally { setLoadingRecent(false); isLoadingRecent.current = false; }
+    } catch (e) {} finally {
+      setLoadingRecent(false);
+      isLoadingRecent.current = false;
+    }
   }, [supabase, recentPage, hasMoreRecent]);
 
-  useEffect(() => { if (supabase) loadRecentAds(true); }, [supabase, loadRecentAds]);
+  useEffect(() => {
+    if (supabase) loadRecentAds(true);
+  }, [supabase, loadRecentAds]);
 
+  // Infinite Scroll Observer
   useEffect(() => {
     if (!recentObserverRef.current) return;
     const observer = new IntersectionObserver(
-      (entries) => { if (entries[0].isIntersecting && !loadingRecent && hasMoreRecent) loadRecentAds(false); },
+      (entries) => {
+        if (entries[0].isIntersecting && !loadingRecent && hasMoreRecent) {
+          loadRecentAds(false);
+        }
+      },
       { threshold: 0.1, rootMargin: "200px" }
     );
     observer.observe(recentObserverRef.current);
@@ -219,13 +256,34 @@ const AmarDuniyaHome = () => {
 
   const handleSwipe = (direction: 'left' | 'right') => {
     if (slides.length === 0) return;
-    direction === 'left' ? setCurrentSlide((prev) => (prev === slides.length - 1 ? 0 : prev + 1)) : setCurrentSlide((prev) => (prev === 0 ? slides.length - 1 : prev - 1));
+    if (direction === 'left') {
+      setCurrentSlide((prev) => (prev === slides.length - 1 ? 0 : prev + 1));
+    } else {
+      setCurrentSlide((prev) => (prev === 0 ? slides.length - 1 : prev - 1));
+    }
   };
 
-  const handleSearch = () => { if (searchQuery.trim()) router.push(`/search?q=${encodeURIComponent(searchQuery.trim())}`); };
+  const handleSearch = () => {
+    if (searchQuery.trim()) {
+      router.push(`/search?q=${encodeURIComponent(searchQuery.trim())}`);
+    }
+  };
 
-  if (!mounted) return <div className="min-h-screen flex items-center justify-center bg-[#f2f3f7]"><Loader2 className="animate-spin text-[#f85606]" size={40} /></div>;
-  if (slides.length === 0) return <div className="min-h-screen flex items-center justify-center bg-[#f2f3f7]"><Loader2 className="animate-spin text-[#f85606]" size={40} /></div>;
+  if (!mounted) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-[#f2f3f7]">
+        <Loader2 className="animate-spin text-[#f85606]" size={40} />
+      </div>
+    );
+  }
+
+  if (slides.length === 0) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-[#f2f3f7]">
+        <Loader2 className="animate-spin text-[#f85606]" size={40} />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen pb-24 font-sans w-full overflow-x-hidden transition-colors duration-300 bg-[#f2f3f7]" suppressHydrationWarning>
@@ -235,8 +293,20 @@ const AmarDuniyaHome = () => {
         <div className="max-w-[1200px] mx-auto flex justify-between items-center gap-4">
           <div className="flex items-center rounded-xl px-4 py-1.5 border focus-within:border-[#f85606] transition-all flex-1 bg-[#f0f1f5] border-gray-100">
             <Search size={16} className="text-gray-400" />
-            <input type="text" placeholder="আমার দুনিয়ায় খুঁজুন..." className="bg-transparent border-none outline-none ml-2 w-full text-xs text-gray-800" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} onKeyPress={(e) => e.key === 'Enter' && handleSearch()} />
-            <button onClick={handleSearch} className="bg-[#f85606] text-white px-4 py-1.5 rounded-lg text-xs font-bold shrink-0 active:scale-95 transition-transform">খুঁজুন</button>
+            <input 
+              type="text" 
+              placeholder="আমার দুনিয়ায় খুঁজুন..."
+              className="bg-transparent border-none outline-none ml-2 w-full text-xs text-gray-800"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
+            />
+            <button 
+              onClick={handleSearch}
+              className="bg-[#f85606] text-white px-4 py-1.5 rounded-lg text-xs font-bold shrink-0 active:scale-95 transition-transform"
+            >
+              খুঁজুন
+            </button>
           </div>
           <ShoppingBag size={20} className="shrink-0 cursor-pointer text-gray-600" />
         </div>
@@ -249,38 +319,71 @@ const AmarDuniyaHome = () => {
           <div className="relative h-44 md:h-80 overflow-hidden md:mt-4 md:rounded-3xl shadow-sm">
             <div className="relative w-full h-full">
               <AnimatePresence mode="wait" initial={false}>
-                <motion.div key={currentSlide} drag="x" dragConstraints={{ left: 0, right: 0 }} dragElastic={0.5}
+                <motion.div
+                  key={currentSlide}
+                  drag="x"
+                  dragConstraints={{ left: 0, right: 0 }}
+                  dragElastic={0.5}
                   onDragEnd={(e, { offset, velocity }) => {
-                    if (offset.x < -50 || velocity.x < -500) handleSwipe('left');
-                    else if (offset.x > 50 || velocity.x > 500) handleSwipe('right');
+                    const swipe = offset.x;
+                    const swipeVelocity = velocity.x;
+                    if (swipe < -50 || swipeVelocity < -500) {
+                      handleSwipe('left');
+                    } else if (swipe > 50 || swipeVelocity > 500) {
+                      handleSwipe('right');
+                    }
                   }}
-                  initial={{ opacity: 0, x: 100 }} animate={{ opacity: 1, x: 0 }}
+                  initial={{ opacity: 0, x: 100 }}
+                  animate={{ opacity: 1, x: 0 }}
                   transition={{ duration: 0.3, ease: "easeInOut" }}
-                  className="absolute inset-0 cursor-grab active:cursor-grabbing">
+                  className="absolute inset-0 cursor-grab active:cursor-grabbing"
+                >
                   <Link href={slides[currentSlide].link}>
                     <div className={`w-full h-full bg-gradient-to-r ${slides[currentSlide].color} flex flex-col items-center justify-center text-white`}>
                       {slides[currentSlide].image ? (
-                        <img src={slides[currentSlide].image} alt={slides[currentSlide].title} className="w-24 h-24 md:w-32 md:h-32 object-contain mb-4" />
+                        <img 
+                          src={slides[currentSlide].image} 
+                          alt={slides[currentSlide].title} 
+                          className="w-24 h-24 md:w-32 md:h-32 object-contain mb-4" 
+                        />
                       ) : (
                         <div className="text-6xl md:text-8xl mb-4">{slides[currentSlide].emoji}</div>
                       )}
-                      <h2 className="text-xl md:text-3xl font-black text-center px-4">{slides[currentSlide].title}</h2>
-                      <p className="text-sm md:text-lg mt-2 opacity-90">{slides[currentSlide].discount}</p>
+                      <h2 className="text-xl md:text-3xl font-black text-center px-4">
+                        {slides[currentSlide].title}
+                      </h2>
+                      <p className="text-sm md:text-lg mt-2 opacity-90">
+                        {slides[currentSlide].discount}
+                      </p>
                     </div>
                   </Link>
                 </motion.div>
               </AnimatePresence>
             </div>
+            
+            {/* স্লাইডার ডটস */}
             <div className="absolute bottom-4 w-full flex justify-center gap-1.5 z-10">
               {slides.map((_, i) => (
-                <button key={i} onClick={() => setCurrentSlide(i)} className={`h-1.5 rounded-full transition-all duration-300 ${currentSlide === i ? "w-6 bg-white" : "w-1.5 bg-white/60"}`} />
+                <button
+                  key={i}
+                  onClick={() => setCurrentSlide(i)}
+                  className={`h-1.5 rounded-full transition-all duration-300 ${
+                    currentSlide === i ? "w-6 bg-white" : "w-1.5 bg-white/60"
+                  }`}
+                />
               ))}
             </div>
           </div>
+
+          {/* ব্যানারের নিচের টেক্সট */}
           <Link href={slides[currentSlide].link}>
             <div className={`bg-gradient-to-r ${slides[currentSlide].color} mt-3 rounded-xl p-3 text-center shadow-md cursor-pointer`}>
-              <h2 className="text-xl md:text-2xl font-black text-white uppercase tracking-tighter">{slides[currentSlide].title}</h2>
-              <p className="text-xs md:text-sm text-white/90 font-medium mt-1">{slides[currentSlide].discount}</p>
+              <h2 className="text-xl md:text-2xl font-black text-white uppercase tracking-tighter">
+                {slides[currentSlide].title}
+              </h2>
+              <p className="text-xs md:text-sm text-white/90 font-medium mt-1">
+                {slides[currentSlide].discount}
+              </p>
             </div>
           </Link>
         </div>
@@ -288,11 +391,21 @@ const AmarDuniyaHome = () => {
         {/* ক্যাটাগরি */}
         <nav className="py-6 grid grid-cols-4 md:grid-cols-6 lg:grid-cols-12 gap-4 px-3 md:rounded-2xl md:mt-4 shadow-sm transition-colors duration-300 bg-white">
           {rootCategories.map((cat) => (
-            <Link key={cat.id} href={`/category/${cat.slug}`} className="flex flex-col items-center group">
+            <Link 
+              key={cat.id} 
+              href={`/category/${cat.slug}`}
+              className="flex flex-col items-center group"
+            >
               <div className="w-14 h-14 md:w-16 md:h-16 flex items-center justify-center rounded-full border transition-all shadow-sm bg-gray-50 border-gray-100 group-hover:bg-orange-50 group-hover:border-[#f85606] overflow-hidden">
-                {cat.image ? <img src={cat.image} alt={cat.name} className="w-full h-full object-cover" /> : <span className="text-2xl md:text-3xl">{cat.icon}</span>}
+                {cat.image ? (
+                  <img src={cat.image} alt={cat.name} className="w-full h-full object-cover" />
+                ) : (
+                  <span className="text-2xl md:text-3xl">{cat.icon}</span>
+                )}
               </div>
-              <span className="text-[10px] md:text-xs font-semibold text-center mt-2 transition-colors line-clamp-1 px-1 text-gray-600 group-hover:text-[#f85606]">{cat.name}</span>
+              <span className="text-[10px] md:text-xs font-semibold text-center mt-2 transition-colors line-clamp-1 px-1 text-gray-600 group-hover:text-[#f85606]">
+                {cat.name}
+              </span>
             </Link>
           ))}
         </nav>
@@ -300,16 +413,32 @@ const AmarDuniyaHome = () => {
         {/* রিসেন্ট অ্যাডস */}
         <section className="mt-4 p-3 rounded-2xl shadow-sm transition-colors duration-300 bg-white">
           <div className="flex justify-between items-center mb-3">
-            <h2 className="text-lg font-black text-gray-800">🔥 রিসেন্ট অ্যাডস</h2>
-            <button className="text-[11px] font-bold text-[#f85606]">সব দেখুন &gt;</button>
+            <h2 className="text-lg font-black text-gray-800">
+              🔥 রিসেন্ট অ্যাডস
+            </h2>
+            <button className="text-[11px] font-bold text-[#f85606]">
+              সব দেখুন &gt;
+            </button>
           </div>
+
           <div className="grid grid-cols-3 gap-2">
-            {recentAds.map((ad) => <AdCard key={ad.id} ad={ad} />)}
-            {loadingRecent && recentAds.length === 0 && [...Array(3)].map((_, i) => <SkeletonCard key={i} />)}
+            {recentAds.map((ad) => (
+              <AdCard key={ad.id} ad={ad} />
+            ))}
+            {loadingRecent && recentAds.length === 0 && (
+              [...Array(3)].map((_, i) => <SkeletonCard key={i} />)
+            )}
           </div>
+          
           <div ref={recentObserverRef} className="flex justify-center py-3">
-            {loadingRecent && recentAds.length > 0 && <Loader2 className="animate-spin text-[#f85606]" size={18} />}
-            {!hasMoreRecent && recentAds.length > 0 && <p className="text-[9px] text-gray-400">সব পণ্য দেখানো হয়েছে</p>}
+            {loadingRecent && recentAds.length > 0 && (
+              <Loader2 className="animate-spin text-[#f85606]" size={18} />
+            )}
+            {!hasMoreRecent && recentAds.length > 0 && (
+              <p className="text-[9px] text-gray-400">
+                সব পণ্য দেখানো হয়েছে
+              </p>
+            )}
           </div>
         </section>
 
