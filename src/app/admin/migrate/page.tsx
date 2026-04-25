@@ -4,8 +4,6 @@ import { useRouter } from "next/navigation";
 import AdminSidebar from "@/components/AdminSidebar";
 import { Menu, X, Database, CheckCircle, Loader2, RefreshCw } from "lucide-react";
 import { migrateAllData } from "@/lib/migrate-data";
-import { getSupabaseClient } from "@/lib/supabase/client";
-
 export default function MigratePage() {
   const router = useRouter();
   const [sidebarOpen, setSidebarOpen] = useState(false);

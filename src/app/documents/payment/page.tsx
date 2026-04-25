@@ -6,8 +6,6 @@ import {
   Shield, CreditCard, AlertCircle, Loader2,
   Smartphone, Building, Wallet
 } from "lucide-react";
-import { getSupabaseClient } from "@/lib/supabase/client";
-
 export default function DocumentPaymentPage() {
   const router = useRouter();
   const searchParams = useSearchParams();

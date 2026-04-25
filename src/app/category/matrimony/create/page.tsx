@@ -6,8 +6,6 @@ import {
   Heart, Shield, Upload, FileText, Baby, HeartCrack, 
   Phone, Mail, Crown, Loader2, CheckCircle
 } from "lucide-react";
-import { getSupabaseClient } from "@/lib/supabase/client";
-
 // বাংলাদেশের জেলা
 const bangladeshDistricts = [
   "ঢাকা", "চট্টগ্রাম", "খুলনা", "রাজশাহী", "সিলেট", "বরিশাল", "রংপুর", "ময়মনসিংহ",

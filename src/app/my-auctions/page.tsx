@@ -6,8 +6,6 @@ import {
   ArrowLeft, Gavel, Clock, Users, Eye, 
   PlusCircle, Trash2, Edit, Loader2, AlertCircle
 } from "lucide-react";
-import { getSupabaseClient } from "@/lib/supabase/client";
-
 type MyAuction = {
   id: string;
   title: string;

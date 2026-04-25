@@ -5,8 +5,6 @@ import {
   ArrowLeft, Upload, FileText, Lock, CheckCircle, 
   AlertCircle, Shield, Crown, X, FileUp, Loader2
 } from "lucide-react";
-import { getSupabaseClient } from "@/lib/supabase/client";
-
 export default function DocumentUploadPage() {
   const router = useRouter();
   const searchParams = useSearchParams();

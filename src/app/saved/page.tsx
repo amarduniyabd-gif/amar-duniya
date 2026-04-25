@@ -5,8 +5,6 @@ import { useRouter } from "next/navigation";
 import { 
   ArrowLeft, Heart, Trash2, ShoppingBag, X, Loader2, AlertCircle, Eye 
 } from "lucide-react";
-import { getSupabaseClient } from "@/lib/supabase/client";
-
 type SavedItem = {
   id: string;
   post_id: string;

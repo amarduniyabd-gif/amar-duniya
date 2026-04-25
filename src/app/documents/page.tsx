@@ -6,8 +6,6 @@ import {
   Download, Eye, Crown, Shield, CreditCard, Loader2, AlertCircle
 } from "lucide-react";
 import Link from "next/link";
-import { getSupabaseClient } from "@/lib/supabase/client";
-
 type Document = {
   id: string;
   post_id: string;

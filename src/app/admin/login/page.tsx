@@ -5,8 +5,6 @@ import {
   Shield, Mail, Lock, Eye, EyeOff, Loader2, 
   AlertCircle, LogIn, Zap
 } from "lucide-react";
-import { getSupabaseClient } from "@/lib/supabase/client";
-
 export default function AdminLogin() {
   const router = useRouter();
   const [email, setEmail] = useState("admin@amarduniya.com");

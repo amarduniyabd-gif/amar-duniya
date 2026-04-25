@@ -6,8 +6,6 @@ import {
   User, Mail, Phone, MapPin, CreditCard, Loader2,
   FileText, LogOut, ChevronRight, Eye, Key, Database, Download, Upload, Lock
 } from "lucide-react";
-import { getSupabaseClient } from "@/lib/supabase/client";
-
 export default function UserSettingsPage() {
   const router = useRouter();
   const [activeTab, setActiveTab] = useState<'profile' | 'notification' | 'security' | 'privacy' | 'payment' | 'data'>('profile');

@@ -9,8 +9,6 @@ import {
 } from "lucide-react";
 import { categories, getRootCategories } from "@/data/categories";
 import PaymentModal from "@/components/PaymentModal";
-import { getSupabaseClient } from "@/lib/supabase/client";
-
 // ============ কনস্ট্যান্ট ============
 const BLOCKED_KEYWORDS = [
   'porn', 'xxx', 'adult', 'sex', 'nude', 'naked',

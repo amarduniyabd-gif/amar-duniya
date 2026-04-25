@@ -6,8 +6,6 @@ import {
   Search, X, Filter, Heart, Eye, MapPin, 
   Loader2, AlertCircle, ChevronRight
 } from "lucide-react";
-import { getSupabaseClient } from "@/lib/supabase/client";
-
 type Product = {
   id: string;
   title: string;
