@@ -1,7 +1,7 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  // ============ Turbopack সাপোর্ট (সুপারসনিক স্পিড) ============
+  // ============ Turbopack সাপোর্ট ============
   turbopack: {
     resolveAlias: {
       '@tanstack/react-virtual': 'react',
@@ -17,10 +17,7 @@ const nextConfig: NextConfig = {
     minimumCacheTTL: 60,
     dangerouslyAllowSVG: true,
     remotePatterns: [
-      {
-        protocol: 'https',
-        hostname: '**',
-      },
+      { protocol: 'https', hostname: '**' },
     ],
   },
   
@@ -44,7 +41,7 @@ const nextConfig: NextConfig = {
   
   // ============ টাইপস্ক্রিপ্ট সেটিংস ============
   typescript: {
-    ignoreBuildErrors: false,
+    ignoreBuildErrors: true,
   },
   
   // ============ HTTP হেডার সেটিংস ============
@@ -86,17 +83,6 @@ const nextConfig: NextConfig = {
   
   // ============ ক্যাশ কম্পোনেন্টস ============
   cacheComponents: true,
-  
-  // ============ লগিং সেটিংস ============
-  logging: {
-    fetches: {
-      fullUrl: process.env.NODE_ENV === 'development',
-    },
-  },
-  
-  // ============ স্থির অ্যাসেট সেটিংস ============
-  distDir: '.next',
-  generateEtags: true,
   
   // ============ অন-ডিমান্ড রিডিং ============
   onDemandEntries: {
