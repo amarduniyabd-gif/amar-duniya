@@ -1,10 +1,8 @@
 "use client";
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { 
   X, CreditCard, Shield, CheckCircle, AlertCircle, Loader2,
-  Smartphone, Building, Wallet
 } from 'lucide-react';
-import { getSupabaseClient } from '@/lib/supabase/client';
 
 interface PaymentModalProps {
   isOpen: boolean;
@@ -39,77 +37,17 @@ export default function PaymentModal({
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
   const [paymentId, setPaymentId] = useState<string | null>(null);
+  
+  // ✅ SSR সেফ supabase
+  const [supabase, setSupabase] = useState<any>(null);
+  const [isClient, setIsClient] = useState(false);
 
-  const supabase = getSupabaseClient();
-
-  // ============ পেমেন্ট হ্যান্ডলার ============
-  const handlePayment = useCallback(async () => {
-    setIsProcessing(true);
-    setError(null);
-
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      const userId = user?.id;
-
-      // পেমেন্ট ডাটা
-      const paymentData: any = {
-        user_id: userId,
-        amount: amount,
-        type: type,
-        payment_method: paymentMethod,
-        status: 'completed', // ডেমোতে completed
-        transaction_id: `TXN_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`,
-      };
-
-      // রেফারেন্স সেট
-      if (type === 'featured' || type === 'document') {
-        paymentData.post_id = referenceId;
-      } else if (type === 'bid_security') {
-        paymentData.auction_id = referenceId;
-      }
-
-      // Supabase এ পেমেন্ট সেভ
-      const { data: payment, error: insertError } = await supabase
-        .from('payments')
-        .insert(paymentData)
-        .select()
-        .single();
-
-      if (insertError) throw insertError;
-
-      setPaymentId(payment?.id || null);
-
-      // পেমেন্ট সফল হলে অতিরিক্ত কাজ
-      if (payment) {
-        await handlePaymentSuccess(payment.id, type, referenceId, userId);
-      }
-
-      // লোকাল স্টোরেজেও সেভ
-      const payments = JSON.parse(localStorage.getItem('payments') || '[]');
-      payments.push({
-        ...paymentData,
-        id: payment?.id || `LOCAL_${Date.now()}`,
-        created_at: new Date().toISOString(),
-      });
-      localStorage.setItem('payments', JSON.stringify(payments));
-
-      // সাকসেস
-      setSuccess(true);
-      
-      setTimeout(() => {
-        onSuccess(payment?.id);
-        onClose();
-        setSuccess(false);
-        setError(null);
-      }, 1500);
-
-    } catch (err: any) {
-      console.error('Payment error:', err);
-      setError(err.message || 'পেমেন্ট করতে সমস্যা হয়েছে!');
-    } finally {
-      setIsProcessing(false);
-    }
-  }, [amount, type, referenceId, paymentMethod, onSuccess, onClose]);
+  useEffect(() => {
+    setIsClient(true);
+    import('@/lib/supabase/client').then(({ getSupabaseClient }) => {
+      setSupabase(getSupabaseClient());
+    });
+  }, []);
 
   // ============ পেমেন্ট সফল হ্যান্ডলার ============
   const handlePaymentSuccess = async (
@@ -118,6 +56,8 @@ export default function PaymentModal({
     referenceId: string | undefined, 
     userId: string | null
   ) => {
+    if (!supabase) return;
+    
     try {
       switch (type) {
         case 'featured':
@@ -170,10 +110,79 @@ export default function PaymentModal({
     }
   };
 
+  // ============ পেমেন্ট হ্যান্ডলার ============
+  const handlePayment = useCallback(async () => {
+    if (!supabase || !isClient) {
+      setError('সিস্টেম লোড হচ্ছে, একটু অপেক্ষা করুন...');
+      return;
+    }
+    
+    setIsProcessing(true);
+    setError(null);
+
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      const userId = user?.id;
+
+      const paymentData: any = {
+        user_id: userId,
+        amount: amount,
+        type: type,
+        payment_method: paymentMethod,
+        status: 'completed',
+        transaction_id: `TXN_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`,
+      };
+
+      if (type === 'featured' || type === 'document') {
+        paymentData.post_id = referenceId;
+      } else if (type === 'bid_security') {
+        paymentData.auction_id = referenceId;
+      }
+
+      const { data: payment, error: insertError } = await supabase
+        .from('payments')
+        .insert(paymentData)
+        .select()
+        .single();
+
+      if (insertError) throw insertError;
+
+      setPaymentId(payment?.id || null);
+
+      if (payment) {
+        await handlePaymentSuccess(payment.id, type, referenceId, userId);
+      }
+
+      // লোকাল স্টোরেজ
+      const payments = JSON.parse(localStorage.getItem('payments') || '[]');
+      payments.push({
+        ...paymentData,
+        id: payment?.id || `LOCAL_${Date.now()}`,
+        created_at: new Date().toISOString(),
+      });
+      localStorage.setItem('payments', JSON.stringify(payments));
+
+      setSuccess(true);
+      
+      setTimeout(() => {
+        onSuccess(payment?.id);
+        onClose();
+        setSuccess(false);
+        setError(null);
+      }, 1500);
+
+    } catch (err: any) {
+      console.error('Payment error:', err);
+      setError(err.message || 'পেমেন্ট করতে সমস্যা হয়েছে!');
+    } finally {
+      setIsProcessing(false);
+    }
+  }, [supabase, isClient, amount, type, referenceId, paymentMethod, onSuccess, onClose]);
+
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-in fade-in duration-200">
+    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
       <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-gray-100">
         
         {/* হেডার */}
@@ -239,9 +248,6 @@ export default function PaymentModal({
                       {method.icon}
                     </div>
                     <span className="font-medium text-gray-700">{method.name}</span>
-                    {method.id === 'bkash' && (
-                      <span className="text-[10px] bg-green-100 text-green-700 px-1.5 py-0.5 rounded-full">দ্রুত</span>
-                    )}
                   </div>
                   {paymentMethod === method.id && (
                     <CheckCircle size={18} className="text-[#f85606]" />
@@ -253,7 +259,7 @@ export default function PaymentModal({
             {/* পেমেন্ট বাটন */}
             <button 
               onClick={handlePayment} 
-              disabled={isProcessing} 
+              disabled={isProcessing || !isClient}
               className="w-full mt-5 bg-gradient-to-r from-[#f85606] to-orange-500 text-white py-3.5 rounded-xl font-semibold flex items-center justify-center gap-2 shadow-md hover:shadow-lg transition disabled:opacity-50 active:scale-[0.99]"
             >
               {isProcessing ? (
