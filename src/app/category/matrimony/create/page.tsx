@@ -145,7 +145,7 @@ export default function CreateMatrimonyProfilePage() {
     setIsSubmitting(true);
     
     try {
-      const supabase = getSupabaseClient();
+      
       const { data: { user } } = await supabase.auth.getUser();
       
       if (!user) {

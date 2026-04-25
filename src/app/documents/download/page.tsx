@@ -19,7 +19,7 @@ export default function DocumentDownloadPage() {
   const [document, setDocument] = useState<any>(null);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
 
-  const supabase = getSupabaseClient();
+  
 
   // ============ ডকুমেন্ট ভেরিফাই ============
   useEffect(() => {

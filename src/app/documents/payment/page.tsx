@@ -21,7 +21,7 @@ export default function DocumentPaymentPage() {
   const [document, setDocument] = useState<any>(null);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
 
-  const supabase = getSupabaseClient();
+  
 
   const paymentMethods = [
     { id: 'bkash', name: 'বিকাশ', icon: <Smartphone size={20} />, color: 'from-pink-500 to-pink-600' },

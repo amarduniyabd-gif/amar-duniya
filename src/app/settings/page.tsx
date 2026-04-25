@@ -15,7 +15,7 @@ export default function UserSettingsPage() {
   const [profileLoading, setProfileLoading] = useState(true);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   
-  const supabase = getSupabaseClient();
+  
   
   // ============ পাসওয়ার্ড স্টেট ============
   const [passwordData, setPasswordData] = useState({

@@ -169,7 +169,7 @@ const PaymentModal = memo(({ onClose, onSuccess, price, profileId }: {
     setIsProcessing(true);
     
     try {
-      const supabase = getSupabaseClient();
+      
       const { data: { user } } = await supabase.auth.getUser();
       
       if (user) {
@@ -478,7 +478,7 @@ export default function MatrimonyPage() {
     if (reset) setLoading(true);
     else setLoadingMore(true);
     
-    const supabase = getSupabaseClient();
+    
     const from = (pageNum - 1) * 9;
     const to = from + 8;
     

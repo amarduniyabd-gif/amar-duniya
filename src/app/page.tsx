@@ -37,7 +37,7 @@ type SliderItem = {
 
 // Supabase থেকে স্লাইডার লোড
 const loadSlidersFromSupabase = async (): Promise<SliderItem[]> => {
-  const supabase = getSupabaseClient();
+  
   const { data } = await supabase
     .from('sliders')
     .select('*')
@@ -60,7 +60,7 @@ const loadSlidersFromSupabase = async (): Promise<SliderItem[]> => {
 
 // Supabase থেকে পোস্ট লোড
 const loadPostsFromSupabase = async (page: number, limit: number): Promise<AdItem[]> => {
-  const supabase = getSupabaseClient();
+  
   const from = (page - 1) * limit;
   const to = from + limit - 1;
   

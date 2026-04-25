@@ -238,7 +238,7 @@ export default function PostAdPage() {
     setIsSubmitting(true);
     
     try {
-      const supabase = getSupabaseClient();
+      
       const { data: { user } } = await supabase.auth.getUser();
       
       // ১. পোস্ট তৈরি

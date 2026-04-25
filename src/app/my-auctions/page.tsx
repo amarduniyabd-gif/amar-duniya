@@ -61,7 +61,7 @@ export default function MyAuctionsPage() {
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [deleteLoading, setDeleteLoading] = useState<string | null>(null);
 
-  const supabase = getSupabaseClient();
+  
 
   // ============ নিলাম লোড ============
   useEffect(() => {

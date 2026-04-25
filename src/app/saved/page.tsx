@@ -26,7 +26,7 @@ export default function SavedPage() {
   const [removeLoading, setRemoveLoading] = useState(false);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
 
-  const supabase = getSupabaseClient();
+  
 
   // ============ সেভড আইটেম লোড ============
   useEffect(() => {

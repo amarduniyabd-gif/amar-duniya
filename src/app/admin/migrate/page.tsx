@@ -26,7 +26,7 @@ export default function MigratePage() {
     });
     
     const getUser = async () => {
-      const supabase = getSupabaseClient();
+      
       const { data: { user } } = await supabase.auth.getUser();
       if (user) setUserId(user.id);
     };

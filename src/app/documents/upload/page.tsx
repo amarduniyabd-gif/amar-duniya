@@ -20,7 +20,7 @@ export default function DocumentUploadPage() {
   const [postDetails, setPostDetails] = useState<any>(null);
   const [loading, setLoading] = useState(!!postIdFromUrl);
 
-  const supabase = getSupabaseClient();
+  
 
   // ============ পোস্ট ভেরিফাই ============
   useEffect(() => {

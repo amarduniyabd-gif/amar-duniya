@@ -24,7 +24,7 @@ export default function DocumentsPage() {
   const [error, setError] = useState<string | null>(null);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
 
-  const supabase = getSupabaseClient();
+  
 
   // ============ ডকুমেন্ট লোড ============
   useEffect(() => {

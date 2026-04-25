@@ -116,7 +116,7 @@ export default function SearchPage() {
   // ক্যাটাগরি লোড
 useEffect(() => {
   const loadCategories = async () => {
-    const supabase = getSupabaseClient();
+    
     const { data } = await supabase.from('categories').select('name').eq('is_active', true);
     if (data) setCategories(data.map((c: any) => c.name)); // ✅ c: any যোগ করা হয়েছে
   };
@@ -154,7 +154,7 @@ useEffect(() => {
     }
     
     try {
-      const supabase = getSupabaseClient();
+      
       const from = (pageNum - 1) * 20;
       const to = from + 19;
       
