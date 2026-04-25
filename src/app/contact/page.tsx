@@ -1,12 +1,11 @@
 "use client";
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { 
   ArrowLeft, Mail, Phone, MapPin, Send, Loader2, 
   CheckCircle, AlertCircle, Clock, Globe, MessageCircle
 } from "lucide-react";
 import Link from "next/link";
-import { getSupabaseClient } from "@/lib/supabase/client";
 
 export default function ContactPage() {
   const router = useRouter();
@@ -14,8 +13,19 @@ export default function ContactPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitSuccess, setSubmitSuccess] = useState(false);
   const [error, setError] = useState("");
+  const [supabase, setSupabase] = useState<any>(null);
 
-  const supabase = getSupabaseClient();
+  // ✅ Supabase ক্লায়েন্ট লোড
+  useEffect(() => {
+    const loadSupabase = async () => {
+      try {
+        const { getSupabaseClient } = await import('@/lib/supabase/client');
+        const client = getSupabaseClient();
+        setSupabase(client);
+      } catch (error) {}
+    };
+    loadSupabase();
+  }, []);
 
   const handleChange = useCallback((e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
@@ -26,47 +36,28 @@ export default function ContactPage() {
   const handleSubmit = useCallback(async (e: React.FormEvent) => {
     e.preventDefault();
     
-    // ভ্যালিডেশন
-    if (!formData.name.trim()) {
-      setError("নাম আবশ্যক");
-      return;
-    }
-    if (!formData.email.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
-      setError("সঠিক ইমেইল দিন");
-      return;
-    }
-    if (!formData.message.trim()) {
-      setError("বার্তা লিখুন");
-      return;
-    }
+    if (!formData.name.trim()) { setError("নাম আবশ্যক"); return; }
+    if (!formData.email.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) { setError("সঠিক ইমেইল দিন"); return; }
+    if (!formData.message.trim()) { setError("বার্তা লিখুন"); return; }
 
     setIsSubmitting(true);
     setError("");
 
     try {
-      // ✅ Supabase API কানেকশন
-      const { error: insertError } = await supabase
-        .from('contact_messages')
-        .insert({
+      if (supabase) {
+        await supabase.from('contact_messages').insert({
           name: formData.name,
           email: formData.email,
           subject: formData.subject || 'সাধারণ জিজ্ঞাসা',
           message: formData.message,
-          created_at: new Date().toISOString(),
           status: 'pending',
         });
+      }
 
-      if (insertError) throw insertError;
-
-      // সাকসেস
       setSubmitSuccess(true);
       setFormData({ name: "", email: "", subject: "", message: "" });
-      
-      // ৫ সেকেন্ড পর সাকসেস মেসেজ হাইড
       setTimeout(() => setSubmitSuccess(false), 5000);
-      
     } catch (err: any) {
-      console.error('Contact submit error:', err);
       setError("বার্তা পাঠাতে সমস্যা হয়েছে! আবার চেষ্টা করুন।");
     } finally {
       setIsSubmitting(false);
@@ -215,10 +206,7 @@ export default function ContactPage() {
                   <div>
                     <label className="block text-xs font-medium text-gray-600 mb-1">আপনার নাম *</label>
                     <input 
-                      type="text" 
-                      name="name" 
-                      value={formData.name} 
-                      onChange={handleChange} 
+                      type="text" name="name" value={formData.name} onChange={handleChange} 
                       placeholder="যেমন: রহিম উদ্দিন" 
                       className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#f85606] focus:border-transparent transition" 
                     />
@@ -226,10 +214,7 @@ export default function ContactPage() {
                   <div>
                     <label className="block text-xs font-medium text-gray-600 mb-1">ইমেইল *</label>
                     <input 
-                      type="email" 
-                      name="email" 
-                      value={formData.email} 
-                      onChange={handleChange} 
+                      type="email" name="email" value={formData.email} onChange={handleChange} 
                       placeholder="your@email.com" 
                       className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#f85606] focus:border-transparent transition" 
                     />
@@ -239,10 +224,7 @@ export default function ContactPage() {
                 <div>
                   <label className="block text-xs font-medium text-gray-600 mb-1">বিষয়</label>
                   <input 
-                    type="text" 
-                    name="subject" 
-                    value={formData.subject} 
-                    onChange={handleChange} 
+                    type="text" name="subject" value={formData.subject} onChange={handleChange} 
                     placeholder="যেমন: পণ্য সম্পর্কে জানতে চাই" 
                     className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#f85606] focus:border-transparent transition" 
                   />
@@ -251,30 +233,20 @@ export default function ContactPage() {
                 <div>
                   <label className="block text-xs font-medium text-gray-600 mb-1">বার্তা *</label>
                   <textarea 
-                    name="message" 
-                    value={formData.message} 
-                    onChange={handleChange} 
-                    rows={5} 
-                    placeholder="আপনার বার্তা লিখুন..." 
+                    name="message" value={formData.message} onChange={handleChange} 
+                    rows={5} placeholder="আপনার বার্তা লিখুন..." 
                     className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#f85606] focus:border-transparent transition resize-none" 
                   />
                 </div>
 
                 <button 
-                  type="submit" 
-                  disabled={isSubmitting} 
+                  type="submit" disabled={isSubmitting} 
                   className="w-full bg-gradient-to-r from-[#f85606] to-orange-500 text-white py-3.5 rounded-xl font-semibold flex items-center justify-center gap-2 shadow-md hover:shadow-lg transition-all duration-200 disabled:opacity-50 active:scale-[0.99]"
                 >
                   {isSubmitting ? (
-                    <>
-                      <Loader2 size={18} className="animate-spin" />
-                      পাঠানো হচ্ছে...
-                    </>
+                    <><Loader2 size={18} className="animate-spin" />পাঠানো হচ্ছে...</>
                   ) : (
-                    <>
-                      <Send size={18} />
-                      বার্তা পাঠান
-                    </>
+                    <><Send size={18} />বার্তা পাঠান</>
                   )}
                 </button>
 
