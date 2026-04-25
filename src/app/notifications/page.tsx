@@ -6,7 +6,6 @@ import {
   ArrowLeft, Bell, Heart, MessageCircle, ShoppingBag, Gavel, 
   CheckCircle, X, Trash2, Loader2, AlertCircle 
 } from "lucide-react";
-import { getSupabaseClient } from "@/lib/supabase/client";
 
 type Notification = {
   id: string;
@@ -27,21 +26,44 @@ export default function NotificationsPage() {
   const [showDeleteModal, setShowDeleteModal] = useState<string | null>(null);
   const [deleteLoading, setDeleteLoading] = useState(false);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  const [supabase, setSupabase] = useState<any>(null);
+  const [mounted, setMounted] = useState(false);
 
-  const supabase = getSupabaseClient();
+  // ✅ Supabase ক্লায়েন্ট লোড
+  useEffect(() => {
+    const loadSupabase = async () => {
+      try {
+        const { getSupabaseClient } = await import('@/lib/supabase/client');
+        const client = getSupabaseClient();
+        setSupabase(client);
+      } catch (error) {
+        console.error('Failed to load Supabase:', error);
+      } finally {
+        setMounted(true);
+      }
+    };
+    loadSupabase();
+  }, []);
 
   // ============ নোটিফিকেশন লোড ============
   useEffect(() => {
+    if (!supabase) return;
+    
     const loadNotifications = async () => {
       setLoading(true);
       setError(null);
 
       try {
         const { data: { user } } = await supabase.auth.getUser();
+        
+        // ✅ লগইন না থাকলে খালি লিস্ট দেখাবে
         if (!user) {
-          router.push('/login?redirect=/notifications');
+          setCurrentUserId(null);
+          setNotifications([]);
+          setLoading(false);
           return;
         }
+        
         setCurrentUserId(user.id);
 
         const { data, error: fetchError } = await supabase
@@ -64,14 +86,9 @@ export default function NotificationsPage() {
         }));
 
         setNotifications(formattedNotifications);
-        
-        // লোকাল স্টোরেজে সেভ
         localStorage.setItem('notifications', JSON.stringify(formattedNotifications));
       } catch (err: any) {
-        console.error('Load error:', err);
-        setError('নোটিফিকেশন লোড করতে সমস্যা হয়েছে!');
-        
-        // লোকাল ফলব্যাক
+        console.log('Using local storage fallback');
         const saved = localStorage.getItem('notifications');
         if (saved) setNotifications(JSON.parse(saved));
       } finally {
@@ -80,11 +97,11 @@ export default function NotificationsPage() {
     };
 
     loadNotifications();
-  }, [router]);
+  }, [supabase, router]);
 
   // ============ Realtime সাবস্ক্রিপশন ============
   useEffect(() => {
-    if (!currentUserId) return;
+    if (!supabase || !currentUserId) return;
 
     const channel = supabase
       .channel('notifications')
@@ -110,7 +127,7 @@ export default function NotificationsPage() {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [currentUserId]);
+  }, [supabase, currentUserId]);
 
   // ============ হেল্পার ফাংশন ============
   const timeAgo = (date: string): string => {
@@ -147,85 +164,44 @@ export default function NotificationsPage() {
     }
   };
 
-  // ============ মার্ক অ্যাজ রিড ============
   const markAsRead = useCallback(async (id: string) => {
+    if (!supabase) return;
     try {
-      await supabase
-        .from('notifications')
-        .update({ is_read: true })
-        .eq('id', id);
-
-      setNotifications(prev => prev.map(n => 
-        n.id === id ? { ...n, read: true } : n
-      ));
-    } catch (error) {
-      // লোকাল আপডেট
-      setNotifications(prev => prev.map(n => 
-        n.id === id ? { ...n, read: true } : n
-      ));
-    }
-  }, []);
+      await supabase.from('notifications').update({ is_read: true }).eq('id', id);
+    } catch (error) {}
+    setNotifications(prev => prev.map(n => n.id === id ? { ...n, read: true } : n));
+  }, [supabase]);
 
   const markAllAsRead = useCallback(async () => {
-    if (!currentUserId) return;
-    
+    if (!currentUserId || !supabase) return;
     try {
-      await supabase
-        .from('notifications')
-        .update({ is_read: true })
-        .eq('user_id', currentUserId)
-        .eq('is_read', false);
+      await supabase.from('notifications').update({ is_read: true }).eq('user_id', currentUserId).eq('is_read', false);
+    } catch (error) {}
+    setNotifications(prev => prev.map(n => ({ ...n, read: true })));
+  }, [currentUserId, supabase]);
 
-      setNotifications(prev => prev.map(n => ({ ...n, read: true })));
-    } catch (error) {
-      setNotifications(prev => prev.map(n => ({ ...n, read: true })));
-    }
-  }, [currentUserId]);
-
-  // ============ ডিলিট নোটিফিকেশন ============
   const deleteNotification = useCallback(async (id: string) => {
     setDeleteLoading(true);
-    
-    try {
-      const { error } = await supabase
-        .from('notifications')
-        .delete()
-        .eq('id', id);
-
-      if (error) throw error;
-
-      setNotifications(prev => prev.filter(n => n.id !== id));
-      setShowDeleteModal(null);
-    } catch (error) {
-      // লোকাল ডিলিট
-      setNotifications(prev => prev.filter(n => n.id !== id));
-      setShowDeleteModal(null);
-    } finally {
-      setDeleteLoading(false);
+    if (supabase) {
+      try { await supabase.from('notifications').delete().eq('id', id); } catch (error) {}
     }
-  }, []);
+    setNotifications(prev => prev.filter(n => n.id !== id));
+    setShowDeleteModal(null);
+    setDeleteLoading(false);
+  }, [supabase]);
 
   const deleteAllRead = useCallback(async () => {
     if (!currentUserId) return;
     if (!confirm('সব পড়া নোটিফিকেশন ডিলিট করবেন?')) return;
-
-    try {
-      await supabase
-        .from('notifications')
-        .delete()
-        .eq('user_id', currentUserId)
-        .eq('is_read', true);
-
-      setNotifications(prev => prev.filter(n => !n.read));
-    } catch (error) {
-      setNotifications(prev => prev.filter(n => !n.read));
+    if (supabase) {
+      try { await supabase.from('notifications').delete().eq('user_id', currentUserId).eq('is_read', true); } catch (error) {}
     }
-  }, [currentUserId]);
+    setNotifications(prev => prev.filter(n => !n.read));
+  }, [currentUserId, supabase]);
 
   const unreadCount = notifications.filter(n => !n.read).length;
 
-  // ============ লোডিং স্টেট ============
-  if (loading) {
+  if (loading || !mounted) {
     return (
       <div className="min-h-screen bg-gray-100 flex items-center justify-center">
         <Loader2 className="animate-spin text-[#f85606]" size={40} />
@@ -237,47 +213,28 @@ export default function NotificationsPage() {
     <div className="min-h-screen bg-gradient-to-b from-gray-50 to-gray-100 pb-20">
       <div className="max-w-3xl mx-auto p-4">
         
-        {/* হেডার */}
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-3">
-            <button 
-              onClick={() => router.back()} 
-              className="bg-white p-2.5 rounded-xl shadow-md hover:shadow-lg transition active:scale-95"
-            >
+            <button onClick={() => router.back()} className="bg-white p-2.5 rounded-xl shadow-md hover:shadow-lg transition active:scale-95">
               <ArrowLeft size={20} className="text-gray-600" />
             </button>
             <div>
               <h1 className="text-2xl font-bold bg-gradient-to-r from-[#f85606] to-orange-500 bg-clip-text text-transparent">
                 নোটিফিকেশন
               </h1>
-              {unreadCount > 0 && (
-                <span className="text-xs text-gray-500">{unreadCount}টি অপঠিত</span>
-              )}
+              {unreadCount > 0 && <span className="text-xs text-gray-500">{unreadCount}টি অপঠিত</span>}
             </div>
           </div>
           <div className="flex items-center gap-3">
             {unreadCount > 0 && (
-              <button onClick={markAllAsRead} className="text-sm text-[#f85606] font-semibold hover:underline">
-                সব পড়া হয়েছে
-              </button>
+              <button onClick={markAllAsRead} className="text-sm text-[#f85606] font-semibold hover:underline">সব পড়া হয়েছে</button>
             )}
             {notifications.filter(n => n.read).length > 0 && (
-              <button onClick={deleteAllRead} className="text-sm text-gray-400 hover:text-red-500">
-                <Trash2 size={16} />
-              </button>
+              <button onClick={deleteAllRead} className="text-sm text-gray-400 hover:text-red-500"><Trash2 size={16} /></button>
             )}
           </div>
         </div>
 
-        {/* এরর */}
-        {error && (
-          <div className="bg-red-50 border border-red-200 rounded-xl p-4 flex items-center gap-3 mb-4">
-            <AlertCircle size={18} className="text-red-500" />
-            <p className="text-sm text-red-600">{error}</p>
-          </div>
-        )}
-
-        {/* খালি স্টেট */}
         {notifications.length === 0 ? (
           <div className="bg-white rounded-2xl p-8 text-center shadow-sm border border-gray-100">
             <div className="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
@@ -289,18 +246,9 @@ export default function NotificationsPage() {
         ) : (
           <div className="space-y-2">
             {notifications.map((notif) => (
-              <div 
-                key={notif.id} 
-                className={`bg-white rounded-2xl p-4 transition-all duration-300 group ${
-                  !notif.read 
-                    ? 'border-l-4 border-l-[#f85606] shadow-md' 
-                    : 'shadow-sm border border-gray-100'
-                }`}
-              >
+              <div key={notif.id} className={`bg-white rounded-2xl p-4 transition-all duration-300 group ${!notif.read ? 'border-l-4 border-l-[#f85606] shadow-md' : 'shadow-sm border border-gray-100'}`}>
                 <div className="flex gap-3">
-                  <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
-                    !notif.read ? 'bg-[#f85606]/10' : 'bg-gray-100'
-                  }`}>
+                  <div className={`w-10 h-10 rounded-full flex items-center justify-center ${!notif.read ? 'bg-[#f85606]/10' : 'bg-gray-100'}`}>
                     {getIcon(notif.type)}
                   </div>
                   <div className="flex-1 min-w-0">
@@ -312,29 +260,17 @@ export default function NotificationsPage() {
                       </div>
                       <div className="flex gap-1 ml-2 flex-shrink-0">
                         {!notif.read && (
-                          <button 
-                            onClick={() => markAsRead(notif.id)}
-                            className="text-green-500 hover:text-green-600 p-1 opacity-0 group-hover:opacity-100 transition"
-                            title="পড়া হয়েছে"
-                          >
+                          <button onClick={() => markAsRead(notif.id)} className="text-green-500 hover:text-green-600 p-1 opacity-0 group-hover:opacity-100 transition">
                             <CheckCircle size={16} />
                           </button>
                         )}
-                        <button 
-                          onClick={() => setShowDeleteModal(notif.id)}
-                          className="text-gray-400 hover:text-red-500 p-1 opacity-0 group-hover:opacity-100 transition"
-                          title="ডিলিট"
-                        >
+                        <button onClick={() => setShowDeleteModal(notif.id)} className="text-gray-400 hover:text-red-500 p-1 opacity-0 group-hover:opacity-100 transition">
                           <Trash2 size={14} />
                         </button>
                       </div>
                     </div>
                     {notif.link && (
-                      <Link 
-                        href={notif.link} 
-                        onClick={() => !notif.read && markAsRead(notif.id)}
-                        className="inline-block mt-2 text-xs text-[#f85606] hover:underline"
-                      >
+                      <Link href={notif.link} onClick={() => !notif.read && markAsRead(notif.id)} className="inline-block mt-2 text-xs text-[#f85606] hover:underline">
                         বিস্তারিত দেখুন →
                       </Link>
                     )}
@@ -345,29 +281,19 @@ export default function NotificationsPage() {
           </div>
         )}
 
-        {/* ডিলিট কনফার্মেশন মডাল */}
         {showDeleteModal && (
           <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={() => setShowDeleteModal(null)}>
             <div className="bg-white rounded-2xl max-w-md w-full p-5 shadow-2xl" onClick={e => e.stopPropagation()}>
               <div className="flex justify-between items-center mb-4">
                 <h3 className="text-lg font-bold text-gray-800">নোটিফিকেশন ডিলিট করুন</h3>
-                <button onClick={() => setShowDeleteModal(null)} className="p-1 hover:bg-gray-100 rounded-full">
-                  <X size={20} className="text-gray-500" />
-                </button>
+                <button onClick={() => setShowDeleteModal(null)} className="p-1 hover:bg-gray-100 rounded-full"><X size={20} className="text-gray-500" /></button>
               </div>
               <p className="text-sm text-gray-600 mb-5">আপনি কি এই নোটিফিকেশনটি ডিলিট করতে চান?</p>
               <div className="flex gap-3">
-                <button 
-                  onClick={() => deleteNotification(showDeleteModal)} 
-                  disabled={deleteLoading}
-                  className="flex-1 bg-red-500 hover:bg-red-600 text-white py-2.5 rounded-xl font-semibold transition disabled:opacity-50 flex items-center justify-center gap-2"
-                >
-                  {deleteLoading ? <Loader2 size={16} className="animate-spin" /> : <Trash2 size={16} />}
-                  {deleteLoading ? 'ডিলিট হচ্ছে...' : 'ডিলিট করুন'}
+                <button onClick={() => deleteNotification(showDeleteModal)} disabled={deleteLoading} className="flex-1 bg-red-500 hover:bg-red-600 text-white py-2.5 rounded-xl font-semibold transition disabled:opacity-50">
+                  {deleteLoading ? <Loader2 size={16} className="animate-spin" /> : 'ডিলিট করুন'}
                 </button>
-                <button onClick={() => setShowDeleteModal(null)} className="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-700 py-2.5 rounded-xl font-semibold transition">
-                  বাতিল
-                </button>
+                <button onClick={() => setShowDeleteModal(null)} className="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-700 py-2.5 rounded-xl font-semibold transition">বাতিল</button>
               </div>
             </div>
           </div>

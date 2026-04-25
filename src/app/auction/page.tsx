@@ -89,14 +89,9 @@ export default function AuctionListPage() {
     setIsLoggedIn(loggedIn === "true");
   }, []);
 
+  // ✅ ফিক্স: লগইন চেক ছাড়াই সরাসরি নিলাম পেজে যান
   const handleAuctionClick = (auctionId: number) => {
-    if (!isLoggedIn) {
-      // লগইন না থাকলে, লগইন করার পর এই পেজে ফিরে আসার জন্য URL সেভ করুন
-      localStorage.setItem("redirectAfterLogin", `/auction/${auctionId}`);
-      router.push("/login");
-    } else {
-      router.push(`/auction/${auctionId}`);
-    }
+    router.push(`/auction/${auctionId}`);
   };
 
   return (
@@ -115,15 +110,13 @@ export default function AuctionListPage() {
 
       <div className="max-w-3xl mx-auto p-4 space-y-4">
         
-        {/* নতুন নিলাম তৈরি বাটন - শুধু লগইন করলে দেখাবে */}
-        {isLoggedIn && (
-          <Link href="/auction/create">
-            <button className="w-full bg-gradient-to-r from-[#f85606] to-orange-500 text-white py-3 rounded-xl font-semibold flex items-center justify-center gap-2 shadow-md">
-              <PlusCircle size={18} />
-              নতুন নিলাম তৈরি করুন
-            </button>
-          </Link>
-        )}
+        {/* নতুন নিলাম তৈরি বাটন - সবসময় দেখাবে */}
+        <Link href="/auction/create">
+          <button className="w-full bg-gradient-to-r from-[#f85606] to-orange-500 text-white py-3 rounded-xl font-semibold flex items-center justify-center gap-2 shadow-md">
+            <PlusCircle size={18} />
+            নতুন নিলাম তৈরি করুন
+          </button>
+        </Link>
 
         {/* নিলাম লিস্ট */}
         {auctions.map((auction) => (
@@ -159,18 +152,16 @@ export default function AuctionListPage() {
           </div>
         ))}
 
-        {/* লগইন মেসেজ - লগইন না করলে দেখাবে */}
-        {!isLoggedIn && (
-          <div className="bg-blue-50 rounded-xl p-4 text-center">
-            <p className="text-sm text-blue-700">বিড করতে এবং নিলাম তৈরি করতে লগইন করুন</p>
-            <button 
-              onClick={() => router.push("/login")}
-              className="text-sm text-[#f85606] font-semibold mt-2 inline-block"
-            >
-              লগইন করুন →
-            </button>
-          </div>
-        )}
+        {/* লগইন মেসেজ - সবসময় দেখাবে */}
+        <div className="bg-blue-50 rounded-xl p-4 text-center">
+          <p className="text-sm text-blue-700">বিড করতে এবং নিলাম তৈরি করতে লগইন করুন</p>
+          <button 
+            onClick={() => router.push("/login")}
+            className="text-sm text-[#f85606] font-semibold mt-2 inline-block"
+          >
+            লগইন করুন →
+          </button>
+        </div>
 
       </div>
     </div>

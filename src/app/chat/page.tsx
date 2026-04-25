@@ -57,10 +57,15 @@ export default function ChatListPage() {
       
       try {
         const { data: { user } } = await supabase.auth.getUser();
+        
+        // ✅ লগইন না থাকলে খালি লিস্ট দেখাবে
         if (!user) {
-          router.push('/login?redirect=/chat');
+          setCurrentUserId(null);
+          setConversations([]);
+          setLoading(false);
           return;
         }
+        
         setCurrentUserId(user.id);
 
         const { data: convs, error } = await supabase
@@ -86,7 +91,6 @@ export default function ChatListPage() {
           const isBuyer = conv.buyer_id === user.id;
           const otherUser = isBuyer ? conv.seller : conv.buyer;
           
-          // শেষ মেসেজ
           const { data: lastMsg } = await supabase
             .from('messages')
             .select('text, created_at')
@@ -95,7 +99,6 @@ export default function ChatListPage() {
             .limit(1)
             .maybeSingle();
           
-          // আনরিড কাউন্ট
           const { count: unreadCount } = await supabase
             .from('messages')
             .select('*', { count: 'exact', head: true })
