@@ -36,12 +36,14 @@ export default function AdminLogin() {
         return;
       }
 
-      // 🔍 2. PROFILE CHECK (FIXED: email-based)
+      // 🔍 2. EMAIL NORMALIZE + PROFILE FETCH
+      const cleanEmail = email.trim().toLowerCase();
+
       const { data: profile, error: profileError } = await supabase
         .from("profiles")
-        .select("is_admin, is_verified, name")
-        .eq("email", email.trim())
-        .single();
+        .select("id, email, is_admin, is_verified, name")
+        .eq("email", cleanEmail)
+        .maybeSingle();
 
       if (profileError || !profile) {
         setError("প্রোফাইল পাওয়া যায়নি!");
@@ -57,10 +59,11 @@ export default function AdminLogin() {
         return;
       }
 
-      // 🍪 4. SESSION COOKIE
-      document.cookie = "adminLoggedIn=true; path=/; max-age=86400";
+      // 🍪 4. SESSION COOKIE (secure)
+      document.cookie = "adminLoggedIn=true; path=/; max-age=86400; secure";
 
       localStorage.setItem("adminName", profile.name || "Admin");
+      localStorage.setItem("adminEmail", profile.email);
 
       // 🚀 REDIRECT
       router.push("/admin");
@@ -77,6 +80,7 @@ export default function AdminLogin() {
     <div className="min-h-screen flex items-center justify-center bg-gray-900 p-4">
       <div className="max-w-md w-full">
 
+        {/* HEADER */}
         <div className="text-center mb-6">
           <div className="w-20 h-20 bg-orange-500 rounded-2xl flex items-center justify-center mx-auto">
             <Shield size={40} className="text-white" />
@@ -84,6 +88,7 @@ export default function AdminLogin() {
           <h1 className="text-white text-xl mt-3">Admin Panel</h1>
         </div>
 
+        {/* FORM */}
         <form
           onSubmit={handleLogin}
           className="bg-gray-800 p-6 rounded-xl space-y-4"
@@ -94,6 +99,7 @@ export default function AdminLogin() {
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             placeholder="Email"
+            required
           />
 
           <input
@@ -102,6 +108,7 @@ export default function AdminLogin() {
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             placeholder="Password"
+            required
           />
 
           {error && (
@@ -110,10 +117,13 @@ export default function AdminLogin() {
 
           <button
             disabled={loading}
-            className="w-full bg-orange-500 py-3 text-white rounded"
+            className="w-full bg-orange-500 py-3 text-white rounded flex items-center justify-center gap-2"
           >
             {loading ? (
-              <Loader2 className="animate-spin mx-auto" />
+              <>
+                <Loader2 className="animate-spin" size={18} />
+                Loading...
+              </>
             ) : (
               "Login"
             )}
