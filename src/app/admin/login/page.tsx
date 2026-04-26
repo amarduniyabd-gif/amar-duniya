@@ -25,34 +25,22 @@ export default function AdminLogin() {
     setError("");
 
     try {
-      const { createClient } = await import('@supabase/supabase-js');
-      const supabase = createClient(
-        'https://nryqoyqdwxqdydifatzb.supabase.co',
-        'sb_publishable_si3zDsvJIr_WVRV52vKqKQ_UC5b4c4C'
-      );
+      // ✅ নিজের API রুট কল (Supabase SDK ছাড়া!)
+      const res = await fetch("/api/admin-login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: email.trim(), password }),
+      });
 
-      // ✅ সরাসরি profiles টেবিল থেকে অ্যাডমিন চেক
-      const { data: profile, error: profileError } = await supabase
-        .from("profiles")
-        .select("id, email, name, is_admin")
-        .eq("email", email.trim().toLowerCase())
-        .eq("is_admin", true)
-        .single();
+      const data = await res.json();
 
-      if (profileError || !profile) {
-        setError("অ্যাডমিন খুঁজে পাওয়া যায়নি!");
-        setLoading(false);
-        return;
-      }
-
-      // ✅ পাসওয়ার্ড চেক
-      if (password === 'AmarDuniya@2026#') {
+      if (data.success) {
         localStorage.setItem("adminLoggedIn", "true");
-        localStorage.setItem("adminEmail", profile.email);
-        localStorage.setItem("adminName", profile.name || "Super Admin");
+        localStorage.setItem("adminEmail", data.profile.email);
+        localStorage.setItem("adminName", data.profile.name || "Super Admin");
         router.push("/admin");
       } else {
-        setError("পাসওয়ার্ড ভুল!");
+        setError(data.error || "লগইন ব্যর্থ!");
       }
     } catch (err) {
       console.error(err);
@@ -135,7 +123,7 @@ export default function AdminLogin() {
           </form>
 
           <div className="mt-5 p-4 bg-gray-900/50 rounded-xl border border-gray-700/50">
-            <p className="text-xs text-gray-500 text-center">🔒 Database সিকিউরড</p>
+            <p className="text-xs text-gray-500 text-center">🔒 API সিকিউরড</p>
           </div>
         </div>
 
