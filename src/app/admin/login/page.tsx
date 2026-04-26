@@ -5,7 +5,7 @@ import { Shield, Mail, Lock, Eye, EyeOff, Loader2, AlertCircle, LogIn } from "lu
 
 export default function AdminLogin() {
   const router = useRouter();
-  const [email, setEmail] = useState("admin@amarduniya.com");
+  const [email, setEmail] = useState("amarduniyabd@gmail.com");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
