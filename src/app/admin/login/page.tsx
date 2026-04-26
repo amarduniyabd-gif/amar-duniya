@@ -1,7 +1,7 @@
 "use client";
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { Shield, Mail, Lock, Eye, EyeOff, Loader2, AlertCircle, LogIn, Zap } from "lucide-react";
+import { Shield, Mail, Lock, Eye, EyeOff, Loader2, AlertCircle, LogIn } from "lucide-react";
 
 export default function AdminLogin() {
   const router = useRouter();
@@ -11,66 +11,76 @@ export default function AdminLogin() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [mounted, setMounted] = useState(false);
-  const [supabase, setSupabase] = useState<any>(null);
 
-  // ✅ Supabase ক্লায়েন্ট সাইডে লোড
   useEffect(() => {
     setMounted(true);
-    import('@/lib/supabase/client').then(({ getSupabaseClient }) => {
-      setSupabase(getSupabaseClient());
-    });
     
-    // আগে থেকেই লগইন করা থাকলে
+    // ✅ আগে থেকেই লগইন করা থাকলে token চেক করে redirect
+    const accessToken = localStorage.getItem("access_token");
     const adminLoggedIn = localStorage.getItem("adminLoggedIn");
-    if (adminLoggedIn === "true") {
+    
+    if (adminLoggedIn === "true" && accessToken) {
       router.push("/admin");
     }
   }, [router]);
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  // ✅ রিয়েল Supabase Auth - REST API দিয়ে
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setError("");
 
     try {
-      if (!supabase) {
-        setError("সিস্টেম লোড হচ্ছে... আবার চেষ্টা করুন");
+      const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+      const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+
+      if (!supabaseUrl || !supabaseKey) {
+        setError("Supabase কনফিগারেশন নেই!");
         setLoading(false);
         return;
       }
 
-      const { data, error: signInError } = await supabase.auth.signInWithPassword({
-        email: email.trim(),
-        password: password,
-      });
+      // ✅ সরাসরি Supabase Auth REST API
+      const response = await fetch(
+        `${supabaseUrl}/auth/v1/token?grant_type=password`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'apikey': supabaseKey,
+          },
+          body: JSON.stringify({
+            email: email.trim(),
+            password: password,
+          }),
+        }
+      );
 
-      if (signInError) {
-        console.error("Login error:", signInError.message);
-        setError("ইমেইল বা পাসওয়ার্ড ভুল!");
-        setLoading(false);
-        return;
-      }
+      const data = await response.json();
 
-      if (data?.user) {
+      if (response.ok && data.access_token) {
+        // ✅ সফল! Supabase auth.users এ ভেরিফাই হয়েছে!
         localStorage.setItem("adminLoggedIn", "true");
         localStorage.setItem("adminEmail", email);
+        localStorage.setItem("access_token", data.access_token);
+        
+        if (data.refresh_token) {
+          localStorage.setItem("refresh_token", data.refresh_token);
+        }
+        
         router.push("/admin");
+      } else if (response.status === 400) {
+        setError("ইমেইল বা পাসওয়ার্ড ভুল! (Supabase Auth ভেরিফাই ফেইল)");
       } else {
-        setError("লগইন ব্যর্থ! আবার চেষ্টা করুন");
+        console.error("Auth error:", data);
+        setError(`লগইন ব্যর্থ! (${data.error_description || data.msg || 'Supabase Auth Error'})`);
       }
     } catch (err: any) {
       console.error("Login error:", err);
-      setError("লগইন করতে সমস্যা হয়েছে!");
+      setError("লগইন করতে সমস্যা হয়েছে! আবার চেষ্টা করুন");
     } finally {
       setLoading(false);
     }
-  };
-
-  // ✅ কুইক লগইন (ফলব্যাক)
-  const quickLogin = () => {
-    localStorage.setItem("adminLoggedIn", "true");
-    localStorage.setItem("adminEmail", email || "admin@amarduniya.com");
-    router.push("/admin");
   };
 
   if (!mounted) {
@@ -96,8 +106,8 @@ export default function AdminLogin() {
 
         <div className="bg-gray-800/50 backdrop-blur-sm rounded-2xl p-6 shadow-xl border border-gray-700">
           
-          <form onSubmit={handleSubmit} className="space-y-4">
-            {/* ইমেইল */}
+          {/* ✅ রিয়েল Supabase Auth ফর্ম */}
+          <form onSubmit={handleLogin} className="space-y-4">
             <div>
               <label className="block text-sm font-medium text-gray-300 mb-2">ইমেইল</label>
               <div className="relative">
@@ -113,7 +123,6 @@ export default function AdminLogin() {
               </div>
             </div>
             
-            {/* পাসওয়ার্ড */}
             <div>
               <label className="block text-sm font-medium text-gray-300 mb-2">পাসওয়ার্ড</label>
               <div className="relative">
@@ -136,7 +145,7 @@ export default function AdminLogin() {
               </div>
             </div>
 
-            {/* এরর */}
+            {/* এরর মেসেজ */}
             {error && (
               <div className="bg-red-500/10 border border-red-500/30 rounded-xl p-3 flex items-center gap-2">
                 <AlertCircle size={16} className="text-red-500" />
@@ -147,7 +156,7 @@ export default function AdminLogin() {
             {/* সাবমিট বাটন */}
             <button 
               type="submit" 
-              disabled={loading || !supabase} 
+              disabled={loading} 
               className="w-full bg-gradient-to-r from-[#f85606] to-orange-500 text-white py-3 rounded-xl font-semibold flex items-center justify-center gap-2 hover:shadow-lg transition disabled:opacity-50"
             >
               {loading ? (
@@ -158,29 +167,10 @@ export default function AdminLogin() {
             </button>
           </form>
 
-          {/* ডিভাইডার */}
-          <div className="relative my-4">
-            <div className="absolute inset-0 flex items-center">
-              <div className="w-full border-t border-gray-600"></div>
-            </div>
-            <div className="relative flex justify-center text-xs">
-              <span className="bg-gray-800 px-3 text-gray-400">অথবা</span>
-            </div>
-          </div>
-
-          {/* কুইক লগইন */}
-          <button 
-            type="button"
-            onClick={quickLogin}
-            className="w-full bg-green-600 hover:bg-green-700 text-white py-3 rounded-xl font-semibold flex items-center justify-center gap-2 transition shadow-lg"
-          >
-            <Zap size={18} />
-            ⚡ কুইক অ্যাডমিন লগইন
-          </button>
-
+          {/* ইনফো */}
           <div className="mt-4 p-3 bg-gray-900/30 rounded-xl">
             <p className="text-xs text-gray-500 text-center">
-              admin@amarduniya.com / admin123
+              🔒 Supabase Auth সিকিউরড | admin@amarduniya.com
             </p>
           </div>
         </div>
