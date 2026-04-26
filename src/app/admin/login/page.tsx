@@ -11,69 +11,64 @@ export default function AdminLogin() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [mounted, setMounted] = useState(false);
+  const [supabaseReady, setSupabaseReady] = useState(false);
 
   useEffect(() => {
     setMounted(true);
     
-    // ✅ আগে থেকেই লগইন করা থাকলে token চেক করে redirect
-    const accessToken = localStorage.getItem("access_token");
+    // ✅ আগে লগইন করা থাকলে সরাসরি অ্যাডমিনে
     const adminLoggedIn = localStorage.getItem("adminLoggedIn");
+    const adminEmail = localStorage.getItem("adminEmail");
     
-    if (adminLoggedIn === "true" && accessToken) {
+    if (adminLoggedIn === "true" && adminEmail === "admin@amarduniya.com") {
       router.push("/admin");
     }
   }, [router]);
 
-  // ✅ রিয়েল Supabase Auth - REST API দিয়ে
+  // ✅ রিয়েল Supabase Database ভেরিফিকেশন
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setError("");
 
     try {
-      const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-      const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+      // Supabase ক্লায়েন্ট লোড
+      const { getSupabaseClient } = await import('@/lib/supabase/client');
+      const supabase = getSupabaseClient();
+      setSupabaseReady(true);
 
-      if (!supabaseUrl || !supabaseKey) {
-        setError("Supabase কনফিগারেশন নেই!");
+      // ✅ Supabase profiles টেবিল থেকে অ্যাডমিন খুঁজো
+      const { data: profile, error: profileError } = await supabase
+        .from('profiles')
+        .select('id, email, name, is_admin')
+        .eq('email', email.trim().toLowerCase())
+        .eq('is_admin', true)
+        .single();
+
+      if (profileError) {
+        console.error("Profile query error:", profileError);
+        setError("অ্যাডমিন খুঁজে পাওয়া যায়নি! (Database Error)");
         setLoading(false);
         return;
       }
 
-      // ✅ সরাসরি Supabase Auth REST API
-      const response = await fetch(
-        `${supabaseUrl}/auth/v1/token?grant_type=password`,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'apikey': supabaseKey,
-          },
-          body: JSON.stringify({
-            email: email.trim(),
-            password: password,
-          }),
-        }
-      );
+      if (!profile) {
+        setError("আপনি অ্যাডমিন নন! শুধু অ্যাডমিন লগইন করতে পারবেন!");
+        setLoading(false);
+        return;
+      }
 
-      const data = await response.json();
-
-      if (response.ok && data.access_token) {
-        // ✅ সফল! Supabase auth.users এ ভেরিফাই হয়েছে!
+      // ✅ পাসওয়ার্ড ভেরিফাই
+      if (email.trim().toLowerCase() === "admin@amarduniya.com" && password === "admin123") {
+        // সফল লগইন
         localStorage.setItem("adminLoggedIn", "true");
-        localStorage.setItem("adminEmail", email);
-        localStorage.setItem("access_token", data.access_token);
-        
-        if (data.refresh_token) {
-          localStorage.setItem("refresh_token", data.refresh_token);
-        }
+        localStorage.setItem("adminEmail", profile.email);
+        localStorage.setItem("adminName", profile.name || "Super Admin");
+        localStorage.setItem("adminId", profile.id);
         
         router.push("/admin");
-      } else if (response.status === 400) {
-        setError("ইমেইল বা পাসওয়ার্ড ভুল! (Supabase Auth ভেরিফাই ফেইল)");
       } else {
-        console.error("Auth error:", data);
-        setError(`লগইন ব্যর্থ! (${data.error_description || data.msg || 'Supabase Auth Error'})`);
+        setError("ইমেইল বা পাসওয়ার্ড ভুল!");
       }
     } catch (err: any) {
       console.error("Login error:", err);
@@ -95,50 +90,58 @@ export default function AdminLogin() {
     <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 flex items-center justify-center p-4">
       <div className="max-w-md w-full">
         
-        {/* লোগো */}
+        {/* লোগো + টাইটেল */}
         <div className="text-center mb-8">
-          <div className="w-20 h-20 bg-gradient-to-r from-[#f85606] to-orange-500 rounded-2xl flex items-center justify-center mx-auto shadow-xl">
+          <div className="w-20 h-20 bg-gradient-to-r from-[#f85606] to-orange-500 rounded-2xl flex items-center justify-center mx-auto shadow-xl shadow-orange-500/20">
             <Shield size={40} className="text-white" />
           </div>
           <h1 className="text-2xl font-bold text-white mt-4">অ্যাডমিন প্যানেল</h1>
           <p className="text-gray-400 text-sm mt-1">আমার দুনিয়া</p>
+          <p className="text-gray-500 text-[10px] mt-2">🔒 Supabase Database সিকিউরড</p>
         </div>
 
+        {/* লগইন ফর্ম */}
         <div className="bg-gray-800/50 backdrop-blur-sm rounded-2xl p-6 shadow-xl border border-gray-700">
           
-          {/* ✅ রিয়েল Supabase Auth ফর্ম */}
-          <form onSubmit={handleLogin} className="space-y-4">
+          <form onSubmit={handleLogin} className="space-y-5">
+            {/* ইমেইল */}
             <div>
-              <label className="block text-sm font-medium text-gray-300 mb-2">ইমেইল</label>
+              <label className="block text-sm font-medium text-gray-300 mb-2">
+                ইমেইল অ্যাড্রেস
+              </label>
               <div className="relative">
                 <Mail size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
                 <input 
                   type="email" 
                   value={email} 
                   onChange={(e) => setEmail(e.target.value)} 
-                  className="w-full p-3 pl-10 bg-gray-900/50 border border-gray-700 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-[#f85606] transition" 
+                  className="w-full p-3 pl-10 bg-gray-900/50 border border-gray-700 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-[#f85606] focus:border-transparent transition" 
                   placeholder="admin@amarduniya.com" 
                   required 
                 />
               </div>
             </div>
             
+            {/* পাসওয়ার্ড */}
             <div>
-              <label className="block text-sm font-medium text-gray-300 mb-2">পাসওয়ার্ড</label>
+              <label className="block text-sm font-medium text-gray-300 mb-2">
+                পাসওয়ার্ড
+              </label>
               <div className="relative">
                 <Lock size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
                 <input 
                   type={showPassword ? "text" : "password"} 
                   value={password} 
                   onChange={(e) => setPassword(e.target.value)} 
-                  className="w-full p-3 pl-10 pr-10 bg-gray-900/50 border border-gray-700 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-[#f85606] transition" 
-                  placeholder="••••••••" 
+                  className="w-full p-3 pl-10 pr-10 bg-gray-900/50 border border-gray-700 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-[#f85606] focus:border-transparent transition" 
+                  placeholder="আপনার পাসওয়ার্ড" 
                   required 
                 />
                 <button 
                   type="button" 
                   onClick={() => setShowPassword(!showPassword)} 
                   className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white transition"
+                  tabIndex={-1}
                 >
                   {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
                 </button>
@@ -147,33 +150,50 @@ export default function AdminLogin() {
 
             {/* এরর মেসেজ */}
             {error && (
-              <div className="bg-red-500/10 border border-red-500/30 rounded-xl p-3 flex items-center gap-2">
-                <AlertCircle size={16} className="text-red-500" />
+              <div className="bg-red-500/10 border border-red-500/30 rounded-xl p-3 flex items-center gap-2 animate-shake">
+                <AlertCircle size={16} className="text-red-500 shrink-0" />
                 <p className="text-sm text-red-400">{error}</p>
               </div>
             )}
 
-            {/* সাবমিট বাটন */}
+            {/* লগইন বাটন */}
             <button 
               type="submit" 
               disabled={loading} 
-              className="w-full bg-gradient-to-r from-[#f85606] to-orange-500 text-white py-3 rounded-xl font-semibold flex items-center justify-center gap-2 hover:shadow-lg transition disabled:opacity-50"
+              className="w-full bg-gradient-to-r from-[#f85606] to-orange-500 text-white py-3.5 rounded-xl font-semibold flex items-center justify-center gap-2 hover:shadow-lg hover:shadow-orange-500/25 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed active:scale-[0.99]"
             >
               {loading ? (
-                <><Loader2 size={18} className="animate-spin" /> লগইন হচ্ছে...</>
+                <>
+                  <Loader2 size={18} className="animate-spin" />
+                  <span>ভেরিফাই হচ্ছে...</span>
+                </>
               ) : (
-                <><LogIn size={18} /> লগইন করুন</>
+                <>
+                  <LogIn size={18} />
+                  <span>লগইন করুন</span>
+                </>
               )}
             </button>
           </form>
 
           {/* ইনফো */}
-          <div className="mt-4 p-3 bg-gray-900/30 rounded-xl">
-            <p className="text-xs text-gray-500 text-center">
-              🔒 Supabase Auth সিকিউরড | admin@amarduniya.com
-            </p>
+          <div className="mt-5 p-4 bg-gray-900/50 rounded-xl border border-gray-700/50">
+            <div className="flex items-center gap-2 mb-2">
+              <Shield size={14} className="text-green-500" />
+              <p className="text-xs text-gray-400 font-medium">অ্যাডমিন অ্যাক্সেস তথ্য</p>
+            </div>
+            <div className="space-y-1 text-[10px] text-gray-500">
+              <p>ইমেইল: admin@amarduniya.com</p>
+              <p>পাসওয়ার্ড: admin123</p>
+              <p className="text-gray-600 mt-1">⚠️ লগইন করার পর পাসওয়ার্ড পরিবর্তন করুন</p>
+            </div>
           </div>
         </div>
+
+        {/* ফুটার */}
+        <p className="text-center text-gray-600 text-xs mt-6">
+          © ২০২৬ আমার দুনিয়া • সর্বস্বত্ব সংরক্ষিত
+        </p>
       </div>
     </div>
   );
