@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Shield, Loader2 } from "lucide-react";
 import { createClient } from "@supabase/supabase-js";
@@ -12,12 +12,10 @@ const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 export default function AdminLogin() {
   const router = useRouter();
 
-  const [email, setEmail] = useState("admin@amarduniya.com");
+  const [email, setEmail] = useState("admin2@amarduniya.com");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-
-  useEffect(() => {}, []);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -38,11 +36,11 @@ export default function AdminLogin() {
         return;
       }
 
-      // 🔍 2. PROFILE CHECK
+      // 🔍 2. PROFILE CHECK (FIXED: email-based)
       const { data: profile, error: profileError } = await supabase
         .from("profiles")
         .select("is_admin, is_verified, name")
-        .eq("id", data.user.id)
+        .eq("email", email.trim())
         .single();
 
       if (profileError || !profile) {
@@ -51,7 +49,7 @@ export default function AdminLogin() {
         return;
       }
 
-      // 🚨 3. SECURITY CHECK
+      // 🚨 3. ADMIN CHECK
       if (!profile.is_admin || !profile.is_verified) {
         setError("আপনি অ্যাডমিন নন!");
         await supabase.auth.signOut();
@@ -59,12 +57,12 @@ export default function AdminLogin() {
         return;
       }
 
-      // 🍪 4. SAFE COOKIE
-      document.cookie = `adminLoggedIn=true; path=/; max-age=86400`;
+      // 🍪 4. SESSION COOKIE
+      document.cookie = "adminLoggedIn=true; path=/; max-age=86400";
 
       localStorage.setItem("adminName", profile.name || "Admin");
 
-      // 🚀 redirect
+      // 🚀 REDIRECT
       router.push("/admin");
 
     } catch (err) {
