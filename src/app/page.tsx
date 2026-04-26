@@ -431,69 +431,53 @@ webpImage: post.post_images?.[0]?.webp_url || (post.post_images?.[0]?.thumbnail_
     }
   };
 
-  // ============ পোস্ট লোড (৫টা করে লেজি লোডিং) ============
-  const loadRecentAds = useCallback(async (reset: boolean = false) => {
-    if (isLoadingRecent.current || (reset === false && !hasMoreRecent)) return;
-    isLoadingRecent.current = true;
-    setLoadingRecent(true);
+  /// ============ পোস্ট লোড (৫টা করে লেজি লোডিং) ============
+const loadRecentAds = useCallback(async (reset: boolean = false) => {
+  if (isLoadingRecent.current || (reset === false && !hasMoreRecent)) return;
+  isLoadingRecent.current = true;
+  setLoadingRecent(true);
+  
+  try {
+    const supabase = getSupabaseClient();
+    const currentPage = reset ? 1 : recentPage + 1;
+    const LIMIT = 5;
+    const from = (currentPage - 1) * LIMIT;
+    const to = from + LIMIT - 1;
     
-    try {
-      const supabase = getSupabaseClient();
-      const currentPage = reset ? 1 : recentPage + 1;
-      const LIMIT = 5; // ✅ ৫টা করে লোড
-      const from = (currentPage - 1) * LIMIT;
-      const to = from + LIMIT - 1;
-      const { data, error } = await supabase
-  .from('posts')
-  .select(`
-    id, title, price, condition, created_at, is_urgent,
-    images:post_images(thumbnail_url, webp_url, order_index)
-  `)
-  .eq('status', 'approved')
-  .order('created_at', { ascending: false })
-  .range(from, to);
+    const { data, error } = await supabase
+      .from('posts')
+      .select(`
+        id, title, price, condition, created_at, is_urgent,
+        images:post_images(thumbnail_url, webp_url, order_index)
+      `)
+      .eq('status', 'approved')
+      .order('created_at', { ascending: false })
+      .range(from, to);
 
-if (data && data.length > 0 && !error) {
-  const formattedPosts: AdItem[] = data.map((post: any) => ({
-    id: post.id,
-    title: post.title,
-    price: post.price,
-    condition: post.condition === 'new' ? 'নতুন' : 'পুরাতন',
-    time: timeAgo(post.created_at),
-    image: post.images?.[0]?.thumbnail_url || '📦',
-    webpImage: post.images?.[0]?.webp_url || (post.images?.[0]?.thumbnail_url ? getWebPUrl(post.images[0].thumbnail_url, 300, 75) : undefined),
-    urgent: post.is_urgent || false,
-  }));
+    if (data && data.length > 0 && !error) {
+      const formattedPosts: AdItem[] = data.map((post: any) => ({
+        id: post.id,
+        title: post.title,
+        price: post.price,
+        condition: post.condition === 'new' ? 'নতুন' : 'পুরাতন',
+        time: timeAgo(post.created_at),
+        image: post.images?.[0]?.thumbnail_url || '📦',
+        webpImage: post.images?.[0]?.webp_url || (post.images?.[0]?.thumbnail_url ? getWebPUrl(post.images[0].thumbnail_url, 300, 75) : undefined),
+        urgent: post.is_urgent || false,
+      }));
 
-
-        
-        if (reset) {
-          setRecentAds(formattedPosts);
-          setRecentPage(1);
-          setHasMoreRecent(formattedPosts.length === LIMIT);
-        } else {
-          setRecentAds(prev => [...prev, ...formattedPosts]);
-          setRecentPage(currentPage);
-          setHasMoreRecent(formattedPosts.length === LIMIT);
-        }
+      if (reset) {
+        setRecentAds(formattedPosts);
+        setRecentPage(1);
+        setHasMoreRecent(formattedPosts.length === LIMIT);
       } else {
-        // ডামি ফ্যালব্যাক (৫টা করে)
-        await new Promise(r => setTimeout(r, 300));
-        const newAds = generateMockAds(currentPage, LIMIT);
-        
-        if (reset) {
-          setRecentAds(newAds);
-          setRecentPage(1);
-          setHasMoreRecent(true);
-        } else {
-          setRecentAds(prev => [...prev, ...newAds]);
-          setRecentPage(currentPage);
-        }
+        setRecentAds(prev => [...prev, ...formattedPosts]);
+        setRecentPage(currentPage);
+        setHasMoreRecent(formattedPosts.length === LIMIT);
       }
-    } catch (e) {
-      console.log('Load failed, using fallback');
-      const currentPage = reset ? 1 : recentPage + 1;
-      const newAds = generateMockAds(currentPage, 5);
+    } else {
+      await new Promise(r => setTimeout(r, 300));
+      const newAds = generateMockAds(currentPage, LIMIT);
       
       if (reset) {
         setRecentAds(newAds);
@@ -503,11 +487,25 @@ if (data && data.length > 0 && !error) {
         setRecentAds(prev => [...prev, ...newAds]);
         setRecentPage(currentPage);
       }
-    } finally {
-      setLoadingRecent(false);
-      isLoadingRecent.current = false;
     }
-  }, [recentPage, hasMoreRecent]);
+  } catch (e) {
+    console.log('Load failed, using fallback');
+    const currentPage = reset ? 1 : recentPage + 1;
+    const newAds = generateMockAds(currentPage, 5);
+    
+    if (reset) {
+      setRecentAds(newAds);
+      setRecentPage(1);
+      setHasMoreRecent(true);
+    } else {
+      setRecentAds(prev => [...prev, ...newAds]);
+      setRecentPage(currentPage);
+    }
+  } finally {
+    setLoadingRecent(false);
+    isLoadingRecent.current = false;
+  }
+}, [recentPage, hasMoreRecent]);
 
   // ============ ইন্টারসেকশন অবজার্ভার (আগে ট্রিগার) ============
   useEffect(() => {
