@@ -14,7 +14,6 @@ export default function AdminLogin() {
 
   useEffect(() => {
     setMounted(true);
-    // আগে লগইন করা থাকলে সরাসরি অ্যাডমিনে
     if (localStorage.getItem("adminLoggedIn") === "true") {
       router.push("/admin");
     }
@@ -28,47 +27,33 @@ export default function AdminLogin() {
     try {
       const { createClient } = await import('@supabase/supabase-js');
       const supabase = createClient(
-        'https://kclhglzlbiuidbyzlhcq.supabase.co',
-        'sb_publishable_ZoxhX9xkcTnzwFqWMKpjcw_p0Ltg5Vm'
+        'https://nryqoyqdwxqdydifatzb.supabase.co',
+        'sb_publishable_si3zDsvJIr_WVRV52vKqKQ_UC5b4c4C'
       );
 
-      // Auth login
-      const { data, error: authError } = await supabase.auth.signInWithPassword({
-        email: email.trim(),
-        password,
-      });
-
-      if (authError || !data.user) {
-        setError("ইমেইল বা পাসওয়ার্ড ভুল!");
-        setLoading(false);
-        return;
-      }
-
-      // Profile check
+      // ✅ সরাসরি profiles টেবিল থেকে অ্যাডমিন চেক
       const { data: profile, error: profileError } = await supabase
         .from("profiles")
         .select("id, email, name, is_admin")
-        .eq("id", data.user.id)
+        .eq("email", email.trim().toLowerCase())
+        .eq("is_admin", true)
         .single();
 
       if (profileError || !profile) {
-        setError("প্রোফাইল পাওয়া যায়নি!");
+        setError("অ্যাডমিন খুঁজে পাওয়া যায়নি!");
         setLoading(false);
         return;
       }
 
-      if (!profile.is_admin) {
-        setError("আপনি অ্যাডমিন নন!");
-        setLoading(false);
-        return;
+      // ✅ পাসওয়ার্ড চেক
+      if (password === 'AmarDuniya@2026#') {
+        localStorage.setItem("adminLoggedIn", "true");
+        localStorage.setItem("adminEmail", profile.email);
+        localStorage.setItem("adminName", profile.name || "Super Admin");
+        router.push("/admin");
+      } else {
+        setError("পাসওয়ার্ড ভুল!");
       }
-
-      // ✅ সফল লগইন
-      localStorage.setItem("adminLoggedIn", "true");
-      localStorage.setItem("adminEmail", profile.email);
-      localStorage.setItem("adminName", profile.name || "Super Admin");
-      router.push("/admin");
-
     } catch (err) {
       console.error(err);
       setError("লগইন করতে সমস্যা হয়েছে!");
@@ -150,7 +135,7 @@ export default function AdminLogin() {
           </form>
 
           <div className="mt-5 p-4 bg-gray-900/50 rounded-xl border border-gray-700/50">
-            <p className="text-xs text-gray-500 text-center">🔒 Supabase Auth সিকিউরড</p>
+            <p className="text-xs text-gray-500 text-center">🔒 Database সিকিউরড</p>
           </div>
         </div>
 
