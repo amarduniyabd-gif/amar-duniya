@@ -1,7 +1,5 @@
 import { getSupabaseClient } from './supabase/client';
 
-// ============ টাইপ ডেফিনিশন ============
-
 export type PaymentType = 
   | 'featured' 
   | 'document' 
@@ -12,40 +10,23 @@ export type PaymentType =
 
 export type PaymentMethod = 'bkash' | 'nagad' | 'rocket' | 'card' | 'wallet';
 
-export type PaymentStatus = 'pending' | 'completed' | 'failed' | 'refunded';
-
 export type PaymentRequest = {
   amount: number;
   type: PaymentType;
-  referenceId: string; // post_id, profile_id, auction_id
+  referenceId: string;
   paymentMethod: PaymentMethod;
   phoneNumber?: string;
   transactionId?: string;
 };
 
-export type PaymentRecord = {
-  id: string;
-  user_id: string;
-  amount: number;
-  type: PaymentType;
-  reference_id: string;
-  payment_method: PaymentMethod;
-  transaction_id?: string;
-  status: PaymentStatus;
-  created_at: string;
-  updated_at?: string;
-};
-
-// ============ পেমেন্ট ফি ক্যালকুলেশন ============
-
 export const PAYMENT_FEES = {
-  FEATURED_LISTING: 100, // ১০০ টাকা
-  DOCUMENT_SERVICE_PERCENT: 0.02, // ২%
-  DOCUMENT_SERVICE_MIN: 50, // সর্বনিম্ন ৫০ টাকা
-  MATRIMONY_UNLOCK: 500, // ৫০০ টাকা
-  MATRIMONY_PREMIUM: 1000, // ১০০০ টাকা
-  BID_SECURITY_PERCENT: 0.05, // ৫%
-  BID_SECURITY_MIN: 100, // সর্বনিম্ন ১০০ টাকা
+  FEATURED_LISTING: 100,
+  DOCUMENT_SERVICE_PERCENT: 0.02,
+  DOCUMENT_SERVICE_MIN: 50,
+  MATRIMONY_UNLOCK: 500,
+  MATRIMONY_PREMIUM: 1000,
+  BID_SECURITY_PERCENT: 0.05,
+  BID_SECURITY_MIN: 100,
 };
 
 export function calculateDocumentFee(price: number): number {
@@ -58,15 +39,14 @@ export function calculateBidSecurity(amount: number): number {
   return Math.max(security, PAYMENT_FEES.BID_SECURITY_MIN);
 }
 
-// ============ Supabase পেমেন্ট ফাংশন ============
+function getClient(): any {
+  return getSupabaseClient();
+}
 
-/**
- * পেমেন্ট ইনিশিয়েট করা
- */
 export async function initiatePayment(
   paymentData: PaymentRequest
-): Promise<{ success: boolean; payment?: PaymentRecord; error?: string }> {
-  const supabase = getSupabaseClient();
+): Promise<{ success: boolean; payment?: any; error?: string }> {
+  const supabase = getClient();
 
   try {
     const { data: { user } } = await supabase.auth.getUser();
@@ -74,7 +54,6 @@ export async function initiatePayment(
       return { success: false, error: 'লগইন করা নেই!' };
     }
 
-    // পেমেন্ট রেকর্ড তৈরি
     const { data: payment, error } = await supabase
       .from('payments')
       .insert({
@@ -85,58 +64,45 @@ export async function initiatePayment(
         auction_id: paymentData.type === 'bid_security' ? paymentData.referenceId : null,
         payment_method: paymentData.paymentMethod,
         transaction_id: paymentData.transactionId || `TXN_${Date.now()}`,
-        status: 'completed', // ডেমোতে সরাসরি completed
+        status: 'completed',
       })
       .select()
       .single();
 
     if (error) throw error;
 
-    // পেমেন্ট সফল হলে অতিরিক্ত কাজ
     if (payment) {
       await handlePaymentSuccess(payment);
     }
 
-    return {
-      success: true,
-      payment: payment as PaymentRecord,
-    };
+    return { success: true, payment };
   } catch (error: any) {
     console.error('Payment error:', error);
-    return {
-      success: false,
-      error: error.message || 'পেমেন্ট করতে সমস্যা হয়েছে!',
-    };
+    return { success: false, error: error.message || 'পেমেন্ট করতে সমস্যা হয়েছে!' };
   }
 }
 
-/**
- * পেমেন্ট সফল হলে যা যা করতে হবে
- */
-async function handlePaymentSuccess(payment: PaymentRecord): Promise<void> {
-  const supabase = getSupabaseClient();
+async function handlePaymentSuccess(payment: any): Promise<void> {
+  const supabase = getClient();
 
   try {
     switch (payment.type) {
       case 'featured':
-        // পোস্ট ফিচার্ড করা
         await supabase
           .from('posts')
           .update({ is_featured: true })
-          .eq('id', payment.reference_id);
+          .eq('id', payment.reference_id || payment.post_id);
         break;
 
       case 'document':
-        // ডকুমেন্ট স্ট্যাটাস আপডেট
         await supabase
           .from('documents')
           .update({ status: 'paid', payment_id: payment.id })
-          .eq('id', payment.reference_id);
+          .eq('id', payment.reference_id || payment.post_id);
         break;
 
       case 'matrimony_unlock':
       case 'matrimony_premium':
-        // পাত্র-পাত্রী পেমেন্ট রেকর্ড
         await supabase
           .from('matrimony_payments')
           .insert({
@@ -151,7 +117,6 @@ async function handlePaymentSuccess(payment: PaymentRecord): Promise<void> {
         break;
     }
 
-    // নোটিফিকেশন পাঠান
     await supabase.from('notifications').insert({
       user_id: payment.user_id,
       title: 'পেমেন্ট সফল',
@@ -164,13 +129,10 @@ async function handlePaymentSuccess(payment: PaymentRecord): Promise<void> {
   }
 }
 
-/**
- * পেমেন্ট ভেরিফাই করা
- */
 export async function verifyPayment(
   transactionId: string
-): Promise<{ success: boolean; payment?: PaymentRecord; error?: string }> {
-  const supabase = getSupabaseClient();
+): Promise<{ success: boolean; payment?: any; error?: string }> {
+  const supabase = getClient();
 
   try {
     const { data: payment, error } = await supabase
@@ -180,27 +142,17 @@ export async function verifyPayment(
       .single();
 
     if (error) throw error;
-
-    return {
-      success: true,
-      payment: payment as PaymentRecord,
-    };
+    return { success: true, payment };
   } catch (error: any) {
-    return {
-      success: false,
-      error: error.message || 'পেমেন্ট ভেরিফাই করতে সমস্যা হয়েছে!',
-    };
+    return { success: false, error: error.message || 'পেমেন্ট ভেরিফাই করতে সমস্যা হয়েছে!' };
   }
 }
 
-/**
- * ইউজারের পেমেন্ট হিস্ট্রি
- */
 export async function getUserPayments(
   userId?: string,
   limit: number = 50
-): Promise<PaymentRecord[]> {
-  const supabase = getSupabaseClient();
+): Promise<any[]> {
+  const supabase = getClient();
 
   try {
     let query = supabase
@@ -214,14 +166,10 @@ export async function getUserPayments(
     }
 
     const { data, error } = await query;
-
     if (error) throw error;
-
-    return (data || []) as PaymentRecord[];
+    return (data || []) as any[];
   } catch (error) {
     console.error('Get payments error:', error);
-    
-    // লোকাল ফলব্যাক
     if (typeof window !== 'undefined') {
       return JSON.parse(localStorage.getItem('payments') || '[]');
     }
@@ -229,14 +177,11 @@ export async function getUserPayments(
   }
 }
 
-/**
- * নির্দিষ্ট রেফারেন্সের জন্য পেমেন্ট চেক করা
- */
 export async function isAlreadyPaid(
   referenceId: string,
   type: PaymentType
 ): Promise<boolean> {
-  const supabase = getSupabaseClient();
+  const supabase = getClient();
 
   try {
     const { data, error } = await supabase
@@ -248,12 +193,9 @@ export async function isAlreadyPaid(
       .maybeSingle();
 
     if (error) throw error;
-
     return !!data;
   } catch (error) {
     console.error('Check payment error:', error);
-    
-    // লোকাল ফলব্যাক
     if (typeof window !== 'undefined') {
       const payments = JSON.parse(localStorage.getItem('payments') || '[]');
       return payments.some((p: any) => 
@@ -266,13 +208,10 @@ export async function isAlreadyPaid(
   }
 }
 
-/**
- * পেমেন্ট রিফান্ড
- */
 export async function refundPayment(
   paymentId: string
 ): Promise<{ success: boolean; error?: string }> {
-  const supabase = getSupabaseClient();
+  const supabase = getClient();
 
   try {
     const { error } = await supabase
@@ -281,17 +220,11 @@ export async function refundPayment(
       .eq('id', paymentId);
 
     if (error) throw error;
-
     return { success: true };
   } catch (error: any) {
-    return {
-      success: false,
-      error: error.message || 'রিফান্ড করতে সমস্যা হয়েছে!',
-    };
+    return { success: false, error: error.message || 'রিফান্ড করতে সমস্যা হয়েছে!' };
   }
 }
-
-// ============ লোকাল স্টোরেজ ফলব্যাক ============
 
 export function savePaymentToLocalStorage(paymentData: {
   type: string;
@@ -312,19 +245,16 @@ export function savePaymentToLocalStorage(paymentData: {
   localStorage.setItem('payments', JSON.stringify(payments));
 }
 
-// ============ পেমেন্ট স্ট্যাটিস্টিক্স ============
-
 export async function getPaymentStats(userId?: string): Promise<{
   totalSpent: number;
   totalPayments: number;
-  lastPayment?: PaymentRecord;
+  lastPayment?: any;
 }> {
   const payments = await getUserPayments(userId);
-  
-  const completed = payments.filter(p => p.status === 'completed');
+  const completed = payments.filter((p: any) => p.status === 'completed');
   
   return {
-    totalSpent: completed.reduce((sum, p) => sum + p.amount, 0),
+    totalSpent: completed.reduce((sum: number, p: any) => sum + p.amount, 0),
     totalPayments: completed.length,
     lastPayment: completed[0],
   };
