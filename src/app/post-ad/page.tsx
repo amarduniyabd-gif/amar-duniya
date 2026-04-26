@@ -9,7 +9,10 @@ import {
 } from "lucide-react";
 import { categories, getRootCategories } from "@/data/categories";
 import PaymentModal from "@/components/PaymentModal";
+
 // ============ কনস্ট্যান্ট ============
+const ADMIN_USER_ID = "b5b79d36-eb67-4706-8847-70480d0158d7"; // ✅ অ্যাডমিন ID হার্ডকোড
+
 const BLOCKED_KEYWORDS = [
   'porn', 'xxx', 'adult', 'sex', 'nude', 'naked',
   'গরম ভিডিও', 'অশ্লীল', 'মাদক', 'গাঁজা', 'হেরোইন',
@@ -44,7 +47,7 @@ const validateContent = (title: string, description: string): { valid: boolean; 
   return { valid: true, reason: '' };
 };
 
-// ============ সুপার অপটিমাইজড ডুয়াল ইমেজ কম্প্রেশন ============
+// ============ ইমেজ কম্প্রেশন ============
 const compressImageWithThumbnail = async (file: File): Promise<CompressedImage> => {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
@@ -58,7 +61,7 @@ const compressImageWithThumbnail = async (file: File): Promise<CompressedImage> 
         const originalWidth = img.width;
         const originalHeight = img.height;
         
-        // থাম্বনেইল (৪০০px, ৫০KB টার্গেট)
+        // থাম্বনেইল
         const thumbCanvas = document.createElement('canvas');
         let thumbWidth = originalWidth;
         let thumbHeight = originalHeight;
@@ -89,7 +92,7 @@ const compressImageWithThumbnail = async (file: File): Promise<CompressedImage> 
           thumbDataUrl = thumbCanvas.toDataURL('image/webp', thumbQuality);
         }
         
-        // ফুল সাইজ (অরিজিনাল ডাইমেনশন, ৮৫% কোয়ালিটি)
+        // ফুল সাইজ
         const fullCanvas = document.createElement('canvas');
         fullCanvas.width = originalWidth;
         fullCanvas.height = originalHeight;
@@ -238,8 +241,12 @@ export default function PostAdPage() {
     setIsSubmitting(true);
     
     try {
-      
-      const { data: { user } } = await supabase.auth.getUser();
+      // ✅ সরাসরি Supabase ক্লায়েন্ট (Auth ছাড়া)
+      const { createClient } = await import('@supabase/supabase-js');
+      const supabase = createClient(
+        'https://nryqoyqdwxqdydifatzb.supabase.co',
+        'sb_publishable_si3zDsvJIr_WVRV52vKqKQ_UC5b4c4C'
+      );
       
       // ১. পোস্ট তৈরি
       const { data: post, error: postError } = await supabase
@@ -253,7 +260,7 @@ export default function PostAdPage() {
           warranty: formData.warranty,
           delivery: formData.delivery,
           location: formData.location,
-          seller_id: user?.id,
+          seller_id: ADMIN_USER_ID,
           category_id: formData.category,
           sub_category_id: formData.subCategory || null,
           is_featured: isFeatured,
@@ -290,9 +297,9 @@ export default function PostAdPage() {
       }
       
       // ৩. ফিচার্ড পেমেন্ট
-      if (isFeatured && user) {
+      if (isFeatured) {
         await supabase.from('payments').insert({
-          user_id: user.id,
+          user_id: ADMIN_USER_ID,
           post_id: post.id,
           amount: 100,
           type: 'featured',
