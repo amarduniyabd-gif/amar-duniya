@@ -365,8 +365,8 @@ const AmarDuniyaHome = () => {
             price: post.price,
             condition: post.condition === 'new' ? 'নতুন' : 'পুরাতন',
             time: timeAgo(post.created_at),
-            image: post.images?.[0]?.thumbnail_url || post.images?.[0]?.url || '📱',
-            webpImage: post.images?.[0]?.webp_url || (post.images?.[0]?.thumbnail_url ? getWebPUrl(post.images[0].thumbnail_url, 300, 75) : undefined),
+            image: post.post_images?.[0]?.thumbnail_url || '📱',
+webpImage: post.post_images?.[0]?.webp_url || (post.post_images?.[0]?.thumbnail_url ? getWebPUrl(post.post_images[0].thumbnail_url, 300, 75) : undefined),
             urgent: post.is_urgent || false,
           }));
           setRecentAds(formattedPosts);
@@ -445,26 +445,27 @@ const AmarDuniyaHome = () => {
       const to = from + LIMIT - 1;
       
       const { data, error } = await supabase
-        .from('posts')
-        .select(`
-          id, title, price, condition, created_at, is_urgent,
-          post_images(thumbnail_url, webp_url, order_index)
-        `)
-        .eq('status', 'approved')
-        .order('created_at', { ascending: false })
-        .range(from, to);
-      
-      if (data && data.length > 0 && !error) {
-        const formattedPosts: AdItem[] = data.map((post: any) => ({
-          id: post.id,
-          title: post.title,
-          price: post.price,
-          condition: post.condition === 'new' ? 'নতুন' : 'পুরাতন',
-          time: timeAgo(post.created_at),
-          image: post.post_images?.[0]?.thumbnail_url || '📱',
-webpImage: post.post_images?.[0]?.webp_url || (post.post_images?.[0]?.thumbnail_url ? getWebPUrl(post.post_images[0].thumbnail_url, 300, 75) : undefined),
-          urgent: post.is_urgent || false,
-        }));
+  .from('posts')
+  .select(`
+    id, title, price, condition, created_at, is_urgent,
+    post_images(thumbnail_url, webp_url, order_index)
+  `)
+  .eq('status', 'approved')
+  .order('created_at', { ascending: false })
+  .range(from, to);
+
+if (data && data.length > 0 && !error) {
+  const formattedPosts: AdItem[] = data.map((post: any) => ({
+    id: post.id,
+    title: post.title,
+    price: post.price,
+    condition: post.condition === 'new' ? 'নতুন' : 'পুরাতন',
+    time: timeAgo(post.created_at),
+    image: post.post_images?.[0]?.thumbnail_url || '📱',
+    webpImage: post.post_images?.[0]?.webp_url || (post.post_images?.[0]?.thumbnail_url ? getWebPUrl(post.post_images[0].thumbnail_url, 300, 75) : undefined),
+    urgent: post.is_urgent || false,
+  }));
+
         
         if (reset) {
           setRecentAds(formattedPosts);
