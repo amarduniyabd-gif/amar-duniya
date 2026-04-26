@@ -91,8 +91,8 @@ export default function RootLayout({
   return (
     <html lang="bn" suppressHydrationWarning>
       <head>
-        <link rel="preconnect" href="https://kclhglzlbiuidbyzlhcq.supabase.co" />
-        <link rel="dns-prefetch" href="https://kclhglzlbiuidbyzlhcq.supabase.co" />
+        <link rel="preconnect" href="https://nryqoyqdwxqdydifatzb.supabase.co" />
+        <link rel="dns-prefetch" href="https://nryqoyqdwxqdydifatzb.supabase.co" />
         <link rel="icon" href="/favicon.ico" sizes="any" />
         <link rel="apple-touch-icon" href="/apple-icon.png" />
         <meta name="theme-color" content="#f85606" />
