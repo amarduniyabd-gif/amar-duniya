@@ -1,19 +1,24 @@
 "use client";
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { Shield, Loader2 } from "lucide-react";
+import { Shield, Mail, Lock, Eye, EyeOff, Loader2, AlertCircle, LogIn } from "lucide-react";
 
 export default function AdminLogin() {
   const router = useRouter();
-  const [email, setEmail] = useState("admin2@amarduniya.com");
-  const [password, setPassword] = useState("AmarDuniya@2026");
+  const [email, setEmail] = useState("admin@amarduniya.com");
+  const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
     setMounted(true);
-  }, []);
+    // আগে লগইন করা থাকলে সরাসরি অ্যাডমিনে
+    if (localStorage.getItem("adminLoggedIn") === "true") {
+      router.push("/admin");
+    }
+  }, [router]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -21,7 +26,6 @@ export default function AdminLogin() {
     setError("");
 
     try {
-      // ✅ Dynamic import - শুধু ক্লায়েন্ট সাইডে লোড হবে
       const { createClient } = await import('@supabase/supabase-js');
       const supabase = createClient(
         'https://kclhglzlbiuidbyzlhcq.supabase.co',
@@ -59,10 +63,10 @@ export default function AdminLogin() {
         return;
       }
 
-      // সফল লগইন
+      // ✅ সফল লগইন
       localStorage.setItem("adminLoggedIn", "true");
       localStorage.setItem("adminEmail", profile.email);
-      localStorage.setItem("adminName", profile.name || "Admin");
+      localStorage.setItem("adminName", profile.name || "Super Admin");
       router.push("/admin");
 
     } catch (err) {
@@ -76,39 +80,80 @@ export default function AdminLogin() {
   if (!mounted) return <div className="min-h-screen bg-gray-900" />;
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-900 p-4">
+    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 flex items-center justify-center p-4">
       <div className="max-w-md w-full">
-        <div className="text-center mb-6">
-          <div className="w-20 h-20 bg-orange-500 rounded-2xl flex items-center justify-center mx-auto">
+        
+        <div className="text-center mb-8">
+          <div className="w-20 h-20 bg-gradient-to-r from-[#f85606] to-orange-500 rounded-2xl flex items-center justify-center mx-auto shadow-xl shadow-orange-500/20">
             <Shield size={40} className="text-white" />
           </div>
-          <h1 className="text-white text-xl mt-3">অ্যাডমিন প্যানেল</h1>
+          <h1 className="text-2xl font-bold text-white mt-4">অ্যাডমিন প্যানেল</h1>
+          <p className="text-gray-400 text-sm mt-1">আমার দুনিয়া</p>
         </div>
 
-        <form onSubmit={handleLogin} className="bg-gray-800 p-6 rounded-xl space-y-4">
-          <input
-            type="email"
-            className="w-full p-3 bg-gray-900 text-white rounded"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            placeholder="Email"
-            required
-          />
-          <input
-            type="password"
-            className="w-full p-3 bg-gray-900 text-white rounded"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            placeholder="Password"
-            required
-          />
+        <div className="bg-gray-800/50 backdrop-blur-sm rounded-2xl p-6 shadow-xl border border-gray-700">
+          
+          <form onSubmit={handleLogin} className="space-y-5">
+            <div>
+              <label className="block text-sm font-medium text-gray-300 mb-2">ইমেইল</label>
+              <div className="relative">
+                <Mail size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                <input 
+                  type="email" 
+                  value={email} 
+                  onChange={(e) => setEmail(e.target.value)} 
+                  className="w-full p-3 pl-10 bg-gray-900/50 border border-gray-700 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-[#f85606] transition" 
+                  required 
+                />
+              </div>
+            </div>
 
-          {error && <p className="text-red-400 text-sm">{error}</p>}
+            <div>
+              <label className="block text-sm font-medium text-gray-300 mb-2">পাসওয়ার্ড</label>
+              <div className="relative">
+                <Lock size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                <input 
+                  type={showPassword ? "text" : "password"} 
+                  value={password} 
+                  onChange={(e) => setPassword(e.target.value)} 
+                  className="w-full p-3 pl-10 pr-10 bg-gray-900/50 border border-gray-700 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-[#f85606] transition" 
+                  required 
+                />
+                <button 
+                  type="button" 
+                  onClick={() => setShowPassword(!showPassword)} 
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white transition"
+                >
+                  {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                </button>
+              </div>
+            </div>
 
-          <button disabled={loading} className="w-full bg-orange-500 py-3 text-white rounded flex items-center justify-center gap-2">
-            {loading ? <><Loader2 className="animate-spin" size={18} /> লগইন হচ্ছে...</> : "লগইন করুন"}
-          </button>
-        </form>
+            {error && (
+              <div className="bg-red-500/10 border border-red-500/30 rounded-xl p-3 flex items-center gap-2">
+                <AlertCircle size={16} className="text-red-500 shrink-0" />
+                <p className="text-sm text-red-400">{error}</p>
+              </div>
+            )}
+
+            <button 
+              type="submit" 
+              disabled={loading} 
+              className="w-full bg-gradient-to-r from-[#f85606] to-orange-500 text-white py-3.5 rounded-xl font-semibold flex items-center justify-center gap-2 hover:shadow-lg hover:shadow-orange-500/25 transition disabled:opacity-50"
+            >
+              {loading ? (
+                <><Loader2 size={18} className="animate-spin" /> লগইন হচ্ছে...</>
+              ) : (
+                <><LogIn size={18} /> লগইন করুন</>
+              )}
+            </button>
+          </form>
+
+          <div className="mt-5 p-4 bg-gray-900/50 rounded-xl border border-gray-700/50">
+            <p className="text-xs text-gray-500 text-center">🔒 Supabase Auth সিকিউরড</p>
+          </div>
+        </div>
+
       </div>
     </div>
   );
