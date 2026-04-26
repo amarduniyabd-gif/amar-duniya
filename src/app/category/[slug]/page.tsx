@@ -17,7 +17,7 @@ type Post = {
   is_featured: boolean;
   views: number;
   likes: number;
-  images: any[];
+  post_images: any[];
   seller: any;
 };
 
@@ -34,12 +34,13 @@ const timeAgo = (date: string): string => {
 };
 
 // পোস্ট কার্ড
+// পোস্ট কার্ড
 const PostCard = ({ post }: { post: Post }) => (
   <Link href={`/post/${post.id}`}>
     <div className="bg-white rounded-xl overflow-hidden shadow-sm border border-gray-100 hover:shadow-md transition-all group">
       <div className="relative h-40 bg-gradient-to-br from-orange-50 to-amber-50 flex items-center justify-center">
-        {post.images?.[0]?.thumbnail_url ? (
-          <img src={post.images[0].thumbnail_url} alt={post.title} className="w-full h-full object-contain p-2" loading="lazy" />
+        {post.post_images?.[0]?.thumbnail_url ? (
+          <img src={post.post_images[0].thumbnail_url} alt={post.title} className="w-full h-full object-contain p-2" loading="lazy" />
         ) : (
           <div className="text-5xl">📦</div>
         )}
@@ -116,7 +117,7 @@ const loadPosts = useCallback(async (pageNum: number, reset: boolean = false) =>
       .select(`
         id, title, price, condition, location, created_at, is_urgent, is_featured, views, likes,
         seller:profiles!seller_id(id, name, is_verified),
-        images:post_images(thumbnail_url, order_index)
+        post_images(thumbnail_url, order_index)
       `, { count: 'exact' })
       .eq('status', 'approved')
       .order('created_at', { ascending: false })
