@@ -25,7 +25,7 @@ export default function AdminLogin() {
     setError("");
 
     try {
-      // ✅ নিজের API রুট কল (Supabase SDK ছাড়া!)
+      // ✅ নিজের API রুট কল
       const res = await fetch("/api/admin-login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -62,6 +62,7 @@ export default function AdminLogin() {
           </div>
           <h1 className="text-2xl font-bold text-white mt-4">অ্যাডমিন প্যানেল</h1>
           <p className="text-gray-400 text-sm mt-1">আমার দুনিয়া</p>
+          <p className="text-green-400 text-xs mt-2">✅ API সিকিউরড</p>
         </div>
 
         <div className="bg-gray-800/50 backdrop-blur-sm rounded-2xl p-6 shadow-xl border border-gray-700">
@@ -123,10 +124,11 @@ export default function AdminLogin() {
           </form>
 
           <div className="mt-5 p-4 bg-gray-900/50 rounded-xl border border-gray-700/50">
-            <p className="text-xs text-gray-500 text-center">🔒 API সিকিউরড</p>
+            <p className="text-xs text-gray-500 text-center">🔒 API সিকিউরড | amarduniyabd@gmail.com</p>
           </div>
         </div>
 
+        <p className="text-center text-gray-600 text-xs mt-6">© ২০২৬ আমার দুনিয়া</p>
       </div>
     </div>
   );
