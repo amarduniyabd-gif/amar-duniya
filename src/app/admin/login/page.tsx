@@ -5,6 +5,7 @@ import {
   Shield, Mail, Lock, Eye, EyeOff, Loader2, 
   AlertCircle, LogIn, Zap
 } from "lucide-react";
+
 export default function AdminLogin() {
   const router = useRouter();
   const [email, setEmail] = useState("admin@amarduniya.com");
@@ -16,11 +17,19 @@ export default function AdminLogin() {
 
   useEffect(() => {
     setMounted(true);
+    // আগে থেকেই লগইন করা থাকলে সরাসরি অ্যাডমিনে
     const adminLoggedIn = localStorage.getItem("adminLoggedIn");
     if (adminLoggedIn === "true") {
-      router.push("/admin");
+      window.location.href = "/admin";
     }
-  }, [router]);
+  }, []);
+
+  const goToAdmin = () => {
+    localStorage.setItem("adminLoggedIn", "true");
+    localStorage.setItem("adminEmail", email || "admin@amarduniya.com");
+    // ✅ router এর বদলে window.location ব্যবহার করো
+    window.location.href = "/admin";
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -28,7 +37,9 @@ export default function AdminLogin() {
     setError("");
 
     try {
-      
+      // ✅ Dynamic import যাতে SSR এ সমস্যা না হয়
+      const { getSupabaseClient } = await import('@/lib/supabase/client');
+      const supabase = getSupabaseClient();
       
       const { data, error: signInError } = await supabase.auth.signInWithPassword({
         email,
@@ -37,28 +48,27 @@ export default function AdminLogin() {
 
       if (signInError) {
         console.error("Login error:", signInError);
-        setError(`ইমেইল বা পাসওয়ার্ড ভুল!`);
+        setError("ইমেইল বা পাসওয়ার্ড ভুল! (কুইক লগইন ব্যবহার করুন)");
         setLoading(false);
         return;
       }
 
       if (data.user) {
-        localStorage.setItem("adminLoggedIn", "true");
-        localStorage.setItem("adminEmail", email);
-        router.push("/admin");
+        goToAdmin();
+      } else {
+        setError("লগইন ব্যর্থ! কুইক লগইন ব্যবহার করুন");
       }
     } catch (err: any) {
-      setError(`লগইন করতে সমস্যা হয়েছে!`);
+      console.error("Login error:", err);
+      setError("লগইন করতে সমস্যা! নিচের সবুজ বাটন ব্যবহার করুন");
     } finally {
       setLoading(false);
     }
   };
 
-  // ✅ কুইক অ্যাডমিন লগইন - এই বাটনেই ক্লিক করবেন!
+  // ✅ কুইক অ্যাডমিন লগইন - সরাসরি ঢুকুন
   const quickAdminLogin = () => {
-    localStorage.setItem("adminLoggedIn", "true");
-    localStorage.setItem("adminEmail", email || "admin@amarduniya.com");
-    router.push("/admin");
+    goToAdmin();
   };
 
   if (!mounted) {
@@ -83,7 +93,26 @@ export default function AdminLogin() {
 
         <div className="bg-gray-800/50 backdrop-blur-sm rounded-2xl p-6 shadow-xl border border-gray-700">
           
-          <form onSubmit={handleSubmit} className="space-y-5">
+          {/* ✅ কুইক লগইন সবার উপরে */}
+          <button 
+            type="button"
+            onClick={quickAdminLogin}
+            className="w-full mb-4 bg-green-600 hover:bg-green-700 text-white py-4 rounded-xl font-bold text-lg flex items-center justify-center gap-2 transition shadow-lg animate-pulse"
+          >
+            <Zap size={22} />
+            ⚡ কুইক অ্যাডমিন লগইন (এখানে ক্লিক করুন)
+          </button>
+
+          <div className="relative my-4">
+            <div className="absolute inset-0 flex items-center">
+              <div className="w-full border-t border-gray-600"></div>
+            </div>
+            <div className="relative flex justify-center text-xs">
+              <span className="bg-gray-800 px-3 text-gray-400">অথবা</span>
+            </div>
+          </div>
+          
+          <form onSubmit={handleSubmit} className="space-y-4">
             <div>
               <label className="block text-sm font-medium text-gray-300 mb-2">ইমেইল</label>
               <div className="relative">
@@ -138,18 +167,8 @@ export default function AdminLogin() {
             </button>
           </form>
 
-          {/* ✅✅✅ এই সবুজ বাটনে ক্লিক করবেন! ✅✅✅ */}
-          <button 
-            type="button"
-            onClick={quickAdminLogin}
-            className="w-full mt-4 bg-green-600 hover:bg-green-700 text-white py-3 rounded-xl font-semibold flex items-center justify-center gap-2 transition shadow-lg"
-          >
-            <Zap size={18} />
-            ⚡ কুইক অ্যাডমিন লগইন (সরাসরি ঢুকুন)
-          </button>
-
-          <div className="mt-4 p-4 bg-gray-900/30 rounded-xl">
-            <p className="text-xs text-gray-400 text-center">
+          <div className="mt-4 p-3 bg-gray-900/30 rounded-xl">
+            <p className="text-xs text-gray-500 text-center">
               admin@amarduniya.com / admin123
             </p>
           </div>
