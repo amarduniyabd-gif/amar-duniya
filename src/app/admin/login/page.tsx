@@ -2,6 +2,8 @@
 import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { Shield, Mail, Lock, Eye, EyeOff, Loader2, AlertCircle, LogIn } from "lucide-react";
+// ✅ আমাদের তৈরি করা সেন্ট্রাল সুপাবেস ক্লায়েন্ট
+import { supabase } from "@/lib/supabase/client";
 
 export default function AdminLogin() {
   const router = useRouter();
@@ -12,118 +14,139 @@ export default function AdminLogin() {
   const [error, setError] = useState("");
   const [mounted, setMounted] = useState(false);
 
+  // পেজ লোড হলে মাউন্ট স্টেট সেট করা এবং আগের লগইন চেক করা
   useEffect(() => {
     setMounted(true);
-    if (localStorage.getItem("adminLoggedIn") === "true") {
+    if (typeof window !== 'undefined' && localStorage.getItem("adminLoggedIn") === "true") {
       router.push("/admin");
     }
   }, [router]);
 
   const handleLogin = useCallback(async (e: React.FormEvent) => {
     e.preventDefault();
+    if (loading) return;
+    
     setLoading(true);
     setError("");
 
     try {
-      // ✅ সরাসরি সুপাবেস ক্লায়েন্ট ইম্পোর্ট
-      const { createClient } = await import('@supabase/supabase-js');
-      const supabase = createClient(
-        'https://nryqoyqdwxqdydifatzb.supabase.co',
-        'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5yeXFveXFkd3hxZHlkaWZhdHpiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzcxOTQyNzEsImV4cCI6MjA5Mjc3MDI3MX0.TLl1cJDhipmG4NczcG6kZUVEB7KAtbi6Rwis6lXH5GA'
-      );
-
-      // ✅ ডাটাবেজ থেকে ইউজার চেক
+      // ✅ ডাটাবেজ থেকে অ্যাডমিন প্রোফাইল চেক
       const { data: admin, error: dbError } = await supabase
         .from('admin_profiles')
         .select('*')
         .eq('email', email.trim())
-        .eq('password', password) // সরাসরি চেক
+        .eq('password', password)
         .single();
 
       if (dbError || !admin) {
         throw new Error("ভুল ইমেইল বা পাসওয়ার্ড!");
       }
 
-      // ✅ সেশন সেভ
+      // ✅ টাইপস্ক্রিপ্ট এরর এড়াতে 'as any' ব্যবহার করে সেশন সেভ
+      const adminData = admin as any;
       localStorage.setItem("adminLoggedIn", "true");
-      localStorage.setItem("adminEmail", admin.email);
-      localStorage.setItem("adminName", admin.name || "Super Admin");
+      localStorage.setItem("adminEmail", adminData.email);
+      localStorage.setItem("adminName", adminData.name || "Super Admin");
       
-      router.push("/admin");
+      // ✅ প্রোডাকশনে হার্ড রিডাইরেক্ট সবচেয়ে নিরাপদ
+      window.location.href = "/admin";
+      
     } catch (err: any) {
+      console.error("Login Error:", err.message);
       setError(err.message || "লগইন করতে সমস্যা হয়েছে!");
-    } finally {
       setLoading(false);
     }
-  }, [email, password, router]);
+  }, [email, password, loading]);
 
   if (!mounted) return <div className="min-h-screen bg-gray-900" />;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 flex items-center justify-center p-4">
       <div className="max-w-md w-full">
+        {/* লোগো সেকশন */}
         <div className="text-center mb-8">
           <div className="w-20 h-20 bg-gradient-to-r from-[#f85606] to-orange-500 rounded-2xl flex items-center justify-center mx-auto shadow-xl shadow-orange-500/20">
             <Shield size={40} className="text-white" />
           </div>
-          <h1 className="text-2xl font-bold text-white mt-4">অ্যাডমিন প্যানেল</h1>
-          <p className="text-green-400 text-xs mt-2">✅ Supabase Secured Connection</p>
+          <h1 className="text-2xl font-bold text-white mt-4">অ্যাডমিন লগইন</h1>
+          <p className="text-gray-400 text-sm mt-2">আমার দুনিয়া লিমিটেড • সিকিউর এক্সেস</p>
         </div>
 
-        <div className="bg-gray-800/50 backdrop-blur-sm rounded-2xl p-6 shadow-xl border border-gray-700">
-          <form onSubmit={handleLogin} className="space-y-5">
+        {/* লগইন কার্ড */}
+        <div className="bg-gray-800/50 backdrop-blur-md rounded-2xl p-8 shadow-2xl border border-gray-700/50">
+          <form onSubmit={handleLogin} className="space-y-6">
+            {/* ইমেইল ইনপুট */}
             <div>
-              <label className="block text-sm font-medium text-gray-300 mb-2">ইমেইল</label>
+              <label className="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">এডমিন ইমেইল</label>
               <div className="relative">
-                <Mail size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                <Mail size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" />
                 <input 
                   type="email" 
                   value={email} 
                   onChange={(e) => setEmail(e.target.value)} 
-                  className="w-full p-3 pl-10 bg-gray-900/50 border border-gray-700 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-[#f85606] transition" 
+                  className="w-full p-3 pl-10 bg-gray-900/50 border border-gray-700 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-[#f85606] transition-all" 
+                  placeholder="admin@example.com"
                   required 
                 />
               </div>
             </div>
 
+            {/* পাসওয়ার্ড ইনপুট */}
             <div>
-              <label className="block text-sm font-medium text-gray-300 mb-2">পাসওয়ার্ড</label>
+              <label className="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">সিক্রেট পাসওয়ার্ড</label>
               <div className="relative">
-                <Lock size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                <Lock size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" />
                 <input 
                   type={showPassword ? "text" : "password"} 
                   value={password} 
                   onChange={(e) => setPassword(e.target.value)} 
-                  className="w-full p-3 pl-10 pr-10 bg-gray-900/50 border border-gray-700 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-[#f85606] transition" 
+                  className="w-full p-3 pl-10 pr-10 bg-gray-900/50 border border-gray-700 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-[#f85606] transition-all" 
+                  placeholder="••••••••"
                   required 
                 />
                 <button 
                   type="button" 
                   onClick={() => setShowPassword(!showPassword)} 
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white transition"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-white transition"
                 >
                   {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
                 </button>
               </div>
             </div>
 
+            {/* এরর মেসেজ */}
             {error && (
-              <div className="bg-red-500/10 border border-red-500/30 rounded-xl p-3 flex items-center gap-2">
-                <AlertCircle size={16} className="text-red-500 shrink-0" />
-                <p className="text-sm text-red-400">{error}</p>
+              <div className="bg-red-500/10 border border-red-500/20 rounded-xl p-3 flex items-center gap-3 animate-shake">
+                <AlertCircle size={18} className="text-red-500 shrink-0" />
+                <p className="text-sm text-red-400 font-medium">{error}</p>
               </div>
             )}
 
+            {/* সাবমিট বাটন */}
             <button 
               type="submit" 
               disabled={loading} 
-              className="w-full bg-gradient-to-r from-[#f85606] to-orange-500 text-white py-3.5 rounded-xl font-semibold flex items-center justify-center gap-2 hover:shadow-lg hover:shadow-orange-500/25 transition disabled:opacity-50"
+              className="w-full bg-gradient-to-r from-[#f85606] to-orange-600 text-white py-4 rounded-xl font-bold flex items-center justify-center gap-2 hover:from-orange-600 hover:to-[#f85606] active:scale-[0.98] transition-all disabled:opacity-50 disabled:pointer-events-none shadow-lg shadow-orange-500/20"
             >
-              {loading ? <Loader2 size={18} className="animate-spin" /> : <LogIn size={18} />}
-              {loading ? "লগইন হচ্ছে..." : "লগইন করুন"}
+              {loading ? (
+                <>
+                  <Loader2 size={20} className="animate-spin" />
+                  <span>ভেরিফাই হচ্ছে...</span>
+                </>
+              ) : (
+                <>
+                  <LogIn size={20} />
+                  <span>অ্যাক্সেস করুন</span>
+                </>
+              )}
             </button>
           </form>
         </div>
+
+        {/* ফুটার */}
+        <p className="text-center text-gray-500 text-xs mt-8">
+          &copy; {new Date().getFullYear()} Amar Duniya. All rights reserved.
+        </p>
       </div>
     </div>
   );
