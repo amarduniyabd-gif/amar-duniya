@@ -11,7 +11,7 @@ import { categories, getRootCategories } from "@/data/categories";
 import PaymentModal from "@/components/PaymentModal";
 
 // ============ কনস্ট্যান্ট ============
-const ADMIN_USER_ID = "b5b79d36-eb67-4706-8847-70480d0158d7"; // ✅ অ্যাডমিন ID হার্ডকোড
+const ADMIN_USER_ID = "b5b79d36-eb67-4706-8847-70480d0158d7";
 
 const BLOCKED_KEYWORDS = [
   'porn', 'xxx', 'adult', 'sex', 'nude', 'naked',
@@ -61,7 +61,6 @@ const compressImageWithThumbnail = async (file: File): Promise<CompressedImage> 
         const originalWidth = img.width;
         const originalHeight = img.height;
         
-        // থাম্বনেইল
         const thumbCanvas = document.createElement('canvas');
         let thumbWidth = originalWidth;
         let thumbHeight = originalHeight;
@@ -92,7 +91,6 @@ const compressImageWithThumbnail = async (file: File): Promise<CompressedImage> 
           thumbDataUrl = thumbCanvas.toDataURL('image/webp', thumbQuality);
         }
         
-        // ফুল সাইজ
         const fullCanvas = document.createElement('canvas');
         fullCanvas.width = originalWidth;
         fullCanvas.height = originalHeight;
@@ -226,6 +224,7 @@ export default function PostAdPage() {
     }
   }, [newCategoryName]);
 
+  // ✅ corrected handleSubmit - only one version
   const handleSubmit = useCallback(async (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -241,12 +240,11 @@ export default function PostAdPage() {
     setIsSubmitting(true);
     
     try {
-      // ✅ সরাসরি Supabase ক্লায়েন্ট (Auth ছাড়া)
       const { createClient } = await import('@supabase/supabase-js');
-      const supabase = createClient(
-        'https://nryqoyqdwxqdydifatzb.supabase.co',
-        'sb_publishable_si3zDsvJIr_WVRV52vKqKQ_UC5b4c4C'
-      );
+const supabase = createClient(
+  'https://nryqoyqdwxqdydifatzb.supabase.co',
+  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5yeXFveXFkd3hxZHlkaWZhdHpiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzcxOTQyNzEsImV4cCI6MjA5Mjc3MDI3MX0.TLl1cJDhipmG4NczcG6kZUVEB7KAtbi6Rwis6lXH5GA'
+);
       
       // ১. পোস্ট তৈরি
       const { data: post, error: postError } = await supabase
@@ -256,16 +254,17 @@ export default function PostAdPage() {
           description: formData.description,
           price: parseInt(formData.price),
           condition: formData.condition,
-          brand: formData.brand,
-          warranty: formData.warranty,
+          brand: formData.brand || null,
+          warranty: formData.warranty || null,
           delivery: formData.delivery,
           location: formData.location,
-          seller_id: ADMIN_USER_ID,
+          user_id: ADMIN_USER_ID,
           category_id: formData.category,
           sub_category_id: formData.subCategory || null,
           is_featured: isFeatured,
           is_urgent: false,
           status: 'pending',
+          contact_number: formData.phone,
         })
         .select()
         .single();
@@ -273,7 +272,7 @@ export default function PostAdPage() {
       if (postError) throw postError;
       
       // ২. ছবি আপলোড
-      if (images.length > 0) {
+      if (images.length > 0 && post) {
         for (let i = 0; i < images.length; i++) {
           const img = images[i];
           const thumbPath = `thumbnails/${post.id}/${Date.now()}_${i}_thumb.webp`;
@@ -307,7 +306,7 @@ export default function PostAdPage() {
         });
       }
       
-      // ৪. লোকাল স্টোরেজে সেভ (ফলব্যাক)
+      // ৪. লোকাল স্টোরেজে সেভ
       const postData = {
         id: post.id,
         title: formData.title,

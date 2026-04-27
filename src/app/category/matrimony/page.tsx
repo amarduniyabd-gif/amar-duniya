@@ -7,7 +7,12 @@ import {
   X, Heart, Star, MessageCircle, PlusCircle, Share2, Bookmark,
   Key, Wallet, Crown, Fingerprint, Baby, Diamond, Gem, Loader2
 } from 'lucide-react';
-import { getSupabaseClient } from '@/lib/supabase/client';
+import { createClient } from '@supabase/supabase-js';
+
+// ============ Supabase ক্লায়েন্ট তৈরি ============
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
+const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
 // ============ কনস্ট্যান্ট ============
 const bangladeshDistricts = [
@@ -169,13 +174,12 @@ const PaymentModal = memo(({ onClose, onSuccess, price, profileId }: {
     setIsProcessing(true);
     
     try {
-      
       const { data: { user } } = await supabase.auth.getUser();
       
       if (user) {
         await supabase.from('matrimony_payments').insert({
           payer_id: user.id,
-          profile_id: profileId, // ✅ এখানে profileId ব্যবহার হচ্ছে
+          profile_id: profileId,
           amount: price,
           type: 'profile_unlock',
           status: 'completed',
@@ -188,11 +192,12 @@ const PaymentModal = memo(({ onClose, onSuccess, price, profileId }: {
         onClose();
       }, 1500);
     } catch (error) {
+      console.error('Payment error:', error);
       setIsProcessing(false);
       onSuccess();
       onClose();
     }
-  }, [onSuccess, onClose, price, profileId]); // ✅ ডিপেন্ডেন্সিতে profileId যোগ করা হয়েছে
+  }, [onSuccess, onClose, price, profileId]);
 
   return (
     <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
@@ -328,6 +333,7 @@ const ProfileCard = memo(({ profile, onViewDetails }: { profile: Profile; onView
           {(isPaid || showFullInfo) ? (
             <div className="w-full h-full flex items-center justify-center relative" onContextMenu={(e) => e.preventDefault()}>
               {profile.images?.[0]?.thumbnail_url ? (
+                // eslint-disable-next-line @next/next/no-img-element
                 <img src={profile.images[0].thumbnail_url} alt={profile.name} className="w-full h-full object-cover" />
               ) : (
                 <div className="text-8xl">{isMale ? "👨‍🦱" : "👩‍🦰"}</div>
@@ -478,7 +484,6 @@ export default function MatrimonyPage() {
     if (reset) setLoading(true);
     else setLoadingMore(true);
     
-    
     const from = (pageNum - 1) * 9;
     const to = from + 8;
     
@@ -521,7 +526,6 @@ export default function MatrimonyPage() {
       setHasMore((data?.length || 0) === 9);
     } catch (error) {
       console.error('Load profiles error:', error);
-      // লোকাল ফলব্যাক - dummyProfiles নেই, খালি অ্যারে দেখাবে
       if (reset) setProfiles([]);
     } finally {
       setLoading(false);
@@ -548,9 +552,6 @@ export default function MatrimonyPage() {
   }, [loading, loadingMore, hasMore, page, loadProfiles]);
 
   const filteredProfiles = profiles;
-
-  const maleCount = useMemo(() => totalCount, [totalCount, activeTab]);
-  const femaleCount = useMemo(() => totalCount, [totalCount, activeTab]);
 
   if (!mounted) {
     return (

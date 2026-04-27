@@ -16,12 +16,9 @@ type AdItem = {
   price: number;
   condition: string;
   time: string;
-  image: string;
-  webpImage?: string;
+  image: string;      // এটা হবে মেইন ইমেজ URL
   urgent: boolean;
-  created_at?: string;
-  images?: any[];
-  is_urgent?: boolean;
+  category_name?: string; // ক্যাটাগরি নাম দেখানোর জন্য
 };
 
 type SliderItem = {
@@ -36,6 +33,44 @@ type SliderItem = {
   id?: string | number;
   order_index?: number;
 };
+
+// ============ ১৫টি ইউনিক কালার এবং ইমোজি কনফিগ ============
+const SLIDER_CONFIGS = [
+  { color: "from-[#f85606] to-orange-500", emoji: "🛍️" },
+  { color: "from-[#e65c00] to-[#ff9933]", emoji: "📱" },
+  { color: "from-[#cc5200] to-[#ff7733]", emoji: "💻" },
+  { color: "from-[#f85606] to-[#ff4d4d]", emoji: "📺" },
+  { color: "from-[#ff6b35] to-[#f7931e]", emoji: "👔" },
+  { color: "from-[#e63946] to-[#d90429]", emoji: "🚗" },
+  { color: "from-[#2a9d8f] to-[#264653]", emoji: "💼" },
+  { color: "from-[#e9c46a] to-[#f4a261]", emoji: "🔧" },
+  { color: "from-[#0077b6] to-[#023e8a]", emoji: "🏠" },
+  { color: "from-[#7209b7] to-[#4c0bce]", emoji: "📢" },
+  { color: "from-[#ef476f] to-[#d90429]", emoji: "💑" },
+  { color: "from-[#fca311] to-[#ffba08]", emoji: "🔑" },
+  { color: "from-[#f77f00] to-[#fcbf49]", emoji: "🚑" },
+  { color: "from-[#06d6a0] to-[#118ab2]", emoji: "🎉" },
+  { color: "from-[#9c89b8] to-[#b8a9c9]", emoji: "🎊" },
+];
+
+// ============ ডিফল্ট স্লাইড (ফলব্যাক) ============
+const DEFAULT_SLIDES: SliderItem[] = [
+  { title: "সব ধরণের পণ্য পাচ্ছেন", discount: "১৫% পর্যন্ত ছাড়", color: "from-[#f85606] to-orange-500", emoji: "🛍️", link: "/category/offer" },
+  { title: "মোবাইল মেলায় স্বাগতম", discount: "সর্বোচ্চ ৩০% ছাড়", color: "from-[#e65c00] to-[#ff9933]", emoji: "📱", link: "/category/mobile" },
+  { title: "সেরা দামে সেরা ল্যাপটপ", discount: "বিশেষ অফার", color: "from-[#cc5200] to-[#ff7733]", emoji: "💻", link: "/category/computer" },
+  { title: "ইলেকট্রনিক্স সপ্তাহ", discount: "৫০% পর্যন্ত ছাড়", color: "from-[#f85606] to-[#ff4d4d]", emoji: "📺", link: "/category/electronics" },
+  { title: "ফ্যাশন ফেস্টিভ্যাল", discount: "সব ব্র্যান্ডে ৩০% ছাড়", color: "from-[#ff6b35] to-[#f7931e]", emoji: "👔", link: "/category/fashion" },
+  { title: "গাড়ি মেলা", discount: "শুধু আজ ৪০% ছাড়", color: "from-[#e63946] to-[#d90429]", emoji: "🚗", link: "/category/car" },
+  { title: "চাকরির জগৎ", discount: "সর্বোচ্চ সুযোগ", color: "from-[#2a9d8f] to-[#264653]", emoji: "💼", link: "/category/job" },
+  { title: "সার্ভিস সেন্টার", discount: "সকল সেবায় ২০% ছাড়", color: "from-[#e9c46a] to-[#f4a261]", emoji: "🔧", link: "/category/service" },
+  { title: "জমি ক্রয়-বিক্রয়", discount: "ফ্রি কনসালটেন্সি", color: "from-[#0077b6] to-[#023e8a]", emoji: "🏠", link: "/category/property" },
+  { title: "সবার জন্য তথ্য", discount: "জেনে রাখুন", color: "from-[#7209b7] to-[#4c0bce]", emoji: "📢", link: "/category/info" },
+  { title: "পাত্র-পাত্রী খুঁজুন", discount: "যোগাযোগ করুন", color: "from-[#ef476f] to-[#d90429]", emoji: "💑", link: "/category/matrimony" },
+  { title: "ভাড়া নিন বা দিন", discount: "সর্বোচ্চ সুবিধা", color: "from-[#fca311] to-[#ffba08]", emoji: "🔑", link: "/category/rent" },
+  { title: "জরুরি সেবা", discount: "২৪/৭ সেবা", color: "from-[#f77f00] to-[#fcbf49]", emoji: "🚑", link: "/category/emergency" },
+  { title: "বিশেষ অফার", discount: "৬০% পর্যন্ত ছাড়", color: "from-[#06d6a0] to-[#118ab2]", emoji: "🎉", link: "/category/offer" },
+  { title: "উইকেন্ড স্পেশাল", discount: "শনি-রবিবার ৩৫% ছাড়", color: "from-[#9c89b8] to-[#b8a9c9]", emoji: "🎊", link: "/category/offer" },
+];
 
 // ============ WebP URL জেনারেটর ============
 const getWebPUrl = (url: string, width: number = 400, quality: number = 80): string => {
@@ -127,8 +162,17 @@ const generateMockAds = (page: number, limit: number): AdItem[] => {
 
 // ============ অ্যাড কার্ড ============
 const AdCard = memo(({ ad, index }: { ad: AdItem; index: number }) => {
-  const webpSrc = ad.webpImage || (ad.image.startsWith('http') ? getWebPUrl(ad.image, 300, 75) : '');
+  // ১. ইমেজ ইউআরএল প্রসেস করা
+  const rawImage = ad.image;
+  const isEmoji = !rawImage || (!rawImage.startsWith('http') && rawImage.length < 5);
   
+  // সুপাবেস বাকেট থেকে ফুল পাথ জেনারেট
+  const fullImagePath = isEmoji 
+    ? '' 
+    : (rawImage.startsWith('http') 
+        ? rawImage 
+        : `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/post-images/${rawImage}`);
+
   return (
     <Link href={`/post/${ad.id}`} prefetch={true}>
       <motion.div 
@@ -137,60 +181,41 @@ const AdCard = memo(({ ad, index }: { ad: AdItem; index: number }) => {
         transition={{ duration: 0.3, delay: index * 0.05 }}
         className="rounded-xl overflow-hidden shadow-sm border cursor-pointer hover:shadow-lg transition-all duration-300 group bg-white border-gray-100 hover:border-orange-200 hover:scale-[1.02]"
       >
-        <div className="relative p-4 flex items-center justify-center h-36 md:h-44 bg-gradient-to-br from-orange-50 to-orange-100 overflow-hidden">
-          {ad.image.startsWith('http') ? (
-            <picture>
-              {webpSrc && <source srcSet={webpSrc} type="image/webp" />}
-              {webpSrc && <source srcSet={webpSrc.replace('format=webp', 'format=avif')} type="image/avif" />}
-              <img 
-                src={ad.image} 
-                alt={ad.title} 
-                className="w-full h-full object-contain transition-transform duration-500 group-hover:scale-110" 
-                loading="lazy"
-                decoding="async"
-                onError={(e) => {
-                  (e.target as HTMLImageElement).style.display = 'none';
-                }}
-              />
-            </picture>
+        <div className="relative p-0 flex items-center justify-center h-36 md:h-44 bg-gray-100 overflow-hidden">
+          {!isEmoji ? (
+            <img 
+              src={fullImagePath} 
+              alt={ad.title} 
+              className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" 
+              loading="lazy"
+              onError={(e) => {
+                (e.target as HTMLImageElement).src = 'https://placehold.co/400x400?text=No+Image';
+              }}
+            />
           ) : (
-            <div className="text-5xl md:text-6xl transition-transform duration-300 group-hover:scale-125">
-              {ad.image}
+            <div className="text-5xl transition-transform duration-300 group-hover:scale-125">
+              {ad.image || '📦'}
             </div>
           )}
           
           {ad.urgent && (
-            <div className="absolute top-2 left-2 bg-gradient-to-r from-red-500 to-red-600 text-white text-[9px] font-bold px-2 py-1 rounded-full shadow-lg z-10">
+            <div className="absolute top-2 left-2 bg-red-600 text-white text-[9px] font-bold px-2 py-1 rounded-full z-10">
               জরুরি
             </div>
           )}
-          
-          <button 
-            onClick={(e) => {
-              e.preventDefault();
-              e.stopPropagation();
-            }} 
-            className="absolute top-2 right-2 rounded-full p-1.5 shadow-md z-10 transition-all duration-300 bg-white/90 hover:bg-white hover:scale-110"
-            aria-label="ফেবারিটে যোগ করুন"
-          >
-            <Heart size={14} className="text-gray-400 hover:text-red-500 transition-colors duration-300" />
-          </button>
-          
-          <div className="absolute bottom-2 left-2 bg-black/60 backdrop-blur-sm text-white text-[8px] px-2 py-0.5 rounded-full">
-            {ad.condition}
-          </div>
         </div>
         
         <div className="p-2.5">
-          <h3 className="font-bold text-xs line-clamp-2 transition-colors duration-300 group-hover:text-[#f85606] text-gray-800 min-h-[2rem]">
+          {ad.category_name && (
+            <p className="text-[9px] text-[#f85606] font-bold mb-0.5 uppercase">{ad.category_name}</p>
+          )}
+          <h3 className="font-bold text-xs line-clamp-2 text-gray-800 min-h-[2rem]">
             {ad.title}
           </h3>
-          <p className="text-[9px] mt-1 text-gray-400">
-            {ad.time}
-          </p>
-          <div className="mt-1.5 text-[#f85606] font-black text-sm md:text-base">
+          <div className="mt-1.5 text-[#f85606] font-black text-sm">
             ৳ {ad.price.toLocaleString('bn-BD')}
           </div>
+          <p className="text-[9px] mt-1 text-gray-400">{ad.time}</p>
         </div>
       </motion.div>
     </Link>
@@ -247,26 +272,7 @@ const AmarDuniyaHome = () => {
   const [isOnline, setIsOnline] = useState(true);
   const [isClient, setIsClient] = useState(false);
   
-  // ডিফল্ট স্লাইড (ফলব্যাক)
-  const defaultSlides: SliderItem[] = [
-    { title: "সব ধরণের পণ্য পাচ্ছেন", discount: "১৫% পর্যন্ত ছাড়", color: "from-[#f85606] to-orange-500", emoji: "🛍️", link: "/category/offer" },
-    { title: "মোবাইল মেলায় স্বাগতম", discount: "সর্বোচ্চ ৩০% ছাড়", color: "from-[#e65c00] to-[#ff9933]", emoji: "📱", link: "/category/mobile" },
-    { title: "সেরা দামে সেরা ল্যাপটপ", discount: "বিশেষ অফার", color: "from-[#cc5200] to-[#ff7733]", emoji: "💻", link: "/category/computer" },
-    { title: "ইলেকট্রনিক্স সপ্তাহ", discount: "৫০% পর্যন্ত ছাড়", color: "from-[#f85606] to-[#ff4d4d]", emoji: "📺", link: "/category/electronics" },
-    { title: "ফ্যাশন ফেস্টিভ্যাল", discount: "সব ব্র্যান্ডে ৩০% ছাড়", color: "from-[#ff6b35] to-[#f7931e]", emoji: "👔", link: "/category/fashion" },
-    { title: "গাড়ি মেলা", discount: "শুধু আজ ৪০% ছাড়", color: "from-[#e63946] to-[#d90429]", emoji: "🚗", link: "/category/car" },
-    { title: "চাকরির জগৎ", discount: "সর্বোচ্চ সুযোগ", color: "from-[#2a9d8f] to-[#264653]", emoji: "💼", link: "/category/job" },
-    { title: "সার্ভিস সেন্টার", discount: "সকল সেবায় ২০% ছাড়", color: "from-[#e9c46a] to-[#f4a261]", emoji: "🔧", link: "/category/service" },
-    { title: "জমি ক্রয়-বিক্রয়", discount: "ফ্রি কনসালটেন্সি", color: "from-[#0077b6] to-[#023e8a]", emoji: "🏠", link: "/category/property" },
-    { title: "সবার জন্য তথ্য", discount: "জেনে রাখুন", color: "from-[#7209b7] to-[#4c0bce]", emoji: "📢", link: "/category/info" },
-    { title: "পাত্র-পাত্রী খুঁজুন", discount: "যোগাযোগ করুন", color: "from-[#ef476f] to-[#d90429]", emoji: "💑", link: "/category/matrimony" },
-    { title: "ভাড়া নিন বা দিন", discount: "সর্বোচ্চ সুবিধা", color: "from-[#fca311] to-[#ffba08]", emoji: "🔑", link: "/category/rent" },
-    { title: "জরুরি সেবা", discount: "২৪/৭ সেবা", color: "from-[#f77f00] to-[#fcbf49]", emoji: "🚑", link: "/category/emergency" },
-    { title: "বিশেষ অফার", discount: "৬০% পর্যন্ত ছাড়", color: "from-[#06d6a0] to-[#118ab2]", emoji: "🎉", link: "/category/offer" },
-    { title: "উইকেন্ড স্পেশাল", discount: "শনি-রবিবার ৩৫% ছাড়", color: "from-[#9c89b8] to-[#b8a9c9]", emoji: "🎊", link: "/category/offer" },
-  ];
-
-  const [slides, setSlides] = useState<SliderItem[]>(defaultSlides);
+  const [slides, setSlides] = useState<SliderItem[]>(DEFAULT_SLIDES);
   const [recentAds, setRecentAds] = useState<AdItem[]>([]);
   const [recentPage, setRecentPage] = useState(1);
   const [loadingRecent, setLoadingRecent] = useState(false);
@@ -307,8 +313,9 @@ const AmarDuniyaHome = () => {
       try {
         const supabase = getSupabaseClient();
         
-        // --- স্লাইডার লোড ---
+        // --- স্লাইডার লোড (ফিক্সড) ---
         setSliderLoading(true);
+        
         const { data: sliderData, error: sliderError } = await supabase
           .from('sliders')
           .select('id, title, discount_text, link, image_url, is_active, order_index')
@@ -317,84 +324,90 @@ const AmarDuniyaHome = () => {
           .limit(15);
         
         if (isMounted && sliderData && sliderData.length > 0) {
-          const formattedSliders = sliderData.map((s: any) => ({
-            id: s.id,
-            title: s.title || 'আমার দুনিয়া',
-            discount: s.discount_text || 'সেরা ডিল',
-            color: 'from-[#f85606] to-orange-500',
-            emoji: '🛍️',
-            link: s.link || '/',
-            status: 'active',
-            image: s.image_url,
-            webpImage: s.image_url ? getWebPUrl(s.image_url, 800, 85) : undefined,
-            order_index: s.order_index,
-          }));
+          // ✅ প্রতিটি স্লাইডের জন্য আলাদা কালার ও ইমোজি সেট করা হচ্ছে
+          const formattedSliders = sliderData.map((s: any, index: number) => {
+            const config = SLIDER_CONFIGS[index % SLIDER_CONFIGS.length];
+            
+            return {
+              id: s.id,
+              title: s.title || 'আমার দুনিয়া',
+              discount: s.discount_text || 'সেরা ডিল',
+              color: config.color,      // ✅ আলাদা আলাদা কালার
+              emoji: config.emoji,      // ✅ আলাদা আলাদা ইমোজি
+              link: s.link || '/',
+              status: 'active',
+              image: s.image_url,
+              webpImage: s.image_url ? getWebPUrl(s.image_url, 800, 85) : undefined,
+              order_index: s.order_index,
+            };
+          });
           setSlides(formattedSliders);
           
+          // প্রিলোড ইমেজ
           formattedSliders.forEach((slide: SliderItem) => {
             if (slide.webpImage) preloadImage(slide.webpImage);
             if (slide.image) preloadImage(slide.image);
           });
         } else if (isMounted) {
-          try {
-            const savedSliders = localStorage.getItem("homeSliders");
-            if (savedSliders) {
-              const parsed = JSON.parse(savedSliders);
-              const activeSliders = parsed.filter((s: any) => s.status === 'active');
-              if (activeSliders.length > 0) setSlides(activeSliders);
-            }
-          } catch (e) {}
+          // ডাটাবেজ খালি থাকলে ডিফল্ট স্লাইড ব্যবহার করবে
+          setSlides(DEFAULT_SLIDES);
         }
+        
         if (isMounted) setSliderLoading(false);
         
-        // --- পোস্ট লোড (প্রথম ৫টা) ---
+        // --- পোস্ট লোড (প্রথম ৬টা) ---
         const { data: postData, error: postError } = await supabase
           .from('posts')
           .select(`
-  id, title, price, condition, created_at, is_urgent,
-  post_images(thumbnail_url, webp_url, order_index)
-`)
+            id, 
+            title, 
+            price, 
+            condition, 
+            created_at, 
+            is_urgent,
+            post_images (image_url),
+            categories (name)
+          `)
           .eq('status', 'approved')
           .order('created_at', { ascending: false })
-          .range(0, 4); // ✅ প্রথম ৫টা (0-4)
-        
-        if (isMounted && postData && postData.length > 0 && !postError) {
+          .range(0, 5);
+
+        if (isMounted && !postError && postData && postData.length > 0) {
           const formattedPosts: AdItem[] = postData.map((post: any) => ({
             id: post.id,
             title: post.title,
             price: post.price,
             condition: post.condition === 'new' ? 'নতুন' : 'পুরাতন',
             time: timeAgo(post.created_at),
-            image: post.post_images?.[0]?.thumbnail_url || '📱',
-webpImage: post.post_images?.[0]?.webp_url || (post.post_images?.[0]?.thumbnail_url ? getWebPUrl(post.post_images[0].thumbnail_url, 300, 75) : undefined),
-            urgent: post.is_urgent || false,
+            image: post.post_images?.[0]?.image_url || '📦',
+            category_name: post.categories?.name,
+            urgent: !!post.is_urgent,
           }));
+
           setRecentAds(formattedPosts);
           setRecentPage(1);
-          setHasMoreRecent(formattedPosts.length === 5); // ✅ ৫ চেক
+          setHasMoreRecent(postData.length === 6);
         } else if (isMounted) {
-          const mockAds = generateMockAds(1, 5); // ✅ ৫টা ডামি
+          // কোনো পোস্ট না থাকলে মক ডাটা দেখাবে
+          const mockAds = generateMockAds(1, 6);
           setRecentAds(mockAds);
-          setRecentPage(1);
           setHasMoreRecent(true);
         }
+
       } catch (error) {
+        console.error('Fetch error:', error);
         if (isMounted) {
-          console.log('Initial load failed, using fallback');
-          const mockAds = generateMockAds(1, 5); // ✅ ৫টা ডামি
+          const mockAds = generateMockAds(1, 6);
           setRecentAds(mockAds);
-          setRecentPage(1);
           setHasMoreRecent(true);
-          setSliderLoading(false);
         }
+      } finally {
+        if (isMounted) setSliderLoading(false);
       }
     };
     
     loadInitialData();
-    
-    return () => {
-      isMounted = false;
-    };
+    return () => { isMounted = false; };
   }, []);
 
   // ============ অটো স্লাইড টাইমার ============
@@ -431,103 +444,95 @@ webpImage: post.post_images?.[0]?.webp_url || (post.post_images?.[0]?.thumbnail_
     }
   };
 
-  /// ============ পোস্ট লোড (৫টা করে লেজি লোডিং) ============
-const loadRecentAds = useCallback(async (reset: boolean = false) => {
-  if (isLoadingRecent.current || (reset === false && !hasMoreRecent)) return;
-  isLoadingRecent.current = true;
-  setLoadingRecent(true);
-  
-  try {
-    const supabase = getSupabaseClient();
-    const currentPage = reset ? 1 : recentPage + 1;
-    const LIMIT = 5;
-    const from = (currentPage - 1) * LIMIT;
-    const to = from + LIMIT - 1;
+  // ============ পোস্ট লোড (৬টি করে লেজি লোডিং) ============
+  const loadRecentAds = useCallback(async (reset: boolean = false) => {
+    if (isLoadingRecent.current || (reset === false && !hasMoreRecent)) return;
     
-    const { data, error } = await supabase
-      .from('posts')
-      .select(`
-        id, title, price, condition, created_at, is_urgent,
-        images:post_images(thumbnail_url, webp_url, order_index)
-      `)
-      .eq('status', 'approved')
-      .order('created_at', { ascending: false })
-      .range(from, to);
-
-    if (data && data.length > 0 && !error) {
-      const formattedPosts: AdItem[] = data.map((post: any) => ({
-        id: post.id,
-        title: post.title,
-        price: post.price,
-        condition: post.condition === 'new' ? 'নতুন' : 'পুরাতন',
-        time: timeAgo(post.created_at),
-        image: post.images?.[0]?.thumbnail_url || '📦',
-        webpImage: post.images?.[0]?.webp_url || (post.images?.[0]?.thumbnail_url ? getWebPUrl(post.images[0].thumbnail_url, 300, 75) : undefined),
-        urgent: post.is_urgent || false,
-      }));
-
-      if (reset) {
-        setRecentAds(formattedPosts);
-        setRecentPage(1);
-        setHasMoreRecent(formattedPosts.length === LIMIT);
-      } else {
-        setRecentAds(prev => [...prev, ...formattedPosts]);
-        setRecentPage(currentPage);
-        setHasMoreRecent(formattedPosts.length === LIMIT);
-      }
-    } else {
-      await new Promise(r => setTimeout(r, 300));
-      const newAds = generateMockAds(currentPage, LIMIT);
+    isLoadingRecent.current = true;
+    setLoadingRecent(true);
+    
+    try {
+      const supabase = getSupabaseClient();
+      const currentPage = reset ? 1 : recentPage + 1;
+      const LIMIT = 6;
+      const from = (currentPage - 1) * LIMIT;
+      const to = from + LIMIT - 1;
       
-      if (reset) {
-        setRecentAds(newAds);
-        setRecentPage(1);
-        setHasMoreRecent(true);
+      const { data, error } = await supabase
+        .from('posts')
+        .select(`
+          id, 
+          title, 
+          price, 
+          condition, 
+          created_at, 
+          is_urgent,
+          post_images (image_url),
+          categories (name)
+        `)
+        .eq('status', 'approved')
+        .order('created_at', { ascending: false })
+        .range(from, to);
+      
+      if (!error && data && data.length > 0) {
+        const formattedPosts: AdItem[] = data.map((post: any) => ({
+          id: post.id,
+          title: post.title,
+          price: post.price,
+          condition: post.condition === 'new' ? 'নতুন' : 'পুরাতন',
+          time: timeAgo(post.created_at),
+          image: post.post_images?.[0]?.image_url || '📦',
+          category_name: post.categories?.name,
+          urgent: !!post.is_urgent,
+        }));
+        
+        if (reset) {
+          setRecentAds(formattedPosts);
+          setRecentPage(1);
+        } else {
+          setRecentAds(prev => [...prev, ...formattedPosts]);
+          setRecentPage(currentPage);
+        }
+        setHasMoreRecent(data.length === LIMIT);
       } else {
-        setRecentAds(prev => [...prev, ...newAds]);
-        setRecentPage(currentPage);
+        setHasMoreRecent(false);
       }
+    } catch (e) {
+      console.error('Load more failed:', e);
+      setHasMoreRecent(false);
+    } finally {
+      setLoadingRecent(false);
+      isLoadingRecent.current = false;
     }
-  } catch (e) {
-    console.log('Load failed, using fallback');
-    const currentPage = reset ? 1 : recentPage + 1;
-    const newAds = generateMockAds(currentPage, 5);
-    
-    if (reset) {
-      setRecentAds(newAds);
-      setRecentPage(1);
-      setHasMoreRecent(true);
-    } else {
-      setRecentAds(prev => [...prev, ...newAds]);
-      setRecentPage(currentPage);
-    }
-  } finally {
-    setLoadingRecent(false);
-    isLoadingRecent.current = false;
-  }
-}, [recentPage, hasMoreRecent]);
+  }, [recentPage, hasMoreRecent]);
 
-  // ============ ইন্টারসেকশন অবজার্ভার (আগে ট্রিগার) ============
+  // ============ ইন্টারসেকশন অবজার্ভার (অটো লোড) ============
   useEffect(() => {
-    if (!recentObserverRef.current || !isClient) return;
-    
+    if (!isClient || !hasMoreRecent) return;
+
     const observer = new IntersectionObserver(
       (entries) => {
-        if (entries[0].isIntersecting && !loadingRecent && hasMoreRecent) {
+        if (entries[0].isIntersecting && !isLoadingRecent.current) {
           loadRecentAds(false);
         }
       },
       { 
         threshold: 0.1, 
-        rootMargin: "400px" // ✅ 400px আগে ট্রিগার
+        rootMargin: "300px"
       }
     );
     
-    observer.observe(recentObserverRef.current);
-    return () => observer.disconnect();
-  }, [loadingRecent, hasMoreRecent, loadRecentAds, isClient]);
+    const currentTarget = recentObserverRef.current;
+    if (currentTarget) {
+      observer.observe(currentTarget);
+    }
 
-  // ============ সোয়াইপ ============
+    return () => {
+      if (currentTarget) observer.unobserve(currentTarget);
+    };
+  }, [loadRecentAds, isClient, hasMoreRecent]);
+
+  // ============ সোয়াইপ হ্যান্ডলার ============
   const handleSwipe = (direction: 'left' | 'right') => {
     if (slides.length === 0) return;
     setCurrentSlide((prev) => {
@@ -536,7 +541,7 @@ const loadRecentAds = useCallback(async (reset: boolean = false) => {
     });
   };
 
-  // ============ সার্চ ============
+  // ============ সার্চ হ্যান্ডলার ============
   const handleSearch = useCallback(() => {
     if (searchQuery.trim()) {
       router.push(`/search?q=${encodeURIComponent(searchQuery.trim())}`);
@@ -709,6 +714,7 @@ const loadRecentAds = useCallback(async (reset: boolean = false) => {
             </div>
           </div>
 
+          {/* স্লাইডারের নিচের ব্যানার */}
           <Link href={slides[currentSlide]?.link || '/'} prefetch={true}>
             <div className={`bg-gradient-to-r ${slides[currentSlide]?.color || 'from-[#f85606] to-orange-500'} mt-3 rounded-xl p-3 text-center shadow-md cursor-pointer hover:shadow-lg transition-shadow duration-300`}>
               <h2 className="text-xl md:text-2xl font-black text-white uppercase tracking-tighter">
@@ -776,9 +782,9 @@ const loadRecentAds = useCallback(async (reset: boolean = false) => {
               <AdCard key={ad.id} ad={ad} index={index} />
             ))}
             
-            {/* স্কেলেটন - প্রথম লোডে ৫টা */}
+            {/* স্কেলেটন - প্রথম লোডে ৬টা */}
             {loadingRecent && recentAds.length === 0 && (
-              [...Array(5)].map((_, i) => <SkeletonCard key={`skeleton-${i}`} />)
+              [...Array(6)].map((_, i) => <SkeletonCard key={`skeleton-${i}`} />)
             )}
           </div>
           
@@ -787,7 +793,7 @@ const loadRecentAds = useCallback(async (reset: boolean = false) => {
             {loadingRecent && recentAds.length > 0 && (
               <div className="flex items-center gap-2">
                 <Loader2 className="animate-spin text-[#f85606]" size={18} />
-                <span className="text-[11px] text-gray-400">আরো ৫টি লোড হচ্ছে...</span>
+                <span className="text-[11px] text-gray-400">আরো ৬টি লোড হচ্ছে...</span>
               </div>
             )}
             {!hasMoreRecent && recentAds.length > 0 && (

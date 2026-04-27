@@ -1,13 +1,19 @@
-import { createClient } from '@supabase/supabase-js';
+import { createClient, SupabaseClient } from '@supabase/supabase-js';
+import { Database } from '@/types/supabase'; // আপনার তৈরি করা টাইপ ফাইলটি ইমপোর্ট করুন
 
-let supabaseClient: ReturnType<typeof createClient> | null = null;
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
 
-export const getSupabaseClient = () => {
+// ক্লায়েন্টকে <Database> টাইপ দিয়ে ডিফাইন করা
+let supabaseClient: SupabaseClient<Database> | null = null;
+
+export const getSupabaseClient = (): SupabaseClient<Database> => {
   if (!supabaseClient) {
-    supabaseClient = createClient(
-      'https://nryqoyqdwxqdydifatzb.supabase.co',
-      'sb_publishable_si3zDsvJIr_WVRV52vKqKQ_UC5b4c4C'
-    );
+    if (!supabaseUrl || !supabaseAnonKey) {
+      console.error("Supabase URL or Anon Key is missing! Check your .env.local file.");
+    }
+    // এখানেও <Database> বসিয়ে দিন
+    supabaseClient = createClient<Database>(supabaseUrl, supabaseAnonKey);
   }
   return supabaseClient;
 };
@@ -17,5 +23,8 @@ export const resetSupabaseClient = () => {
 };
 
 export const isSupabaseReady = (): boolean => {
-  return true;
+  return !!supabaseUrl && !!supabaseAnonKey;
 };
+
+// সরাসরি এক্সপোর্ট যা এখন টাইপ-সেফ
+export const supabase = getSupabaseClient();
