@@ -2,7 +2,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { Shield, Mail, Lock, Eye, EyeOff, Loader2, AlertCircle, LogIn } from "lucide-react";
-// ✅ আমাদের তৈরি করা সেন্ট্রাল সুপাবেস ক্লায়েন্ট
 import { supabase } from "@/lib/supabase/client";
 
 export default function AdminLogin() {
@@ -14,7 +13,6 @@ export default function AdminLogin() {
   const [error, setError] = useState("");
   const [mounted, setMounted] = useState(false);
 
-  // পেজ লোড হলে মাউন্ট স্টেট সেট করা এবং আগের লগইন চেক করা
   useEffect(() => {
     setMounted(true);
     if (typeof window !== 'undefined' && localStorage.getItem("adminLoggedIn") === "true") {
@@ -24,13 +22,14 @@ export default function AdminLogin() {
 
   const handleLogin = useCallback(async (e: React.FormEvent) => {
     e.preventDefault();
-    if (loading) return;
+    console.log("লগইন চেষ্টা করা হচ্ছে..."); 
     
+    if (loading) return;
     setLoading(true);
     setError("");
 
     try {
-      // ✅ ডাটাবেজ থেকে অ্যাডমিন প্রোফাইল চেক
+      // সুপাবেস কুয়েরি
       const { data: admin, error: dbError } = await supabase
         .from('admin_profiles')
         .select('*')
@@ -42,17 +41,16 @@ export default function AdminLogin() {
         throw new Error("ভুল ইমেইল বা পাসওয়ার্ড!");
       }
 
-      // ✅ টাইপস্ক্রিপ্ট এরর এড়াতে 'as any' ব্যবহার করে সেশন সেভ
-      const adminData = admin as any;
+      // সেশন ডাটা সেভ
       localStorage.setItem("adminLoggedIn", "true");
-      localStorage.setItem("adminEmail", adminData.email);
-      localStorage.setItem("adminName", adminData.name || "Super Admin");
+      localStorage.setItem("adminEmail", (admin as any).email);
+      localStorage.setItem("adminName", (admin as any).name || "Super Admin");
       
-      // ✅ প্রোডাকশনে হার্ড রিডাইরেক্ট সবচেয়ে নিরাপদ
+      console.log("সফল লগইন! প্রবেশ করা হচ্ছে...");
       window.location.href = "/admin";
       
     } catch (err: any) {
-      console.error("Login Error:", err.message);
+      console.error("Login catch error:", err.message);
       setError(err.message || "লগইন করতে সমস্যা হয়েছে!");
       setLoading(false);
     }
@@ -63,19 +61,16 @@ export default function AdminLogin() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 flex items-center justify-center p-4">
       <div className="max-w-md w-full">
-        {/* লোগো সেকশন */}
         <div className="text-center mb-8">
           <div className="w-20 h-20 bg-gradient-to-r from-[#f85606] to-orange-500 rounded-2xl flex items-center justify-center mx-auto shadow-xl shadow-orange-500/20">
             <Shield size={40} className="text-white" />
           </div>
-          <h1 className="text-2xl font-bold text-white mt-4">অ্যাডমিন লগইন</h1>
+          <h1 className="text-2xl font-bold text-white mt-4">অ্যাডমিন প্যানেল</h1>
           <p className="text-gray-400 text-sm mt-2">আমার দুনিয়া লিমিটেড • সিকিউর এক্সেস</p>
         </div>
 
-        {/* লগইন কার্ড */}
         <div className="bg-gray-800/50 backdrop-blur-md rounded-2xl p-8 shadow-2xl border border-gray-700/50">
           <form onSubmit={handleLogin} className="space-y-6">
-            {/* ইমেইল ইনপুট */}
             <div>
               <label className="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">এডমিন ইমেইল</label>
               <div className="relative">
@@ -85,13 +80,11 @@ export default function AdminLogin() {
                   value={email} 
                   onChange={(e) => setEmail(e.target.value)} 
                   className="w-full p-3 pl-10 bg-gray-900/50 border border-gray-700 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-[#f85606] transition-all" 
-                  placeholder="admin@example.com"
                   required 
                 />
               </div>
             </div>
 
-            {/* পাসওয়ার্ড ইনপুট */}
             <div>
               <label className="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">সিক্রেট পাসওয়ার্ড</label>
               <div className="relative">
@@ -101,7 +94,6 @@ export default function AdminLogin() {
                   value={password} 
                   onChange={(e) => setPassword(e.target.value)} 
                   className="w-full p-3 pl-10 pr-10 bg-gray-900/50 border border-gray-700 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-[#f85606] transition-all" 
-                  placeholder="••••••••"
                   required 
                 />
                 <button 
@@ -114,39 +106,23 @@ export default function AdminLogin() {
               </div>
             </div>
 
-            {/* এরর মেসেজ */}
             {error && (
-              <div className="bg-red-500/10 border border-red-500/20 rounded-xl p-3 flex items-center gap-3 animate-shake">
+              <div className="bg-red-500/10 border border-red-500/20 rounded-xl p-3 flex items-center gap-3">
                 <AlertCircle size={18} className="text-red-500 shrink-0" />
                 <p className="text-sm text-red-400 font-medium">{error}</p>
               </div>
             )}
 
-            {/* সাবমিট বাটন */}
             <button 
               type="submit" 
               disabled={loading} 
-              className="w-full bg-gradient-to-r from-[#f85606] to-orange-600 text-white py-4 rounded-xl font-bold flex items-center justify-center gap-2 hover:from-orange-600 hover:to-[#f85606] active:scale-[0.98] transition-all disabled:opacity-50 disabled:pointer-events-none shadow-lg shadow-orange-500/20"
+              className="w-full bg-gradient-to-r from-[#f85606] to-orange-600 text-white py-4 rounded-xl font-bold flex items-center justify-center gap-2 hover:shadow-lg transition-all disabled:opacity-50"
             >
-              {loading ? (
-                <>
-                  <Loader2 size={20} className="animate-spin" />
-                  <span>ভেরিফাই হচ্ছে...</span>
-                </>
-              ) : (
-                <>
-                  <LogIn size={20} />
-                  <span>অ্যাক্সেস করুন</span>
-                </>
-              )}
+              {loading ? <Loader2 size={20} className="animate-spin" /> : <LogIn size={20} />}
+              {loading ? "ভেরিফাই হচ্ছে..." : "অ্যাক্সেস করুন"}
             </button>
           </form>
         </div>
-
-        {/* ফুটার */}
-        <p className="text-center text-gray-500 text-xs mt-8">
-          &copy; {new Date().getFullYear()} Amar Duniya. All rights reserved.
-        </p>
       </div>
     </div>
   );
