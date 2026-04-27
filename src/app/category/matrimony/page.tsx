@@ -7,12 +7,9 @@ import {
   X, Heart, Star, MessageCircle, PlusCircle, Share2, Bookmark,
   Key, Wallet, Crown, Fingerprint, Baby, Diamond, Gem, Loader2
 } from 'lucide-react';
-import { createClient } from '@supabase/supabase-js';
 
-// ============ Supabase ক্লায়েন্ট তৈরি ============
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
-const supabase = createClient(supabaseUrl, supabaseAnonKey);
+// Supabase ক্লায়েন্ট ইম্পোর্ট (সরাসরি createClient আর দরকার নেই)
+import { supabase } from "@/lib/supabase/client"; 
 
 // ============ কনস্ট্যান্ট ============
 const bangladeshDistricts = [
@@ -177,13 +174,13 @@ const PaymentModal = memo(({ onClose, onSuccess, price, profileId }: {
       const { data: { user } } = await supabase.auth.getUser();
       
       if (user) {
-        await supabase.from('matrimony_payments').insert({
-          payer_id: user.id,
-          profile_id: profileId,
-          amount: price,
-          type: 'profile_unlock',
-          status: 'completed',
-        });
+        await (supabase.from('matrimony_payments' as any) as any).insert({
+  payer_id: user.id,
+  profile_id: profileId,
+  amount: price,
+  type: 'profile_unlock',
+  status: 'completed',
+});
       }
       
       setTimeout(() => {
