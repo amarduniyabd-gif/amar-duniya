@@ -1,6 +1,6 @@
 "use client";
 import Link from "next/link";
-import { Home, Gavel, MessageCircle, User } from "lucide-react";
+import { Home, Gavel, MessageCircle, User, ShoppingBag } from "lucide-react";
 import { usePathname } from "next/navigation";
 import { Suspense, memo, useEffect, useState, useMemo, useCallback } from "react";
 
@@ -37,7 +37,7 @@ NavItem.displayName = 'NavItem';
 
 // ============ স্কেলেটন ============
 const Skeleton = () => (
-  <div className="md:hidden fixed bottom-0 left-0 right-0 h-16 bg-white/95 backdrop-blur-md border-t border-gray-100">
+  <div className="md:hidden fixed bottom-0 left-0 right-0 h-16 bg-white/95 backdrop-blur-md border-t border-gray-100 z-50">
     <div className="flex justify-around items-center max-w-md mx-auto h-full">
       {[...Array(5)].map((_, i) => (
         <div key={`sk-${i}`} className="w-12 h-8 bg-gray-200 rounded-lg animate-pulse" />
@@ -79,8 +79,11 @@ function BottomNavContent() {
 
     const loadUnread = async () => {
       try {
-        // ✅ ফিক্সড: সরাসরি supabase ইম্পোর্ট করা হয়েছে (পুরানো getSupabaseClient বাদ)
-        const { supabase } = await import('@/lib/supabase/client');
+        // ✅ ফিক্সড: getSupabaseClient ব্যবহার
+        const { getSupabaseClient } = await import('@/lib/supabase/client');
+        const supabase = getSupabaseClient();
+        
+        if (!supabase) return;
         
         const { data: { user } } = await supabase.auth.getUser();
         if (user) {
@@ -101,6 +104,8 @@ function BottomNavContent() {
   }, [mounted]);
 
   if (!isClient || !mounted) return <Skeleton />;
+  
+  // চ্যাট পেজের ভিতরে নেভিগেশন দেখাবে না
   if (pathname?.startsWith('/chat/')) return null;
 
   return (
@@ -117,9 +122,11 @@ function BottomNavContent() {
           />
         ))}
 
+        {/* পোস্ট দিন বাটন - মিডল */}
         <Link href="/post-ad" className="relative -mt-5 transition-transform active:scale-95">
-          <div className="bg-gradient-to-r from-[#f85606] to-orange-500 w-[60px] h-[50px] rounded-2xl shadow-xl border-[3px] border-white flex items-center justify-center hover:shadow-2xl transition-shadow">
-            <span className="text-white text-[12px] font-black uppercase tracking-tight">
+          <div className="bg-gradient-to-r from-[#f85606] to-orange-500 w-[60px] h-[50px] rounded-2xl shadow-xl border-[3px] border-white flex flex-col items-center justify-center gap-0.5 hover:shadow-2xl transition-shadow">
+            <ShoppingBag size={20} className="text-white" />
+            <span className="text-white text-[9px] font-black uppercase tracking-tight">
               পোস্ট
             </span>
           </div>

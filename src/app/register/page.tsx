@@ -6,7 +6,7 @@ import {
   Eye, EyeOff, Mail, Lock, User, Phone, ArrowLeft, 
   Loader2, CheckCircle, AlertCircle, Shield 
 } from "lucide-react";
-import { supabase } from "@/lib/supabase/client";
+import { getSupabaseClient } from "@/lib/supabase/client";
 
 export default function RegisterPage() {
   const router = useRouter();
@@ -59,10 +59,11 @@ export default function RegisterPage() {
     setError("");
 
     try {
-      const supabaseClient = supabase();
+      const supabase = getSupabaseClient();
+      if (!supabase) throw new Error("Supabase client not available");
       
       // ১. ইউজার রেজিস্টার
-      const { data: authData, error: signUpError } = await supabaseClient.auth.signUp({
+      const { data: authData, error: signUpError } = await supabase.auth.signUp({
         email: formData.email,
         password: formData.password,
         options: {
@@ -85,7 +86,7 @@ export default function RegisterPage() {
 
       if (authData.user) {
         // ২. প্রোফাইল তৈরি
-        const { error: profileError } = await supabaseClient
+        const { error: profileError } = await supabase
           .from('profiles')
           .insert({
             id: authData.user.id,

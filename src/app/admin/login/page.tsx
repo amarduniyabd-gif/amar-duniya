@@ -1,7 +1,7 @@
 "use client";
 import { useState, useEffect } from "react";
 import { Shield, Mail, Lock, Eye, EyeOff, Loader2, AlertCircle } from "lucide-react";
-import { supabase } from "@/lib/supabase/client";
+import { getSupabaseClient } from "@/lib/supabase/client";
 
 export default function AdminLogin() {
   const [email, setEmail] = useState("amarduniyabd@gmail.com");
@@ -13,8 +13,6 @@ export default function AdminLogin() {
 
   useEffect(() => {
     setMounted(true);
-    // যদি আগে থেকেই লগইন করা থাকে তবে কুকি ক্লিয়ার করে ফ্রেশ লগইন সুযোগ দেওয়া
-    // এটি রিডাইরেক্ট লুপ ভাঙতে সাহায্য করবে
   }, []);
 
   const handleLogin = async (e: React.FormEvent) => {
@@ -24,31 +22,22 @@ export default function AdminLogin() {
     setLoading(true);
     setError("");
 
-    // নিরাপত্তা টাইমার (যদি সুপাবেস ১০ সেকেন্ডেও রেসপন্স না দেয়)
-    const timer = setTimeout(() => {
-      if (loading) {
-        setLoading(false);
-        setError("সার্ভার থেকে রেসপন্স আসছে না। ইন্টারনাল নেটওয়ার্ক বা Supabase Key চেক করুন।");
-      }
-    }, 10000);
-
     try {
-      console.log("প্রচেষ্টা শুরু: ", email);
-
-      // ১. ডাটাবেস থেকে অ্যাডমিন প্রোফাইল খোঁজা
+      const supabase = getSupabaseClient();
+      if (!supabase) throw new Error("Supabase client not available");
+      
+      // admin_profiles টেবিল চেক করুন
       const { data: admin, error: dbError } = await supabase
         .from('admin_profiles')
         .select('*')
         .eq('email', email.trim())
-        .eq('password', password) // ডাটাবেসে পাসওয়ার্ড Plain Text থাকতে হবে
+        .eq('password', password)
         .single();
 
-      clearTimeout(timer);
-
       if (dbError) {
-        console.error("Supabase Error:", dbError);
-        // যদি RLS পলিসি ব্লক করে তবে এই এরর আসবে
-        if (dbError.code === "PGRST116") throw new Error("ভুল ইমেইল বা পাসওয়ার্ড!");
+        if (dbError.code === "PGRST116") {
+          throw new Error("ভুল ইমেইল বা পাসওয়ার্ড!");
+        }
         throw new Error(dbError.message || "ডাটাবেস কানেকশন এরর!");
       }
 
@@ -56,18 +45,16 @@ export default function AdminLogin() {
         throw new Error("অ্যাডমিন তথ্য পাওয়া যায়নি!");
       }
 
-      // ২. সেশন ডাটা সেট করা
+      // সেশন ডাটা সেট করা
       localStorage.setItem("adminLoggedIn", "true");
-      // কুকি সেট করার সময় আধুনিক সিকিউরিটি প্রোটোকল ব্যবহার
+      localStorage.setItem("adminEmail", email);
+      localStorage.setItem("adminName", admin.name || "Admin");
       document.cookie = `adminLoggedIn=true; path=/; max-age=86400; SameSite=Lax`;
 
-      console.log("লগইন সফল! ড্যাশবোর্ডে পাঠানো হচ্ছে...");
-
-      // ৩. সরাসরি হার্ড রিডাইরেক্ট
+      // ড্যাশবোর্ডে রিডাইরেক্ট
       window.location.replace("/admin");
       
     } catch (err: any) {
-      clearTimeout(timer);
       console.error("Login Process Error:", err);
       setError(err.message || "লগইন করতে সমস্যা হয়েছে!");
       setLoading(false);
@@ -79,7 +66,6 @@ export default function AdminLogin() {
   return (
     <div className="min-h-screen bg-[#0f172a] flex items-center justify-center p-4">
       <div className="max-w-md w-full">
-        {/* ব্র্যান্ডিং */}
         <div className="text-center mb-8">
           <div className="w-20 h-20 bg-orange-600 rounded-3xl flex items-center justify-center mx-auto shadow-2xl shadow-orange-600/20 rotate-3">
             <Shield size={42} className="text-white" />
@@ -88,11 +74,9 @@ export default function AdminLogin() {
           <p className="text-slate-400 mt-2">আমার দুনিয়া লিমিটেড অ্যাডমিন প্যানেল</p>
         </div>
 
-        {/* লগইন ফর্ম কার্ড */}
         <div className="bg-[#1e293b] rounded-3xl p-8 shadow-2xl border border-slate-700/50 backdrop-blur-xl">
           <form onSubmit={handleLogin} className="space-y-6">
             
-            {/* ইমেইল */}
             <div>
               <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-2 ml-1">Email Address</label>
               <div className="relative group">
@@ -108,7 +92,6 @@ export default function AdminLogin() {
               </div>
             </div>
 
-            {/* পাসওয়ার্ড */}
             <div>
               <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-2 ml-1">Password</label>
               <div className="relative group">
@@ -131,15 +114,13 @@ export default function AdminLogin() {
               </div>
             </div>
 
-            {/* এরর মেসেজ */}
             {error && (
-              <div className="bg-red-500/10 border border-red-500/20 rounded-2xl p-4 flex items-center gap-3 animate-in fade-in zoom-in duration-300">
+              <div className="bg-red-500/10 border border-red-500/20 rounded-2xl p-4 flex items-center gap-3">
                 <AlertCircle size={20} className="text-red-500 shrink-0" />
                 <p className="text-sm text-red-400 font-medium">{error}</p>
               </div>
             )}
 
-            {/* সাবমিট বাটন */}
             <button 
               type="submit" 
               disabled={loading} 

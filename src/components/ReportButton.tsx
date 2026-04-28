@@ -1,7 +1,7 @@
 "use client";
 import { useState, useCallback, useEffect } from "react";
 import { Flag, X, Loader2, CheckCircle, AlertCircle } from "lucide-react";
-import { supabase } from "@/lib/supabase/client";
+import { getSupabaseClient } from "@/lib/supabase/client";
 
 interface ReportButtonProps {
   postId?: string;
@@ -45,6 +45,9 @@ export default function ReportButton({
   // ইউজার আইডি লোড করুন
   useEffect(() => {
     const fetchUser = async () => {
+      const supabase = getSupabaseClient();
+      if (!supabase) return;
+      
       const { data: { user } } = await supabase.auth.getUser();
       if (user) setCurrentUserId(user.id);
     };
@@ -61,16 +64,23 @@ export default function ReportButton({
       return;
     }
 
+    if (!currentUserId) {
+      setError("রিপোর্ট করতে অনুগ্রহ করে লগইন করুন!");
+      return;
+    }
+
     setIsSubmitting(true);
     setError(null);
 
     try {
+      const supabase = getSupabaseClient();
+      if (!supabase) throw new Error("Supabase client not available");
+
       // রিপোর্ট ডাটা
       const reportData: any = {
         reporter_id: currentUserId,
         reason: selectedReason === 'other' ? `other: ${otherText}` : selectedReason,
         status: 'pending',
-        post_title: postTitle,
       };
 
       if (postId) reportData.post_id = postId;
@@ -80,18 +90,9 @@ export default function ReportButton({
       // Supabase এ সেভ
       const { error: insertError } = await supabase
         .from('reports')
-        .insert([reportData]);  // [ ] এরে আকারে পাঠাতে হবে
+        .insert([reportData]);
 
       if (insertError) throw insertError;
-
-      // লোকাল স্টোরেজেও সেভ (ফলব্যাক)
-      const reports = JSON.parse(localStorage.getItem('reports') || '[]');
-      reports.push({
-        ...reportData,
-        id: `LOCAL_${Date.now()}`,
-        created_at: new Date().toISOString(),
-      });
-      localStorage.setItem('reports', JSON.stringify(reports));
 
       // সাকসেস
       setSubmitted(true);
@@ -112,7 +113,7 @@ export default function ReportButton({
     } finally {
       setIsSubmitting(false);
     }
-  }, [selectedReason, otherText, postId, auctionId, matrimonyId, postTitle, currentUserId, onSuccess]);
+  }, [selectedReason, otherText, postId, auctionId, matrimonyId, currentUserId, onSuccess]);
 
   // মডাল ক্লোজ
   const handleClose = useCallback(() => {
@@ -128,12 +129,20 @@ export default function ReportButton({
   const getButtonStyle = () => {
     switch (variant) {
       case 'icon':
-        return "p-2 rounded-full hover:bg-red-50 transition";
+        return `p-2 rounded-full hover:bg-red-50 transition ${className}`;
       case 'text':
-        return "flex items-center gap-1 text-gray-400 hover:text-red-500 transition text-xs";
+        return `flex items-center gap-1 text-gray-400 hover:text-red-500 transition text-xs ${className}`;
       case 'full':
       default:
         return `flex items-center gap-1 text-gray-400 hover:text-red-500 transition text-xs ${className}`;
+    }
+  };
+
+  // ভ্যারিয়েন্ট অনুযায়ী বাটন সাইজ
+  const getFlagSize = () => {
+    switch (variant) {
+      case 'icon': return 16;
+      default: return 12;
     }
   };
 
@@ -144,15 +153,16 @@ export default function ReportButton({
         onClick={() => setShowModal(true)}
         className={getButtonStyle()}
         title="রিপোর্ট করুন"
+        type="button"
       >
-        <Flag size={variant === 'icon' ? 16 : 12} />
+        <Flag size={getFlagSize()} />
         {variant !== 'icon' && "রিপোর্ট করুন"}
       </button>
 
       {/* রিপোর্ট মডাল */}
       {showModal && (
         <div 
-          className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 animate-in fade-in duration-200"
+          className="fixed inset-0 bg-black/50 z-[100] flex items-center justify-center p-4 animate-in fade-in duration-200"
           onClick={handleClose}
         >
           <div 
@@ -168,6 +178,7 @@ export default function ReportButton({
                 onClick={handleClose} 
                 disabled={isSubmitting}
                 className="p-1 hover:bg-white/20 rounded-full transition"
+                type="button"
               >
                 <X size={20} />
               </button>
@@ -190,7 +201,7 @@ export default function ReportButton({
               ) : (
                 <>
                   <p className="text-sm text-gray-600 mb-4">
-                    "<span className="font-semibold text-[#f85606]">{postTitle}</span>" পোস্টটি রিপোর্ট করার কারণ নির্বাচন করুন।
+                    "<span className="font-semibold text-[#f85606]">{postTitle}</span>" {matrimonyId ? 'প্রোফাইলটি' : 'পোস্টটি'} রিপোর্ট করার কারণ নির্বাচন করুন।
                   </p>
                   
                   {/* এরর */}
@@ -201,18 +212,26 @@ export default function ReportButton({
                     </div>
                   )}
 
+                  {/* লগইন চেক */}
+                  {!currentUserId && (
+                    <div className="mb-4 bg-yellow-50 border border-yellow-200 rounded-xl p-3 text-center">
+                      <p className="text-sm text-yellow-700">রিপোর্ট করতে অনুগ্রহ করে লগইন করুন!</p>
+                    </div>
+                  )}
+
                   {/* রিজন লিস্ট */}
                   <div className="space-y-2 max-h-[300px] overflow-y-auto pr-1">
                     {reportReasons.map((reason) => (
                       <button
                         key={reason.id}
                         onClick={() => setSelectedReason(reason.id)}
-                        disabled={isSubmitting}
+                        disabled={isSubmitting || !currentUserId}
+                        type="button"
                         className={`w-full text-left p-3 rounded-xl flex items-center gap-3 transition ${
                           selectedReason === reason.id
                             ? "bg-[#f85606]/10 border border-[#f85606]"
                             : "bg-gray-50 hover:bg-gray-100 border border-transparent"
-                        }`}
+                        } ${(!currentUserId) ? "opacity-50 cursor-not-allowed" : ""}`}
                       >
                         <span className="text-xl">{reason.icon}</span>
                         <span className="text-sm flex-1">{reason.label}</span>
@@ -243,7 +262,8 @@ export default function ReportButton({
                   {/* সাবমিট বাটন */}
                   <button
                     onClick={handleSubmit}
-                    disabled={!selectedReason || isSubmitting}
+                    disabled={!selectedReason || isSubmitting || !currentUserId}
+                    type="button"
                     className="w-full bg-gradient-to-r from-[#f85606] to-orange-500 text-white py-3.5 rounded-xl font-semibold mt-5 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-md hover:shadow-lg transition active:scale-[0.99]"
                   >
                     {isSubmitting ? (

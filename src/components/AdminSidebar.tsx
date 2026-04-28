@@ -9,8 +9,8 @@ import {
   Database, Loader2
 } from "lucide-react";
 import { useState, useEffect, useCallback } from "react";
-// ✅ এখানে পরিবর্তন করা হয়েছে: getSupabaseClient এর বদলে শুধু supabase
-import { supabase } from "@/lib/supabase/client";
+// ✅ ফিক্সড: getSupabaseClient ব্যবহার করা হয়েছে
+import { getSupabaseClient } from "@/lib/supabase/client";
 
 const menuItems = [
   { href: "/admin", label: "ড্যাশবোর্ড", icon: <LayoutDashboard size={18} /> },
@@ -45,8 +45,11 @@ export default function AdminSidebar() {
     setIsLoggingOut(true);
     
     try {
-      // ✅ সরাসরি supabase ব্যবহার করা হয়েছে
-      await supabase.auth.signOut();
+      // ✅ ফিক্সড: getSupabaseClient ব্যবহার
+      const supabase = getSupabaseClient();
+      if (supabase) {
+        await supabase.auth.signOut();
+      }
       
       // কুকি ক্লিয়ার করা (লগইন লুপ বন্ধ করতে জরুরি)
       document.cookie = "adminLoggedIn=; path=/; expires=Thu, 01 Jan 1970 00:00:00 UTC;";

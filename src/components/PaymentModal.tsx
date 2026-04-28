@@ -1,9 +1,9 @@
 "use client";
 import { useState, useCallback, useEffect } from 'react';
 import { 
-  X, CreditCard, Shield, CheckCircle, AlertCircle, Loader2, ShieldCheck
+  X, CreditCard, Shield, CheckCircle, AlertCircle, Loader2
 } from 'lucide-react';
-import { supabase } from '@/lib/supabase/client';
+import { getSupabaseClient } from '@/lib/supabase/client';
 
 interface PaymentModalProps {
   isOpen: boolean;
@@ -17,10 +17,10 @@ interface PaymentModalProps {
 }
 
 const paymentMethods = [
-  { id: 'bkash', name: 'bKash', icon: '📱', color: 'bg-pink-500', bgColor: 'from-pink-500 to-pink-600' },
-  { id: 'nagad', name: 'নগদ', icon: '📱', color: 'bg-orange-500', bgColor: 'from-orange-500 to-orange-600' },
-  { id: 'rocket', name: 'রকেট', icon: '🏦', color: 'bg-purple-500', bgColor: 'from-purple-500 to-purple-600' },
-  { id: 'card', name: 'কার্ড', icon: '💳', color: 'bg-green-500', bgColor: 'from-green-500 to-green-600' },
+  { id: 'bkash', name: 'bKash', icon: '📱', bgColor: 'from-pink-500 to-pink-600' },
+  { id: 'nagad', name: 'নগদ', icon: '📱', bgColor: 'from-orange-500 to-orange-600' },
+  { id: 'rocket', name: 'রকেট', icon: '🏦', bgColor: 'from-purple-500 to-purple-600' },
+  { id: 'card', name: 'কার্ড', icon: '💳', bgColor: 'from-green-500 to-green-600' },
 ];
 
 export default function PaymentModal({ 
@@ -39,10 +39,21 @@ export default function PaymentModal({
   const [success, setSuccess] = useState(false);
   const [paymentId, setPaymentId] = useState<string | null>(null);
   const [isClient, setIsClient] = useState(false);
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
 
-  // ✅ ক্লায়েন্ট সাইড চেক - সরাসরি supabase ব্যবহার
+  // ✅ ক্লায়েন্ট সাইড চেক এবং ইউজার লোড
   useEffect(() => {
     setIsClient(true);
+    
+    const fetchUser = async () => {
+      const supabase = getSupabaseClient();
+      if (!supabase) return;
+      
+      const { data: { user } } = await supabase.auth.getUser();
+      setCurrentUserId(user?.id || null);
+    };
+    
+    fetchUser();
   }, []);
 
   // ============ পেমেন্ট সফল হ্যান্ডলার ============
@@ -53,6 +64,9 @@ export default function PaymentModal({
     userId: string | null
   ) => {
     if (!userId) return;
+    
+    const supabase = getSupabaseClient();
+    if (!supabase) return;
     
     try {
       switch (paymentType) {
@@ -89,6 +103,15 @@ export default function PaymentModal({
               });
           }
           break;
+        
+        case 'bid_security':
+          if (refId) {
+            await supabase
+              .from('auctions')
+              .update({ security_paid: true })
+              .eq('id', refId);
+          }
+          break;
       }
 
       // নোটিফিকেশন
@@ -111,23 +134,22 @@ export default function PaymentModal({
       return;
     }
     
+    if (!currentUserId) {
+      setError('পেমেন্ট করতে দয়া করে লগইন করুন');
+      return;
+    }
+    
     setIsProcessing(true);
     setError(null);
 
     try {
-      const { data: { user }, error: userError } = await supabase.auth.getUser();
+      const supabase = getSupabaseClient();
+      if (!supabase) throw new Error("Supabase client not available");
       
-      if (userError || !user) {
-        setError('পেমেন্ট করতে দয়া করে লগইন করুন');
-        setIsProcessing(false);
-        return;
-      }
-      
-      const userId = user.id;
       const transactionId = `TXN_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`;
 
       const paymentData: any = {
-        user_id: userId,
+        user_id: currentUserId,
         amount: amount,
         type: type,
         payment_method: paymentMethod,
@@ -152,17 +174,8 @@ export default function PaymentModal({
       setPaymentId(payment?.id || null);
 
       if (payment) {
-        await handlePaymentSuccess(payment.id, type, referenceId, userId);
+        await handlePaymentSuccess(payment.id, type, referenceId, currentUserId);
       }
-
-      // লোকাল স্টোরেজ ব্যাকআপ
-      const payments = JSON.parse(localStorage.getItem('payments') || '[]');
-      payments.push({
-        ...paymentData,
-        id: payment?.id || `LOCAL_${Date.now()}`,
-        created_at: new Date().toISOString(),
-      });
-      localStorage.setItem('payments', JSON.stringify(payments));
 
       setSuccess(true);
       
@@ -180,7 +193,7 @@ export default function PaymentModal({
     } finally {
       setIsProcessing(false);
     }
-  }, [isClient, amount, type, referenceId, paymentMethod, onSuccess, onClose, handlePaymentSuccess]);
+  }, [isClient, currentUserId, amount, type, referenceId, paymentMethod, onSuccess, onClose, handlePaymentSuccess]);
 
   // মডাল বন্ধ হলে স্টেট রিসেট
   const handleClose = useCallback(() => {
@@ -242,6 +255,13 @@ export default function PaymentModal({
               </div>
             )}
 
+            {/* লগইন চেক */}
+            {!currentUserId && (
+              <div className="mb-4 bg-yellow-50 border border-yellow-200 rounded-xl p-3 text-center">
+                <p className="text-sm text-yellow-700">পেমেন্ট করতে অনুগ্রহ করে লগইন করুন!</p>
+              </div>
+            )}
+
             {/* পেমেন্ট মেথড */}
             <div className="space-y-2">
               <p className="text-xs font-medium text-gray-600 mb-2">পেমেন্ট মেথড সিলেক্ট করুন</p>
@@ -249,12 +269,12 @@ export default function PaymentModal({
                 <button
                   key={method.id}
                   onClick={() => setPaymentMethod(method.id)}
-                  disabled={isProcessing}
+                  disabled={isProcessing || !currentUserId}
                   className={`w-full flex items-center justify-between p-3 border rounded-xl transition ${
                     paymentMethod === method.id 
                       ? "border-[#f85606] bg-orange-50 shadow-sm" 
                       : "border-gray-200 hover:border-gray-300"
-                  }`}
+                  } ${(!currentUserId) ? "opacity-50 cursor-not-allowed" : ""}`}
                 >
                   <div className="flex items-center gap-3">
                     <div className={`w-8 h-8 bg-gradient-to-r ${method.bgColor} rounded-lg flex items-center justify-center text-white text-sm font-bold shadow-sm`}>
@@ -272,7 +292,7 @@ export default function PaymentModal({
             {/* পেমেন্ট বাটন */}
             <button 
               onClick={handlePayment} 
-              disabled={isProcessing || !isClient}
+              disabled={isProcessing || !isClient || !currentUserId}
               className="w-full mt-5 bg-gradient-to-r from-[#f85606] to-orange-500 text-white py-3.5 rounded-xl font-semibold flex items-center justify-center gap-2 shadow-md hover:shadow-lg transition disabled:opacity-50 active:scale-[0.99]"
             >
               {isProcessing ? (
