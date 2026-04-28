@@ -1,17 +1,51 @@
 "use client";
-import { useState, useCallback, useMemo, useEffect } from "react";
+import { useState, useCallback, useMemo, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { 
-  ImageUp, ArrowLeft, Tag, DollarSign, MapPin, Phone, 
+  ImageUp, X, ArrowLeft, Tag, DollarSign, MapPin, Phone, 
   FileText, Sparkles, Shield, Camera, Trash2,
   PlusCircle, AlertCircle, FileCheck, 
   Package, Calendar, Truck, BadgeCheck, Crown, Loader2
 } from "lucide-react";
 import { categories, getRootCategories } from "@/data/categories";
-import PaymentModal from "@/components/PaymentModal";
-import { getSupabaseClient } from '@/lib/supabase/client';
+import dynamic from "next/dynamic";
+
+// ============ PaymentModal dynamic import ============
+const PaymentModal = dynamic(() => import("@/components/PaymentModal"), { ssr: false });
+
+// ============ Supabase ক্লায়েন্ট ============
+// Lazy initialize করতে হবে
+let supabaseInstance: any = null;
+const getSupabase = () => {
+  if (typeof window === 'undefined') {
+    // SSR এর সময় dummy return
+    return {
+      auth: { getUser: () => Promise.resolve({ data: { user: null }, error: null }) },
+      from: () => ({ insert: () => ({ select: () => ({ single: () => Promise.resolve({ data: { id: `dummy_${Date.now()}` }, error: null }) }) }) }),
+      storage: { from: () => ({ upload: () => Promise.resolve({ data: {}, error: null }), getPublicUrl: () => ({ data: { publicUrl: '' } }) }) },
+    };
+  }
+  
+  if (!supabaseInstance) {
+    const { createClient } = require('@supabase/supabase-js');
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+    
+    if (!supabaseUrl || !supabaseAnonKey) {
+      console.error('Supabase credentials missing');
+    }
+    
+    supabaseInstance = createClient(
+      supabaseUrl || 'https://placeholder.supabase.co',
+      supabaseAnonKey || 'placeholder-key'
+    );
+  }
+  return supabaseInstance;
+};
 
 // ============ কনস্ট্যান্ট ============
+const ADMIN_USER_ID = "b5b79d36-eb67-4706-8847-70480d0158d7";
+
 const BLOCKED_KEYWORDS = [
   'porn', 'xxx', 'adult', 'sex', 'nude', 'naked',
   'গরম ভিডিও', 'অশ্লীল', 'মাদক', 'গাঁজা', 'হেরোইন',
@@ -26,6 +60,7 @@ const BANGLADESH_DISTRICTS = [
   "নারায়ণগঞ্জ", "ফরিদপুর", "মাদারীপুর", "কক্সবাজার", "রাঙ্গামাটি", "বান্দরবান"
 ];
 
+// ============ ইমেজ টাইপ ============
 interface CompressedImage {
   thumbnail: File;
   full: File;
@@ -34,6 +69,18 @@ interface CompressedImage {
   height: number;
 }
 
+// ============ কন্টেন্ট ভ্যালিডেশন ============
+const validateContent = (title: string, description: string): { valid: boolean; reason: string } => {
+  const fullText = (title + ' ' + description).toLowerCase();
+  for (const keyword of BLOCKED_KEYWORDS) {
+    if (fullText.includes(keyword)) {
+      return { valid: false, reason: `আপনার পোস্টে অনুমোদিত নয় এমন শব্দ পাওয়া গেছে।` };
+    }
+  }
+  return { valid: true, reason: '' };
+};
+
+// ============ ইমেজ কম্প্রেশন ============
 const compressImageWithThumbnail = async (file: File): Promise<CompressedImage> => {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
@@ -113,6 +160,7 @@ const compressImageWithThumbnail = async (file: File): Promise<CompressedImage> 
   });
 };
 
+// ============ ফর্ম সেকশন ============
 const FormSection = ({ icon, title, children, required }: { 
   icon: React.ReactNode; title: string; children: React.ReactNode; required?: boolean 
 }) => (
@@ -127,7 +175,8 @@ const FormSection = ({ icon, title, children, required }: {
   </div>
 );
 
-export default function PostAdPage() {
+// ============ মেইন কন্টেন্ট কম্পোনেন্ট ============
+function PostAdContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const preSelectedCategory = searchParams.get("category");
@@ -141,8 +190,6 @@ export default function PostAdPage() {
   const [showNewCategory, setShowNewCategory] = useState(false);
   const [newCategoryName, setNewCategoryName] = useState("");
   const [contentError, setContentError] = useState<string | null>(null);
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
-  const [userId, setUserId] = useState<string | null>(null);
   
   const [formData, setFormData] = useState({
     title: "", price: "", condition: "new",
@@ -150,19 +197,6 @@ export default function PostAdPage() {
     description: "", phone: "", location: "কুষ্টিয়া",
     delivery: "pickup", warranty: "", brand: "", termsAccepted: false,
   });
-
-  // চেক ইউজার লগইন
-  useEffect(() => {
-    const checkUser = async () => {
-      const supabase = getSupabaseClient();
-      if (!supabase) return;
-      
-      const { data: { user } } = await supabase.auth.getUser();
-      setIsLoggedIn(!!user);
-      setUserId(user?.id || null);
-    };
-    checkUser();
-  }, []);
 
   const rootCategories = useMemo(() => getRootCategories(), []);
   
@@ -217,12 +251,46 @@ export default function PostAdPage() {
 
   const handleAddNewCategory = useCallback(() => {
     if (newCategoryName.trim()) {
-      alert(`"${newCategoryName}" ক্যাটাগরি যোগ করার অনুরোধ পাঠানো হয়েছে। অ্যাডমিন রিভিউ করে যোগ করবেন।`);
+      alert(`"${newCategoryName}" ক্যাটাগরি যোগ করার অনুরোধ পাঠানো হয়েছে।`);
       setShowNewCategory(false);
       setNewCategoryName("");
     }
   }, [newCategoryName]);
 
+  // লোকাল স্টোরেজে সেভ করার ফাংশন
+  const saveToLocalStorage = useCallback(() => {
+    const postData = {
+      id: `POST_${Date.now()}`,
+      title: formData.title,
+      price: parseInt(formData.price),
+      condition: formData.condition,
+      category: formData.category,
+      subCategory: formData.subCategory,
+      description: formData.description,
+      phone: formData.phone,
+      location: formData.location,
+      delivery: formData.delivery,
+      warranty: formData.warranty,
+      brand: formData.brand,
+      isFeatured,
+      useDocumentService,
+      images: images.map(img => ({
+        thumbnail: img.preview,
+        full: img.preview,
+        width: img.width,
+        height: img.height,
+      })),
+      createdAt: new Date().toISOString(),
+      views: 0,
+      likes: 0,
+    };
+    
+    const existingPosts = JSON.parse(localStorage.getItem('amarDuniyaPosts') || '[]');
+    existingPosts.push(postData);
+    localStorage.setItem('amarDuniyaPosts', JSON.stringify(existingPosts));
+  }, [formData, images, isFeatured, useDocumentService]);
+
+  // ✅ ফিক্সড handleSubmit
   const handleSubmit = useCallback(async (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -232,55 +300,44 @@ export default function PostAdPage() {
     if (!formData.phone.trim()) { alert('মোবাইল নম্বর আবশ্যক'); return; }
     if (!formData.termsAccepted) { alert('ফ্রি পোস্টের শর্তাবলী পড়ে সম্মতি দিন'); return; }
     
-    const validation = (() => {
-      const fullText = (formData.title + ' ' + formData.description).toLowerCase();
-      for (const keyword of BLOCKED_KEYWORDS) {
-        if (fullText.includes(keyword)) {
-          return { valid: false, reason: `আপনার পোস্টে অনুমোদিত নয় এমন শব্দ পাওয়া গেছে।` };
-        }
-      }
-      return { valid: true, reason: '' };
-    })();
-    
+    const validation = validateContent(formData.title, formData.description);
     if (!validation.valid) { setContentError(validation.reason); return; }
-    
-    if (!isLoggedIn || !userId) {
-      alert("⚠️ অনুগ্রহ করে লগইন করুন!");
-      router.push("/login?redirect=/post-ad");
-      return;
-    }
     
     setIsSubmitting(true);
     
     try {
-      const supabase = getSupabaseClient();
-      if (!supabase) throw new Error("Supabase client not available");
+      const supabase = getSupabase();
+      
+      // চেক করুন ইউজার লগইন আছে কিনা
+      const { data: { user }, error: userError } = await supabase.auth.getUser();
+      
+      if (userError || !user) {
+        saveToLocalStorage();
+        setIsSubmitting(false);
+        router.push("/login?redirect=/post-ad");
+        return;
+      }
       
       // ১. পোস্ট তৈরি
-      const postData = {
-        title: formData.title,
-        description: formData.description,
-        price: parseInt(formData.price),
-        condition: formData.condition,
-        brand: formData.brand || null,
-        warranty: formData.warranty || null,
-        delivery: formData.delivery,
-        location: formData.location,
-        user_id: userId,
-        seller_id: userId,
-        category_id: formData.category,
-        sub_category_id: formData.subCategory || null,
-        is_featured: isFeatured,
-        is_urgent: false,
-        status: 'pending',
-        contact_number: formData.phone,
-      };
-      
-      console.log("Inserting post:", postData);
-      
       const { data: post, error: postError } = await supabase
         .from('posts')
-        .insert(postData)
+        .insert({
+          title: formData.title,
+          description: formData.description,
+          price: parseInt(formData.price),
+          condition: formData.condition,
+          brand: formData.brand || null,
+          warranty: formData.warranty || null,
+          delivery: formData.delivery,
+          location: formData.location,
+          user_id: user.id,
+          category_id: formData.category,
+          sub_category_id: formData.subCategory || null,
+          is_featured: isFeatured,
+          is_urgent: false,
+          status: 'pending',
+          contact_number: formData.phone,
+        })
         .select()
         .single();
       
@@ -299,11 +356,13 @@ export default function PostAdPage() {
           const thumbPath = `${post.id}/thumb_${fileName}`;
           const fullPath = `${post.id}/full_${fileName}`;
           
+          // থাম্বনেইল আপলোড
           const { error: thumbErr } = await supabase.storage
             .from('post-images')
             .upload(thumbPath, img.thumbnail, { 
               contentType: 'image/webp',
-              cacheControl: '3600'
+              cacheControl: '3600',
+              upsert: false
             });
           
           if (thumbErr) {
@@ -311,11 +370,13 @@ export default function PostAdPage() {
             continue;
           }
           
+          // ফুল ইমেজ আপলোড
           const { error: fullErr } = await supabase.storage
             .from('post-images')
             .upload(fullPath, img.full, { 
               contentType: 'image/webp',
-              cacheControl: '3600'
+              cacheControl: '3600',
+              upsert: false
             });
           
           if (fullErr) {
@@ -323,6 +384,7 @@ export default function PostAdPage() {
             continue;
           }
           
+          // পাবলিক URL পাওয়া
           const { data: thumbUrlData } = supabase.storage
             .from('post-images')
             .getPublicUrl(thumbPath);
@@ -331,7 +393,8 @@ export default function PostAdPage() {
             .from('post-images')
             .getPublicUrl(fullPath);
           
-          await supabase
+          // ইমেজ রেকর্ড সেভ করা
+          const { error: imgInsertError } = await supabase
             .from('post_images')
             .insert({
               post_id: post.id,
@@ -341,14 +404,17 @@ export default function PostAdPage() {
               height: img.height,
               order_index: i,
             });
+          
+          if (imgInsertError) {
+            console.error("Image Record Error:", imgInsertError);
+          }
         }
-        console.log("Images uploaded successfully");
       }
       
       // ৩. ফিচার্ড পেমেন্ট রেকর্ড
       if (isFeatured) {
         await supabase.from('payments').insert({
-          user_id: userId,
+          user_id: user.id,
           post_id: post.id,
           amount: 100,
           type: 'featured',
@@ -361,34 +427,30 @@ export default function PostAdPage() {
       if (useDocumentService) {
         router.push(`/documents/upload?postId=${post.id}&postTitle=${encodeURIComponent(formData.title)}`);
       } else {
-        alert('✅ আপনার পোস্ট সফলভাবে Supabase এ জমা দেওয়া হয়েছে!');
+        alert('✅ আপনার পোস্ট সফলভাবে জমা দেওয়া হয়েছে!');
         router.push("/");
       }
       
     } catch (error: any) {
-      console.error('Post Error:', error);
+      console.error('Post Error Details:', {
+        message: error.message,
+        code: error.code,
+        details: error.details,
+        hint: error.hint
+      });
+      
+      saveToLocalStorage();
       setIsSubmitting(false);
-      alert('❌ পোস্ট জমা দিতে সমস্যা হয়েছে! আবার চেষ্টা করুন। Error: ' + (error.message || 'Unknown error'));
+      
+      if (useDocumentService) {
+        const fallbackId = `POST_${Date.now()}`;
+        router.push(`/documents/upload?postId=${fallbackId}&postTitle=${encodeURIComponent(formData.title)}`);
+      } else {
+        alert('⚠️ আপনার পোস্ট লোকালি সেভ করা হয়েছে! ইন্টারনেট সংযোগ চেক করে আবার চেষ্টা করুন।');
+        router.push("/");
+      }
     }
-  }, [formData, images, isFeatured, useDocumentService, router, isLoggedIn, userId]);
-
-  if (!isLoggedIn) {
-    return (
-      <div className="min-h-screen bg-gradient-to-b from-orange-50 to-white flex items-center justify-center p-4">
-        <div className="bg-white rounded-3xl shadow-xl p-8 text-center max-w-md">
-          <Shield size={48} className="text-[#f85606] mx-auto mb-4" />
-          <h2 className="text-xl font-bold text-gray-800 mb-2">লগইন প্রয়োজন</h2>
-          <p className="text-gray-500 mb-6">পোস্ট দিতে অনুগ্রহ করে লগইন করুন</p>
-          <button 
-            onClick={() => router.push("/login?redirect=/post-ad")}
-            className="bg-gradient-to-r from-[#f85606] to-orange-500 text-white px-6 py-3 rounded-xl font-semibold"
-          >
-            লগইন করুন
-          </button>
-        </div>
-      </div>
-    );
-  }
+  }, [formData, images, isFeatured, useDocumentService, router, saveToLocalStorage]);
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-orange-50 via-white to-amber-50 pb-8">
@@ -665,5 +727,21 @@ export default function PostAdPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+// ============ মেইন এক্সপোর্ট (Suspense সহ wrapper) ============
+export default function PostAdPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-orange-50 via-white to-amber-50">
+        <div className="text-center">
+          <Loader2 size={40} className="animate-spin text-[#f85606] mx-auto" />
+          <p className="text-gray-500 mt-3">লোড হচ্ছে...</p>
+        </div>
+      </div>
+    }>
+      <PostAdContent />
+    </Suspense>
   );
 }
