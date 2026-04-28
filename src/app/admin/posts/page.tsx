@@ -2,7 +2,7 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import AdminSidebar from "@/components/AdminSidebar";
-import { getSupabaseClient } from '@/lib/supabase/client'; 
+import { supabase } from '@/lib/supabase/client'; 
 import { Search, CheckCircle, XCircle, Trash2, Edit2, RefreshCw } from "lucide-react";
 
 // UI এর জন্য কাস্টম টাইপ
@@ -39,42 +39,41 @@ export default function AdminPosts() {
   const [selectedPosts, setSelectedPosts] = useState<string[]>([]); 
   const [bulkAction, setBulkAction] = useState("");
 
-  const supabase = getSupabaseClient();
+  const supabaseClient = supabase();
 
-  // ১. ডাটা ফেচিং এবং ইমেজ ইউআরএল জেনারেশন
+  // ১. ডাটা ফেচিং
   const fetchPosts = async () => {
     setLoading(true);
     try {
-      const { data, error } = await supabase
-        .from('posts' as any)
-        .select(`*, post_images (image_url)`)
+      const { data, error } = await supabaseClient
+        .from('posts')
+        .select(`
+          *,
+          post_images (thumbnail_url, full_url)
+        `)
         .order('created_at', { ascending: false });
 
-      if (!error && data) {
-        const formattedPosts: Post[] = (data as any[]).map((p) => ({
+      if (error) throw error;
+
+      if (data) {
+        const formattedPosts: Post[] = data.map((p: any) => ({
           id: p.id,
           title: p.title || '',
-          seller: p.user_email || "ইউজার", 
+          seller: p.user_id?.slice(0, 8) || "ইউজার", 
           sellerId: p.user_id,
           price: p.price || 0,
-          category: p.category || p.category_id || '', 
-          subCategory: p.sub_category || '',
+          category: p.category_id || '', 
+          subCategory: p.sub_category_id || '',
           status: p.status || 'pending',
           date: new Date(p.created_at).toLocaleDateString('en-CA'),
-          // ইমেজ ইউআরএল ফিক্স: সুপাবেস স্টোরেজ লিঙ্ক তৈরি করা হচ্ছে
-          images: p.post_images?.map((img: any) => {
-            const url = img.image_url;
-            return url?.startsWith('http') 
-              ? url 
-              : `https://nryqoyqdwxqdydifatzb.supabase.co/storage/v1/object/public/post-images/${url}`;
-          }) || [],
+          images: p.post_images?.map((img: any) => img.thumbnail_url) || [],
           description: p.description || '',
           location: p.location || '',
           condition: p.condition || 'new',
           brand: p.brand || '',
           warranty: p.warranty || '',
-          featured: p.featured || false,
-          urgent: p.urgent || p.is_urgent || false,
+          featured: p.is_featured || false,
+          urgent: p.is_urgent || false,
         }));
         setPosts(formattedPosts);
       }
@@ -95,25 +94,26 @@ export default function AdminPosts() {
     if (isLoggedIn) fetchPosts();
   }, [isLoggedIn]);
 
-  // ২. স্ট্যাটাস আপডেট ফিক্স (এপ্রুভ/রিজেক্ট বাটন)
+  // ২. স্ট্যাটাস আপডেট
   const updateStatus = async (id: string, status: 'pending' | 'approved' | 'rejected') => {
-    const { error } = await (supabase.from('posts' as any) as any)
-      .update({ status: status } as any)
+    const { error } = await supabaseClient
+      .from('posts')
+      .update({ status: status })
       .eq('id', id);
 
     if (!error) {
       setPosts(posts.map(p => p.id === id ? { ...p, status } : p));
       alert(`পোস্টটি সফলভাবে ${status === 'approved' ? 'অনুমোদন' : 'বাতিল'} করা হয়েছে!`);
     } else {
-      console.error(error.message);
+      console.error(error);
       alert("আপডেট ব্যর্থ হয়েছে!");
     }
   };
 
-  // ৩. ডিলিট পোস্ট ফিক্স
+  // ৩. ডিলিট পোস্ট
   const deletePost = async (id: string) => {
     if (!confirm("আপনি কি নিশ্চিতভাবে এই পোস্টটি চিরতরে ডিলিট করতে চান?")) return;
-    const { error } = await (supabase.from('posts' as any) as any).delete().eq('id', id);
+    const { error } = await supabaseClient.from('posts').delete().eq('id', id);
     if (!error) {
       setPosts(posts.filter(p => p.id !== id));
       alert("পোস্টটি মুছে ফেলা হয়েছে!");
@@ -122,7 +122,8 @@ export default function AdminPosts() {
 
   // ৪. এডিট পোস্ট সেভ
   const handleUpdatePost = async (updatedPost: Post) => {
-    const { error } = await (supabase.from('posts' as any) as any)
+    const { error } = await supabaseClient
+      .from('posts')
       .update({
         title: updatedPost.title,
         price: updatedPost.price,
@@ -131,7 +132,7 @@ export default function AdminPosts() {
         condition: updatedPost.condition,
         brand: updatedPost.brand,
         warranty: updatedPost.warranty
-      } as any)
+      })
       .eq('id', updatedPost.id);
 
     if (!error) {
@@ -141,18 +142,17 @@ export default function AdminPosts() {
     }
   };
 
-  // ৫. বাল্ক অ্যাকশন ফিক্স
+  // ৫. বাল্ক অ্যাকশন
   const handleBulkAction = async () => {
     if (selectedPosts.length === 0 || !bulkAction) return;
-    const table = supabase.from('posts' as any) as any;
     
     if (bulkAction === "delete") {
       if (!confirm(`${selectedPosts.length}টি পোস্ট ডিলিট হবে। নিশ্চিত?`)) return;
-      const { error } = await table.delete().in('id', selectedPosts);
+      const { error } = await supabaseClient.from('posts').delete().in('id', selectedPosts);
       if (!error) setPosts(posts.filter(p => !selectedPosts.includes(p.id)));
     } else {
       const newStatus = bulkAction === "approve" ? "approved" : "rejected";
-      const { error } = await table.update({ status: newStatus } as any).in('id', selectedPosts);
+      const { error } = await supabaseClient.from('posts').update({ status: newStatus }).in('id', selectedPosts);
       if (!error) {
         setPosts(posts.map(p => selectedPosts.includes(p.id) ? { ...p, status: newStatus as any } : p));
         alert("বাল্ক অ্যাকশন সফল হয়েছে!");
@@ -168,18 +168,33 @@ export default function AdminPosts() {
     return matchesSearch && matchesStatus;
   });
 
-  if (loading) return <div className="h-screen flex items-center justify-center"><RefreshCw className="animate-spin text-[#f85606]" size={32} /></div>;
+  if (loading) {
+    return (
+      <div className="h-screen flex items-center justify-center">
+        <RefreshCw className="animate-spin text-[#f85606]" size={32} />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gray-50 flex">
-      <div className="w-64 hidden md:block border-r bg-white h-screen sticky top-0"><AdminSidebar /></div>
+      <div className="w-64 hidden md:block border-r bg-white h-screen sticky top-0">
+        <AdminSidebar />
+      </div>
       <div className="flex-1 flex flex-col">
         <header className="h-16 bg-white border-b px-6 flex items-center justify-between sticky top-0 z-20">
           <h1 className="text-lg font-bold">পোস্ট ম্যানেজমেন্ট ({filteredPosts.length})</h1>
           <div className="flex gap-2">
-            <button onClick={fetchPosts} className="p-2 hover:bg-gray-100 rounded-lg"><RefreshCw size={20}/></button>
+            <button onClick={fetchPosts} className="p-2 hover:bg-gray-100 rounded-lg">
+              <RefreshCw size={20}/>
+            </button>
             {selectedPosts.length > 0 && (
-              <button onClick={() => setShowBulkModal(true)} className="bg-[#f85606] text-white px-4 py-2 rounded-lg text-sm font-bold shadow-sm">বাল্ক অ্যাকশন ({selectedPosts.length})</button>
+              <button 
+                onClick={() => setShowBulkModal(true)} 
+                className="bg-[#f85606] text-white px-4 py-2 rounded-lg text-sm font-bold shadow-sm"
+              >
+                বাল্ক অ্যাকশন ({selectedPosts.length})
+              </button>
             )}
           </div>
         </header>
@@ -190,12 +205,18 @@ export default function AdminPosts() {
             <div className="relative">
               <Search className="absolute left-3 top-2.5 text-gray-400" size={18} />
               <input 
-                type="text" placeholder="পণ্যের নাম বা বিক্রেতা দিয়ে সার্চ করুন..." 
+                type="text" 
+                placeholder="পণ্যের নাম বা বিক্রেতা দিয়ে সার্চ করুন..." 
                 className="w-full pl-10 pr-4 py-2.5 border rounded-xl outline-none focus:ring-2 focus:ring-[#f85606] transition-all"
-                value={search} onChange={(e) => setSearch(e.target.value)} 
+                value={search} 
+                onChange={(e) => setSearch(e.target.value)} 
               />
             </div>
-            <select className="border rounded-xl px-4 py-2 bg-white outline-none focus:ring-2 focus:ring-[#f85606]" value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
+            <select 
+              className="border rounded-xl px-4 py-2 bg-white outline-none focus:ring-2 focus:ring-[#f85606]" 
+              value={statusFilter} 
+              onChange={(e) => setStatusFilter(e.target.value)}
+            >
               <option value="all">সব স্ট্যাটাস</option>
               <option value="pending">⏳ পেন্ডিং</option>
               <option value="approved">✅ অনুমোদিত</option>
@@ -210,7 +231,11 @@ export default function AdminPosts() {
                 <thead className="bg-gray-50 border-b text-xs font-bold text-gray-500 uppercase">
                   <tr>
                     <th className="p-4 w-10">
-                       <input type="checkbox" className="rounded" onChange={(e) => e.target.checked ? setSelectedPosts(filteredPosts.map(p=>p.id)) : setSelectedPosts([])} />
+                      <input 
+                        type="checkbox" 
+                        className="rounded" 
+                        onChange={(e) => e.target.checked ? setSelectedPosts(filteredPosts.map(p=>p.id)) : setSelectedPosts([])} 
+                      />
                     </th>
                     <th className="p-4">পণ্য</th>
                     <th className="p-4">মূল্য</th>
@@ -221,12 +246,20 @@ export default function AdminPosts() {
                 <tbody className="divide-y divide-gray-100">
                   {filteredPosts.map(post => (
                     <tr key={post.id} className="hover:bg-orange-50/20 transition-colors">
-                      <td className="p-4 text-center">
-                        <input type="checkbox" className="rounded text-[#f85606]" checked={selectedPosts.includes(post.id)} onChange={() => setSelectedPosts(prev => prev.includes(post.id) ? prev.filter(i=>i!==post.id) : [...prev, post.id])} />
+                      <td className="p-4">
+                        <input 
+                          type="checkbox" 
+                          className="rounded text-[#f85606]" 
+                          checked={selectedPosts.includes(post.id)} 
+                          onChange={() => setSelectedPosts(prev => 
+                            prev.includes(post.id) 
+                              ? prev.filter(i=>i!==post.id) 
+                              : [...prev, post.id]
+                          )} 
+                        />
                       </td>
                       <td className="p-4">
                         <div className="flex items-center gap-3">
-                          {/* ইমেজ ইউআরএল হ্যান্ডলিং */}
                           <img 
                             src={post.images[0] || 'https://via.placeholder.com/150'} 
                             alt={post.title} 
@@ -241,16 +274,46 @@ export default function AdminPosts() {
                       </td>
                       <td className="p-4 font-black text-[#f85606]">৳{post.price.toLocaleString()}</td>
                       <td className="p-4">
-                        <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold ${post.status === 'approved' ? 'bg-green-100 text-green-700' : post.status === 'rejected' ? 'bg-red-100 text-red-700' : 'bg-yellow-100 text-yellow-700'}`}>
+                        <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold ${
+                          post.status === 'approved' 
+                            ? 'bg-green-100 text-green-700' 
+                            : post.status === 'rejected' 
+                              ? 'bg-red-100 text-red-700' 
+                              : 'bg-yellow-100 text-yellow-700'
+                        }`}>
                           {post.status.toUpperCase()}
                         </span>
                       </td>
                       <td className="p-4">
                         <div className="flex justify-center gap-2">
-                          <button onClick={() => updateStatus(post.id, 'approved')} className="text-green-600 hover:bg-green-50 p-2 rounded-lg" title="অনুমোদন"><CheckCircle size={18}/></button>
-                          <button onClick={() => updateStatus(post.id, 'rejected')} className="text-red-600 hover:bg-red-50 p-2 rounded-lg" title="বাতিল"><XCircle size={18}/></button>
-                          <button onClick={() => { setEditPost(post); setShowEditModal(true); }} className="text-blue-600 hover:bg-blue-50 p-2 rounded-lg" title="এডিট"><Edit2 size={18}/></button>
-                          <button onClick={() => deletePost(post.id)} className="text-gray-400 hover:text-red-600 p-2 rounded-lg" title="ডিলিট"><Trash2 size={18}/></button>
+                          <button 
+                            onClick={() => updateStatus(post.id, 'approved')} 
+                            className="text-green-600 hover:bg-green-50 p-2 rounded-lg" 
+                            title="অনুমোদন"
+                          >
+                            <CheckCircle size={18}/>
+                          </button>
+                          <button 
+                            onClick={() => updateStatus(post.id, 'rejected')} 
+                            className="text-red-600 hover:bg-red-50 p-2 rounded-lg" 
+                            title="বাতিল"
+                          >
+                            <XCircle size={18}/>
+                          </button>
+                          <button 
+                            onClick={() => { setEditPost(post); setShowEditModal(true); }} 
+                            className="text-blue-600 hover:bg-blue-50 p-2 rounded-lg" 
+                            title="এডিট"
+                          >
+                            <Edit2 size={18}/>
+                          </button>
+                          <button 
+                            onClick={() => deletePost(post.id)} 
+                            className="text-gray-400 hover:text-red-600 p-2 rounded-lg" 
+                            title="ডিলিট"
+                          >
+                            <Trash2 size={18}/>
+                          </button>
                         </div>
                       </td>
                     </tr>
@@ -259,7 +322,9 @@ export default function AdminPosts() {
               </table>
             </div>
             {filteredPosts.length === 0 && (
-              <div className="p-20 text-center text-gray-400">কোন পোস্ট পাওয়া যায়নি!</div>
+              <div className="p-20 text-center text-gray-400">
+                কোন পোস্ট পাওয়া যায়নি!
+              </div>
             )}
           </div>
         </main>
@@ -268,24 +333,50 @@ export default function AdminPosts() {
       {/* এডিট মোডাল */}
       {showEditModal && editPost && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl p-8 w-full max-w-md shadow-2xl animate-in fade-in zoom-in duration-200">
-            <h2 className="text-xl font-black text-gray-800 mb-6 flex items-center gap-2">📝 পোস্ট এডিট করুন</h2>
+          <div className="bg-white rounded-3xl p-8 w-full max-w-md shadow-2xl">
+            <h2 className="text-xl font-black text-gray-800 mb-6 flex items-center gap-2">
+              📝 পোস্ট এডিট করুন
+            </h2>
             <div className="space-y-4">
-              <div className="space-y-1">
+              <div>
                 <label className="text-xs font-bold text-gray-400 ml-1">টাইটেল</label>
-                <input className="w-full border border-gray-100 p-3 rounded-2xl outline-none focus:ring-2 focus:ring-[#f85606] transition-all" value={editPost.title} onChange={(e) => setEditPost({...editPost, title: e.target.value})} />
+                <input 
+                  className="w-full border border-gray-200 p-3 rounded-2xl outline-none focus:ring-2 focus:ring-[#f85606]" 
+                  value={editPost.title} 
+                  onChange={(e) => setEditPost({...editPost, title: e.target.value})} 
+                />
               </div>
-              <div className="space-y-1">
+              <div>
                 <label className="text-xs font-bold text-gray-400 ml-1">মূল্য</label>
-                <input type="number" className="w-full border border-gray-100 p-3 rounded-2xl outline-none focus:ring-2 focus:ring-[#f85606] transition-all" value={editPost.price} onChange={(e) => setEditPost({...editPost, price: Number(e.target.value)})} />
+                <input 
+                  type="number" 
+                  className="w-full border border-gray-200 p-3 rounded-2xl outline-none focus:ring-2 focus:ring-[#f85606]" 
+                  value={editPost.price} 
+                  onChange={(e) => setEditPost({...editPost, price: Number(e.target.value)})} 
+                />
               </div>
-              <div className="space-y-1">
+              <div>
                 <label className="text-xs font-bold text-gray-400 ml-1">বিবরণ</label>
-                <textarea rows={3} className="w-full border border-gray-100 p-3 rounded-2xl outline-none focus:ring-2 focus:ring-[#f85606] transition-all" value={editPost.description} onChange={(e) => setEditPost({...editPost, description: e.target.value})} />
+                <textarea 
+                  rows={3} 
+                  className="w-full border border-gray-200 p-3 rounded-2xl outline-none focus:ring-2 focus:ring-[#f85606]" 
+                  value={editPost.description} 
+                  onChange={(e) => setEditPost({...editPost, description: e.target.value})} 
+                />
               </div>
               <div className="flex gap-3 pt-4">
-                <button onClick={() => handleUpdatePost(editPost)} className="flex-1 bg-[#f85606] text-white py-3.5 rounded-2xl font-bold shadow-lg shadow-orange-200 active:scale-95 transition-all">আপডেট</button>
-                <button onClick={() => setShowEditModal(false)} className="flex-1 bg-gray-100 text-gray-500 py-3.5 rounded-2xl font-bold hover:bg-gray-200 transition-all">বাতিল</button>
+                <button 
+                  onClick={() => handleUpdatePost(editPost)} 
+                  className="flex-1 bg-[#f85606] text-white py-3.5 rounded-2xl font-bold shadow-lg active:scale-95 transition-all"
+                >
+                  আপডেট
+                </button>
+                <button 
+                  onClick={() => setShowEditModal(false)} 
+                  className="flex-1 bg-gray-100 text-gray-500 py-3.5 rounded-2xl font-bold hover:bg-gray-200 transition-all"
+                >
+                  বাতিল
+                </button>
               </div>
             </div>
           </div>
@@ -297,16 +388,31 @@ export default function AdminPosts() {
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-3xl p-8 w-full max-w-sm shadow-2xl">
             <h2 className="font-black text-gray-800 text-xl mb-2 text-center">বাল্ক অ্যাকশন</h2>
-            <p className="text-center text-gray-500 text-sm mb-6">{selectedPosts.length}টি পোস্ট সিলেক্ট করা হয়েছে</p>
-            <select className="w-full border-2 border-gray-50 p-3.5 rounded-2xl mb-6 outline-none focus:border-[#f85606] font-bold text-gray-700 appearance-none bg-gray-50" onChange={(e) => setBulkAction(e.target.value)}>
+            <p className="text-center text-gray-500 text-sm mb-6">
+              {selectedPosts.length}টি পোস্ট সিলেক্ট করা হয়েছে
+            </p>
+            <select 
+              className="w-full border-2 border-gray-100 p-3.5 rounded-2xl mb-6 outline-none focus:border-[#f85606] font-bold bg-gray-50" 
+              onChange={(e) => setBulkAction(e.target.value)}
+            >
               <option value="">অ্যাকশন সিলেক্ট করুন</option>
               <option value="approve">সবগুলো অ্যাপ্রুভ করুন</option>
               <option value="reject">সবগুলো রিজেক্ট করুন</option>
               <option value="delete">সবগুলো ডিলিট করুন</option>
             </select>
             <div className="flex gap-3">
-              <button onClick={handleBulkAction} className="flex-1 bg-gray-900 text-white py-3.5 rounded-2xl font-bold active:scale-95 transition-all">প্রয়োগ করুন</button>
-              <button onClick={() => setShowBulkModal(false)} className="flex-1 bg-gray-100 text-gray-500 py-3.5 rounded-2xl font-bold">বাতিল</button>
+              <button 
+                onClick={handleBulkAction} 
+                className="flex-1 bg-gray-900 text-white py-3.5 rounded-2xl font-bold active:scale-95 transition-all"
+              >
+                প্রয়োগ করুন
+              </button>
+              <button 
+                onClick={() => setShowBulkModal(false)} 
+                className="flex-1 bg-gray-100 text-gray-500 py-3.5 rounded-2xl font-bold"
+              >
+                বাতিল
+              </button>
             </div>
           </div>
         </div>
