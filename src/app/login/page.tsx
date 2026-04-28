@@ -3,6 +3,7 @@ import { useState, useEffect, useCallback } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft, Loader2, AlertCircle, Shield, CheckCircle } from "lucide-react";
+import { supabase } from "@/lib/supabase/client"; // ✅ সরাসরি ইমপোর্ট
 
 export default function LoginPage() {
   const router = useRouter();
@@ -14,25 +15,17 @@ export default function LoginPage() {
   const [facebookLoading, setFacebookLoading] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState(registered);
-  const [supabase, setSupabase] = useState<any>(null);
-  const [mounted, setMounted] = useState(false);
 
-  // ✅ Supabase ক্লায়েন্ট লোড
+  // ✅ সেশন চেক - ইতিমধ্যে লগইন থাকলে রিডাইরেক্ট
   useEffect(() => {
-    const loadSupabase = async () => {
-      try {
-        const { getSupabaseClient } = await import('@/lib/supabase/client');
-        const client = getSupabaseClient();
-        setSupabase(client);
-      } catch (error) {
-        console.error('Failed to load Supabase:', error);
-      } finally {
-        setMounted(true);
+    const checkSession = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session) {
+        router.push(redirectTo);
       }
     };
-    
-    loadSupabase();
-  }, []);
+    checkSession();
+  }, [router, redirectTo]);
 
   // সাকসেস মেসেজ অটো হাইড
   useEffect(() => {
@@ -42,9 +35,21 @@ export default function LoginPage() {
     }
   }, [success]);
 
+  // ✅ অলরেডি লগইন চেক করার ফাংশন
+  const checkAlreadyLoggedIn = useCallback(async () => {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (session) {
+      router.push(redirectTo);
+      return true;
+    }
+    return false;
+  }, [router, redirectTo]);
+
   // Google Login
   const handleGoogleLogin = useCallback(async () => {
-    if (!supabase) return;
+    // ✅ আগে চেক করুন ইতিমধ্যে লগইন কি না
+    const isLoggedIn = await checkAlreadyLoggedIn();
+    if (isLoggedIn) return;
     
     setGoogleLoading(true);
     setError("");
@@ -54,20 +59,29 @@ export default function LoginPage() {
         provider: 'google',
         options: {
           redirectTo: `${window.location.origin}/auth/callback?redirect=${encodeURIComponent(redirectTo)}`,
+          queryParams: {
+            access_type: 'offline',
+            prompt: 'consent',
+          }
         },
       });
 
       if (error) throw error;
+      
+      // ✅ লগইন সফল হলে রিডাইরেক্ট হবে, এখানে আর কিছু করার দরকার নেই
+      
     } catch (err: any) {
       console.error('Google login error:', err);
-      setError('Google লগইন করতে সমস্যা হয়েছে!');
+      setError(err.message || 'Google লগইন করতে সমস্যা হয়েছে! আবার চেষ্টা করুন।');
       setGoogleLoading(false);
     }
-  }, [redirectTo, supabase]);
+  }, [redirectTo, checkAlreadyLoggedIn]);
 
   // Facebook Login
   const handleFacebookLogin = useCallback(async () => {
-    if (!supabase) return;
+    // ✅ আগে চেক করুন ইতিমধ্যে লগইন কি না
+    const isLoggedIn = await checkAlreadyLoggedIn();
+    if (isLoggedIn) return;
     
     setFacebookLoading(true);
     setError("");
@@ -81,20 +95,13 @@ export default function LoginPage() {
       });
 
       if (error) throw error;
+      
     } catch (err: any) {
       console.error('Facebook login error:', err);
-      setError('Facebook লগইন করতে সমস্যা হয়েছে!');
+      setError(err.message || 'Facebook লগইন করতে সমস্যা হয়েছে! আবার চেষ্টা করুন।');
       setFacebookLoading(false);
     }
-  }, [redirectTo, supabase]);
-
-  if (!mounted) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <Loader2 className="animate-spin text-[#f85606]" size={40} />
-      </div>
-    );
-  }
+  }, [redirectTo, checkAlreadyLoggedIn]);
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-orange-50 via-white to-amber-50 flex items-center justify-center p-4">
@@ -115,6 +122,11 @@ export default function LoginPage() {
             </div>
             <h1 className="text-2xl font-bold text-gray-800">আমার দুনিয়া</h1>
             <p className="text-gray-500 text-sm mt-2">লগইন করে সব ফিচার ব্যবহার করুন</p>
+            {redirectTo !== "/" && (
+              <p className="text-xs text-orange-500 mt-1">
+                লগইন完成后 {redirectTo === "/add-post" ? "পোস্ট এড" : "পছন্দের"} পেজে যাবে
+              </p>
+            )}
           </div>
 
           {success && (
@@ -167,6 +179,28 @@ export default function LoginPage() {
             )}
             {facebookLoading ? "Facebook লগইন হচ্ছে..." : "Facebook দিয়ে লগইন করুন"}
           </button>
+
+          {/* ✅ টেস্ট লগইন (ডেভেলপমেন্টের জন্য) */}
+          {process.env.NODE_ENV === 'development' && (
+            <div className="mt-4 p-3 bg-gray-50 rounded-xl border border-gray-200">
+              <p className="text-xs text-gray-500 text-center mb-2">🔧 ডেভেলপমেন্ট টেস্ট</p>
+              <button
+                type="button"
+                onClick={async () => {
+                  // টেস্ট ইমেইল লগইন (আপনার ইমেইল দিন)
+                  const { error } = await supabase.auth.signInWithPassword({
+                    email: "test@example.com",
+                    password: "password123",
+                  });
+                  if (error) setError(error.message);
+                  else router.push(redirectTo);
+                }}
+                className="w-full text-xs text-blue-500 hover:text-blue-600"
+              >
+                টেস্ট অ্যাকাউন্ট দিয়ে লগইন
+              </button>
+            </div>
+          )}
 
           <p className="text-center text-xs text-gray-400 mt-6">
             লগইন করার মাধ্যমে আপনি আমাদের{" "}
