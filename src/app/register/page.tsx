@@ -6,8 +6,7 @@ import {
   Eye, EyeOff, Mail, Lock, User, Phone, ArrowLeft, 
   Loader2, CheckCircle, AlertCircle, Shield 
 } from "lucide-react";
-import { signUp } from "@/lib/supabase/auth";
-import { createProfile } from "@/lib/supabase/auth";
+import { supabase } from "@/lib/supabase/client";
 
 export default function RegisterPage() {
   const router = useRouter();
@@ -60,7 +59,19 @@ export default function RegisterPage() {
     setError("");
 
     try {
-      const { data, error: signUpError } = await signUp(formData.email, formData.password, formData.name);
+      const supabaseClient = supabase();
+      
+      // ১. ইউজার রেজিস্টার
+      const { data: authData, error: signUpError } = await supabaseClient.auth.signUp({
+        email: formData.email,
+        password: formData.password,
+        options: {
+          data: {
+            name: formData.name,
+            phone: formData.phone,
+          }
+        }
+      });
 
       if (signUpError) {
         if (signUpError.message.includes("already registered") || signUpError.message.includes("already exists")) {
@@ -72,15 +83,20 @@ export default function RegisterPage() {
         return;
       }
 
-      if (data.user) {
-        const { error: profileError } = await createProfile(data.user.id, {
-          name: formData.name,
-          phone: formData.phone,
-          email: formData.email,
-        });
+      if (authData.user) {
+        // ২. প্রোফাইল তৈরি
+        const { error: profileError } = await supabaseClient
+          .from('profiles')
+          .insert({
+            id: authData.user.id,
+            name: formData.name,
+            phone: formData.phone,
+            email: formData.email,
+          });
 
         if (profileError) {
-          setError(profileError.message);
+          console.error("Profile error:", profileError);
+          setError(profileError.message || "প্রোফাইল তৈরি করতে সমস্যা হয়েছে!");
           setLoading(false);
           return;
         }
@@ -97,6 +113,7 @@ export default function RegisterPage() {
         }, 2000);
       }
     } catch (err: any) {
+      console.error("Registration error:", err);
       setError("রেজিস্ট্রেশন করতে সমস্যা হয়েছে! আবার চেষ্টা করুন।");
     } finally {
       setLoading(false);

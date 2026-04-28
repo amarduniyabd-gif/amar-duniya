@@ -4,21 +4,11 @@ import { createBrowserClient } from '@supabase/ssr'
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 
-// Server Component এর জন্য চেক
-const isBrowser = typeof window !== 'undefined'
+// একটি singleton instance
+let clientInstance: any = null
 
-export const createClient = () => {
-  if (!isBrowser) {
-    // Server side - return dummy client (won't be used)
-    return {} as any
-  }
-  return createBrowserClient(supabaseUrl, supabaseAnonKey)
-}
-
-let clientInstance: ReturnType<typeof createBrowserClient> | null = null
-
-export const supabase = () => {
-  if (!isBrowser) {
+export const getSupabaseClient = () => {
+  if (typeof window === 'undefined') {
     return null as any
   }
   if (!clientInstance) {
@@ -26,3 +16,6 @@ export const supabase = () => {
   }
   return clientInstance
 }
+
+// সরাসরি instance export করুন (ফাংশন না)
+export const supabase = getSupabaseClient()
