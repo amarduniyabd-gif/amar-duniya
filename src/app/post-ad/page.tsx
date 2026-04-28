@@ -8,40 +8,6 @@ import {
   Package, Calendar, Truck, BadgeCheck, Crown, Loader2
 } from "lucide-react";
 import { categories, getRootCategories } from "@/data/categories";
-import dynamic from "next/dynamic";
-
-// ============ PaymentModal dynamic import ============
-const PaymentModal = dynamic(() => import("@/components/PaymentModal"), { ssr: false });
-
-// ============ Supabase ক্লায়েন্ট ============
-// Lazy initialize করতে হবে
-let supabaseInstance: any = null;
-const getSupabase = () => {
-  if (typeof window === 'undefined') {
-    // SSR এর সময় dummy return
-    return {
-      auth: { getUser: () => Promise.resolve({ data: { user: null }, error: null }) },
-      from: () => ({ insert: () => ({ select: () => ({ single: () => Promise.resolve({ data: { id: `dummy_${Date.now()}` }, error: null }) }) }) }),
-      storage: { from: () => ({ upload: () => Promise.resolve({ data: {}, error: null }), getPublicUrl: () => ({ data: { publicUrl: '' } }) }) },
-    };
-  }
-  
-  if (!supabaseInstance) {
-    const { createClient } = require('@supabase/supabase-js');
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-    const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-    
-    if (!supabaseUrl || !supabaseAnonKey) {
-      console.error('Supabase credentials missing');
-    }
-    
-    supabaseInstance = createClient(
-      supabaseUrl || 'https://placeholder.supabase.co',
-      supabaseAnonKey || 'placeholder-key'
-    );
-  }
-  return supabaseInstance;
-};
 
 // ============ কনস্ট্যান্ট ============
 const ADMIN_USER_ID = "b5b79d36-eb67-4706-8847-70480d0158d7";
@@ -175,7 +141,7 @@ const FormSection = ({ icon, title, children, required }: {
   </div>
 );
 
-// ============ মেইন কন্টেন্ট কম্পোনেন্ট ============
+// ============ মেইন কন্টেন্ট ============
 function PostAdContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -257,8 +223,10 @@ function PostAdContent() {
     }
   }, [newCategoryName]);
 
-  // লোকাল স্টোরেজে সেভ করার ফাংশন
+  // লোকাল স্টোরেজে সেভ
   const saveToLocalStorage = useCallback(() => {
+    if (typeof window === 'undefined') return;
+    
     const postData = {
       id: `POST_${Date.now()}`,
       title: formData.title,
@@ -290,7 +258,7 @@ function PostAdContent() {
     localStorage.setItem('amarDuniyaPosts', JSON.stringify(existingPosts));
   }, [formData, images, isFeatured, useDocumentService]);
 
-  // ✅ ফিক্সড handleSubmit
+  // সাবমিট হ্যান্ডলার
   const handleSubmit = useCallback(async (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -306,9 +274,19 @@ function PostAdContent() {
     setIsSubmitting(true);
     
     try {
-      const supabase = getSupabase();
+      // 🔥 সুপাবেস শুধু রানটাইমে লোড হবে
+      const { createClient } = await import('@supabase/supabase-js');
       
-      // চেক করুন ইউজার লগইন আছে কিনা
+      const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+      const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+      
+      if (!supabaseUrl || !supabaseAnonKey) {
+        throw new Error('Supabase configuration missing');
+      }
+      
+      const supabase = createClient(supabaseUrl, supabaseAnonKey);
+      
+      // চেক ইউজার লগইন
       const { data: { user }, error: userError } = await supabase.auth.getUser();
       
       if (userError || !user) {
@@ -318,7 +296,7 @@ function PostAdContent() {
         return;
       }
       
-      // ১. পোস্ট তৈরি
+      // পোস্ট তৈরি
       const { data: post, error: postError } = await supabase
         .from('posts')
         .insert({
@@ -341,14 +319,9 @@ function PostAdContent() {
         .select()
         .single();
       
-      if (postError) {
-        console.error("Post creation error:", postError);
-        throw postError;
-      }
+      if (postError) throw postError;
       
-      console.log("Post created successfully:", post);
-      
-      // ২. ছবি আপলোড
+      // ছবি আপলোড
       if (images.length > 0 && post) {
         for (let i = 0; i < images.length; i++) {
           const img = images[i];
@@ -356,7 +329,6 @@ function PostAdContent() {
           const thumbPath = `${post.id}/thumb_${fileName}`;
           const fullPath = `${post.id}/full_${fileName}`;
           
-          // থাম্বনেইল আপলোড
           const { error: thumbErr } = await supabase.storage
             .from('post-images')
             .upload(thumbPath, img.thumbnail, { 
@@ -365,12 +337,8 @@ function PostAdContent() {
               upsert: false
             });
           
-          if (thumbErr) {
-            console.error("Thumbnail Upload Error:", thumbErr);
-            continue;
-          }
+          if (thumbErr) continue;
           
-          // ফুল ইমেজ আপলোড
           const { error: fullErr } = await supabase.storage
             .from('post-images')
             .upload(fullPath, img.full, { 
@@ -379,12 +347,8 @@ function PostAdContent() {
               upsert: false
             });
           
-          if (fullErr) {
-            console.error("Full Image Upload Error:", fullErr);
-            continue;
-          }
+          if (fullErr) continue;
           
-          // পাবলিক URL পাওয়া
           const { data: thumbUrlData } = supabase.storage
             .from('post-images')
             .getPublicUrl(thumbPath);
@@ -393,25 +357,18 @@ function PostAdContent() {
             .from('post-images')
             .getPublicUrl(fullPath);
           
-          // ইমেজ রেকর্ড সেভ করা
-          const { error: imgInsertError } = await supabase
-            .from('post_images')
-            .insert({
-              post_id: post.id,
-              thumbnail_url: thumbUrlData.publicUrl,
-              full_url: fullUrlData.publicUrl,
-              width: img.width,
-              height: img.height,
-              order_index: i,
-            });
-          
-          if (imgInsertError) {
-            console.error("Image Record Error:", imgInsertError);
-          }
+          await supabase.from('post_images').insert({
+            post_id: post.id,
+            thumbnail_url: thumbUrlData.publicUrl,
+            full_url: fullUrlData.publicUrl,
+            width: img.width,
+            height: img.height,
+            order_index: i,
+          });
         }
       }
       
-      // ৩. ফিচার্ড পেমেন্ট রেকর্ড
+      // ফিচার্ড পেমেন্ট
       if (isFeatured) {
         await supabase.from('payments').insert({
           user_id: user.id,
@@ -432,13 +389,7 @@ function PostAdContent() {
       }
       
     } catch (error: any) {
-      console.error('Post Error Details:', {
-        message: error.message,
-        code: error.code,
-        details: error.details,
-        hint: error.hint
-      });
-      
+      console.error('Post Error:', error);
       saveToLocalStorage();
       setIsSubmitting(false);
       
@@ -446,7 +397,7 @@ function PostAdContent() {
         const fallbackId = `POST_${Date.now()}`;
         router.push(`/documents/upload?postId=${fallbackId}&postTitle=${encodeURIComponent(formData.title)}`);
       } else {
-        alert('⚠️ আপনার পোস্ট লোকালি সেভ করা হয়েছে! ইন্টারনেট সংযোগ চেক করে আবার চেষ্টা করুন।');
+        alert('⚠️ পোস্ট লোকালি সেভ করা হয়েছে!');
         router.push("/");
       }
     }
@@ -715,8 +666,20 @@ function PostAdContent() {
           </button>
         </form>
 
-        {/* পেমেন্ট মডাল */}
-        <PaymentModal isOpen={showFeaturedModal} onClose={() => setShowFeaturedModal(false)} onSuccess={handleFeaturedSuccess} title="ফিচার্ড লিস্টিং" amount={100} description="আপনার পোস্ট ৭ দিন হোমপেজের টপে থাকবে" />
+        {/* পেমেন্ট মডাল - সরাসরি ইনলাইন */}
+        {showFeaturedModal && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-2xl p-6 max-w-sm w-full">
+              <h3 className="text-lg font-bold">ফিচার্ড লিস্টিং</h3>
+              <p className="text-sm text-gray-600 mt-2">আপনার পোস্ট ৭ দিন হোমপেজের টপে থাকবে</p>
+              <p className="text-2xl font-bold text-[#f85606] mt-3">৳১০০</p>
+              <div className="flex gap-3 mt-4">
+                <button onClick={() => setShowFeaturedModal(false)} className="flex-1 py-2.5 bg-gray-100 rounded-xl text-sm">বাতিল</button>
+                <button onClick={() => { setShowFeaturedModal(false); handleFeaturedSuccess(); }} className="flex-1 py-2.5 bg-[#f85606] text-white rounded-xl text-sm">পেমেন্ট করুন</button>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* নিরাপত্তা নোটিশ */}
         <div className="text-center text-xs text-gray-500 mt-6 flex items-center justify-center gap-2">
@@ -730,7 +693,7 @@ function PostAdContent() {
   );
 }
 
-// ============ মেইন এক্সপোর্ট (Suspense সহ wrapper) ============
+// ============ এক্সপোর্ট ============
 export default function PostAdPage() {
   return (
     <Suspense fallback={
