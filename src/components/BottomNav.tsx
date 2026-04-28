@@ -20,7 +20,6 @@ const NavItem = memo(({ href, icon: Icon, label, isActive, badge }: {
           isActive ? "text-[#f85606]" : "text-gray-500 group-hover:text-gray-700"
         }`} 
       />
-      {/* ✅ badge > 0 হলেই শুধু দেখাবে, 0 হলে দেখাবে না */}
       {badge && badge > 0 && (
         <span className="absolute -top-1.5 -right-1.5 min-w-[16px] h-4 bg-red-500 text-white text-[9px] font-bold rounded-full flex items-center justify-center px-1 shadow-sm">
           {badge > 9 ? '9+' : badge}
@@ -65,7 +64,6 @@ function BottomNavContent() {
     { href: "/auction", icon: Gavel, label: "নিলাম" },
   ], []);
 
-  // ✅ unreadCount > 0 হলেই শুধু badge pass করবে
   const rightItems = useMemo(() => [
     { href: "/chat", icon: MessageCircle, label: "চ্যাট", badge: unreadCount > 0 ? unreadCount : undefined },
     { href: "/my-account", icon: User, label: "অ্যাকাউন্ট" },
@@ -81,8 +79,8 @@ function BottomNavContent() {
 
     const loadUnread = async () => {
       try {
-        const { getSupabaseClient } = await import('@/lib/supabase/client');
-        const supabase = getSupabaseClient();
+        // ✅ ফিক্সড: সরাসরি supabase ইম্পোর্ট করা হয়েছে (পুরানো getSupabaseClient বাদ)
+        const { supabase } = await import('@/lib/supabase/client');
         
         const { data: { user } } = await supabase.auth.getUser();
         if (user) {

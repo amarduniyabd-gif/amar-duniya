@@ -9,6 +9,13 @@ import {
 } from "lucide-react";
 import { categories, getRootCategories } from "@/data/categories";
 import PaymentModal from "@/components/PaymentModal";
+import { createClient } from '@supabase/supabase-js';
+
+// ============ Supabase ক্লায়েন্ট ============
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://nryqoyqdwxqdydifatzb.supabase.co',
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5yeXFveXFkd3hxZHlkaWZhdHpiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzcxOTQyNzEsImV4cCI6MjA5Mjc3MDI3MX0.TLl1cJDhipmG4NczcG6kZUVEB7KAtbi6Rwis6lXH5GA'
+);
 
 // ============ কনস্ট্যান্ট ============
 const ADMIN_USER_ID = "b5b79d36-eb67-4706-8847-70480d0158d7";
@@ -224,7 +231,7 @@ export default function PostAdPage() {
     }
   }, [newCategoryName]);
 
-  // ✅ corrected handleSubmit - only one version
+  // ✅ ফিক্সড handleSubmit
   const handleSubmit = useCallback(async (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -240,11 +247,17 @@ export default function PostAdPage() {
     setIsSubmitting(true);
     
     try {
-      const { createClient } = await import('@supabase/supabase-js');
-const supabase = createClient(
-  'https://nryqoyqdwxqdydifatzb.supabase.co',
-  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5yeXFveXFkd3hxZHlkaWZhdHpiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzcxOTQyNzEsImV4cCI6MjA5Mjc3MDI3MX0.TLl1cJDhipmG4NczcG6kZUVEB7KAtbi6Rwis6lXH5GA'
-);
+      // চেক করুন ইউজার লগইন আছে কিনা
+      const { data: { user }, error: userError } = await supabase.auth.getUser();
+      
+      if (userError || !user) {
+        // ইউজার লগইন না থাকলে লোকাল স্টোরেজে সেভ করুন
+        console.log("User not logged in, saving to local storage");
+        saveToLocalStorage();
+        setIsSubmitting(false);
+        router.push("/login?redirect=/post-ad");
+        return;
+      }
       
       // ১. পোস্ট তৈরি
       const { data: post, error: postError } = await supabase
@@ -258,7 +271,7 @@ const supabase = createClient(
           warranty: formData.warranty || null,
           delivery: formData.delivery,
           location: formData.location,
-          user_id: ADMIN_USER_ID,
+          user_id: user.id, // লগইন করা ইউজারের আইডি ব্যবহার করুন
           category_id: formData.category,
           sub_category_id: formData.subCategory || null,
           is_featured: isFeatured,
@@ -269,73 +282,101 @@ const supabase = createClient(
         .select()
         .single();
       
-      if (postError) throw postError;
-      
-      // ২. ছবি আপলোড
-      if (images.length > 0 && post) {
-        for (let i = 0; i < images.length; i++) {
-          const img = images[i];
-          const thumbPath = `thumbnails/${post.id}/${Date.now()}_${i}_thumb.webp`;
-          const fullPath = `full/${post.id}/${Date.now()}_${i}_full.webp`;
-          
-          await supabase.storage.from('post-images').upload(thumbPath, img.thumbnail);
-          await supabase.storage.from('post-images').upload(fullPath, img.full);
-          
-          const { data: thumbUrl } = supabase.storage.from('post-images').getPublicUrl(thumbPath);
-          const { data: fullUrl } = supabase.storage.from('post-images').getPublicUrl(fullPath);
-          
-          await supabase.from('post_images').insert({
-            post_id: post.id,
-            thumbnail_url: thumbUrl.publicUrl,
-            full_url: fullUrl.publicUrl,
-            width: img.width,
-            height: img.height,
-            order_index: i,
-          });
-        }
+      if (postError) {
+        console.error("Post creation error:", postError);
+        throw postError;
       }
       
-      // ৩. ফিচার্ড পেমেন্ট
+      console.log("Post created successfully:", post);
+      
+      // ২. ছবি আপলোড (✅ ফিক্স করা হয়েছে)
+      if (images.length > 0 && post) {
+        const uploadedImages = [];
+        
+        for (let i = 0; i < images.length; i++) {
+          const img = images[i];
+          const fileName = `${Date.now()}_${i}_${Math.random().toString(36).substring(7)}.webp`;
+          const thumbPath = `${post.id}/thumb_${fileName}`;
+          const fullPath = `${post.id}/full_${fileName}`;
+          
+          // থাম্বনেইল আপলোড
+          const { error: thumbErr, data: thumbData } = await supabase.storage
+            .from('post-images')
+            .upload(thumbPath, img.thumbnail, { 
+              contentType: 'image/webp',
+              cacheControl: '3600',
+              upsert: false
+            });
+          
+          if (thumbErr) {
+            console.error("Thumbnail Upload Error:", thumbErr);
+            continue;
+          }
+          
+          // ফুল ইমেজ আপলোড
+          const { error: fullErr, data: fullData } = await supabase.storage
+            .from('post-images')
+            .upload(fullPath, img.full, { 
+              contentType: 'image/webp',
+              cacheControl: '3600',
+              upsert: false
+            });
+          
+          if (fullErr) {
+            console.error("Full Image Upload Error:", fullErr);
+            continue;
+          }
+          
+          // পাবলিক URL পাওয়া
+          const { data: thumbUrlData } = supabase.storage
+            .from('post-images')
+            .getPublicUrl(thumbPath);
+          
+          const { data: fullUrlData } = supabase.storage
+            .from('post-images')
+            .getPublicUrl(fullPath);
+          
+          // ইমেজ রেকর্ড সেভ করা
+          const { error: imgInsertError } = await supabase
+            .from('post_images')
+            .insert({
+              post_id: post.id,
+              thumbnail_url: thumbUrlData.publicUrl,
+              full_url: fullUrlData.publicUrl,
+              width: img.width,
+              height: img.height,
+              order_index: i,
+            });
+          
+          if (imgInsertError) {
+            console.error("Image Record Error:", imgInsertError);
+          } else {
+            uploadedImages.push({
+              thumbnail: thumbUrlData.publicUrl,
+              full: fullUrlData.publicUrl,
+              width: img.width,
+              height: img.height,
+            });
+          }
+        }
+        
+        console.log(`Uploaded ${uploadedImages.length} images successfully`);
+      }
+      
+      // ৩. ফিচার্ড পেমেন্ট রেকর্ড
       if (isFeatured) {
-        await supabase.from('payments').insert({
-          user_id: ADMIN_USER_ID,
+        const { error: paymentError } = await supabase.from('payments').insert({
+          user_id: user.id,
           post_id: post.id,
           amount: 100,
           type: 'featured',
           status: 'completed',
         });
+        
+        if (paymentError) {
+          console.error("Payment record error:", paymentError);
+        }
       }
-      
-      // ৪. লোকাল স্টোরেজে সেভ
-      const postData = {
-        id: post.id,
-        title: formData.title,
-        price: parseInt(formData.price),
-        condition: formData.condition,
-        category: formData.category,
-        subCategory: formData.subCategory,
-        description: formData.description,
-        phone: formData.phone,
-        location: formData.location,
-        delivery: formData.delivery,
-        warranty: formData.warranty,
-        brand: formData.brand,
-        isFeatured,
-        useDocumentService,
-        images: images.map(img => ({
-          thumbnail: img.preview,
-          full: URL.createObjectURL(img.full),
-          width: img.width,
-          height: img.height,
-        })),
-        createdAt: new Date().toISOString(),
-        views: 0,
-        likes: 0,
-      };
-      
-      const existingPosts = JSON.parse(localStorage.getItem('amarDuniyaPosts') || '[]');
-      existingPosts.push(postData);
-      localStorage.setItem('amarDuniyaPosts', JSON.stringify(existingPosts));
       
       setIsSubmitting(false);
       
@@ -345,50 +386,61 @@ const supabase = createClient(
         alert('✅ আপনার পোস্ট সফলভাবে জমা দেওয়া হয়েছে!');
         router.push("/");
       }
+      
     } catch (error: any) {
-      console.error('Post error:', error);
+      console.error('Post Error Details:', {
+        message: error.message,
+        code: error.code,
+        details: error.details,
+        hint: error.hint
+      });
       
-      // লোকাল স্টোরেজে সেভ (ফলব্যাক)
-      const postData = {
-        id: `POST_${Date.now()}`,
-        title: formData.title,
-        price: parseInt(formData.price),
-        condition: formData.condition,
-        category: formData.category,
-        subCategory: formData.subCategory,
-        description: formData.description,
-        phone: formData.phone,
-        location: formData.location,
-        delivery: formData.delivery,
-        warranty: formData.warranty,
-        brand: formData.brand,
-        isFeatured,
-        useDocumentService,
-        images: images.map(img => ({
-          thumbnail: img.preview,
-          full: URL.createObjectURL(img.full),
-          width: img.width,
-          height: img.height,
-        })),
-        createdAt: new Date().toISOString(),
-        views: 0,
-        likes: 0,
-      };
-      
-      const existingPosts = JSON.parse(localStorage.getItem('amarDuniyaPosts') || '[]');
-      existingPosts.push(postData);
-      localStorage.setItem('amarDuniyaPosts', JSON.stringify(existingPosts));
-      
+      // লোকাল স্টোরেজে সেভ করুন (ফলব্যাক)
+      saveToLocalStorage();
       setIsSubmitting(false);
       
       if (useDocumentService) {
-        router.push(`/documents/upload?postId=${postData.id}&postTitle=${encodeURIComponent(formData.title)}`);
+        const fallbackId = `POST_${Date.now()}`;
+        router.push(`/documents/upload?postId=${fallbackId}&postTitle=${encodeURIComponent(formData.title)}`);
       } else {
-        alert('✅ লোকাল স্টোরেজে পোস্ট সেভ হয়েছে!');
+        alert('⚠️ আপনার পোস্ট লোকালি সেভ করা হয়েছে! ইন্টারনেট সংযোগ চেক করে আবার চেষ্টা করুন।');
         router.push("/");
       }
     }
   }, [formData, images, isFeatured, useDocumentService, router]);
+  
+  // লোকাল স্টোরেজে সেভ করার ফাংশন
+  const saveToLocalStorage = useCallback(() => {
+    const postData = {
+      id: `POST_${Date.now()}`,
+      title: formData.title,
+      price: parseInt(formData.price),
+      condition: formData.condition,
+      category: formData.category,
+      subCategory: formData.subCategory,
+      description: formData.description,
+      phone: formData.phone,
+      location: formData.location,
+      delivery: formData.delivery,
+      warranty: formData.warranty,
+      brand: formData.brand,
+      isFeatured,
+      useDocumentService,
+      images: images.map(img => ({
+        thumbnail: img.preview,
+        full: img.preview, // লোকাল স্টোরেজের জন্য প্রিভিউ ইউজ করুন
+        width: img.width,
+        height: img.height,
+      })),
+      createdAt: new Date().toISOString(),
+      views: 0,
+      likes: 0,
+    };
+    
+    const existingPosts = JSON.parse(localStorage.getItem('amarDuniyaPosts') || '[]');
+    existingPosts.push(postData);
+    localStorage.setItem('amarDuniyaPosts', JSON.stringify(existingPosts));
+  }, [formData, images, isFeatured, useDocumentService]);
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-orange-50 via-white to-amber-50 pb-8">
@@ -453,7 +505,7 @@ const supabase = createClient(
             </div>
             
             <p className="text-[10px] text-gray-400 mt-3 flex items-center gap-1">
-              <span>✓ WebP ফরম্যাটে কম্প্রেস হবে (৫০KB)</span>
+              <span>✓ WebP ফরম্যাটে কম্প্রেস হবে (~50KB)</span>
               <span className="w-1 h-1 bg-gray-300 rounded-full"></span>
               <span>✓ ক্লিক করে বড় দেখা যাবে</span>
             </p>

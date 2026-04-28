@@ -9,7 +9,8 @@ import {
   Database, Loader2
 } from "lucide-react";
 import { useState, useEffect, useCallback } from "react";
-import { getSupabaseClient } from "@/lib/supabase/client";
+// ✅ এখানে পরিবর্তন করা হয়েছে: getSupabaseClient এর বদলে শুধু supabase
+import { supabase } from "@/lib/supabase/client";
 
 const menuItems = [
   { href: "/admin", label: "ড্যাশবোর্ড", icon: <LayoutDashboard size={18} /> },
@@ -35,8 +36,6 @@ export default function AdminSidebar() {
   const [mounted, setMounted] = useState(false);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
 
-  const supabase = getSupabaseClient();
-
   useEffect(() => {
     setMounted(true);
   }, []);
@@ -46,27 +45,26 @@ export default function AdminSidebar() {
     setIsLoggingOut(true);
     
     try {
-      // Supabase Auth লগআউট
+      // ✅ সরাসরি supabase ব্যবহার করা হয়েছে
       await supabase.auth.signOut();
+      
+      // কুকি ক্লিয়ার করা (লগইন লুপ বন্ধ করতে জরুরি)
+      document.cookie = "adminLoggedIn=; path=/; expires=Thu, 01 Jan 1970 00:00:00 UTC;";
       
       // লোকাল স্টোরেজ ক্লিয়ার
       localStorage.removeItem("adminLoggedIn");
       localStorage.removeItem("isLoggedIn");
-      localStorage.removeItem("adminEmail");
-      localStorage.removeItem("adminLastLogin");
       
       // অ্যাডমিন লগইন পেজে রিডাইরেক্ট
-      router.push("/admin/login");
-      router.refresh();
+      window.location.href = "/admin/login";
     } catch (error) {
       console.error('Logout error:', error);
-      // এরর হলেও লোকাল স্টোরেজ ক্লিয়ার করে রিডাইরেক্ট
       localStorage.clear();
-      router.push("/admin/login");
+      window.location.href = "/admin/login";
     } finally {
       setIsLoggingOut(false);
     }
-  }, [router]);
+  }, []);
 
   if (!mounted) return null;
 
@@ -94,11 +92,10 @@ export default function AdminSidebar() {
             {collapsed ? <Menu size={18} /> : <X size={18} />}
           </button>
         </div>
-        {!collapsed && <p className="text-xs text-gray-400 mt-2">অ্যাডমিন প্যানেল</p>}
       </div>
 
       {/* নেভিগেশন */}
-      <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
+      <nav className="flex-1 p-4 space-y-1 overflow-y-auto custom-scrollbar">
         {menuItems.map((item) => {
           const isActive = pathname === item.href || 
             (item.href !== "/admin" && pathname?.startsWith(item.href));
@@ -114,13 +111,9 @@ export default function AdminSidebar() {
                   ? "bg-gradient-to-r from-[#f85606] to-orange-500 text-white shadow-lg shadow-orange-500/20" 
                   : "text-gray-300 hover:bg-gray-800 hover:text-white"
               }`}
-              title={collapsed ? item.label : ""}
             >
               {item.icon}
-              {!collapsed && <span className="flex-1 text-sm font-medium text-left">{item.label}</span>}
-              {!collapsed && (
-                <ChevronRight size={14} className={`opacity-0 group-hover:opacity-100 transition ${isActive ? "opacity-100" : ""}`} />
-              )}
+              {!collapsed && <span className="flex-1 text-sm font-medium">{item.label}</span>}
             </Link>
           );
         })}
@@ -128,24 +121,12 @@ export default function AdminSidebar() {
 
       {/* ফুটার */}
       <div className="p-4 border-t border-gray-700/50">
-        <Link
-          href="/"
-          className={`flex items-center gap-3 px-4 py-3 rounded-xl text-gray-300 hover:bg-gray-800 hover:text-white transition-all duration-300 mb-2 ${
-            collapsed ? "justify-center" : ""
-          }`}
-          title={collapsed ? "হোম পেজে যান" : ""}
-        >
-          <Home size={18} />
-          {!collapsed && <span className="flex-1 text-sm font-medium text-left">হোম পেজে যান</span>}
-        </Link>
-
         <button
           onClick={handleLogout}
           disabled={isLoggingOut}
           className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-red-400 hover:bg-red-500/10 hover:text-red-300 transition-all duration-300 disabled:opacity-50 ${
             collapsed ? "justify-center" : ""
           }`}
-          title={collapsed ? "লগ আউট" : ""}
         >
           {isLoggingOut ? (
             <Loader2 size={18} className="animate-spin" />

@@ -1,8 +1,9 @@
 "use client";
 import { useState, useCallback, useEffect } from 'react';
 import { 
-  X, CreditCard, Shield, CheckCircle, AlertCircle, Loader2,
+  X, CreditCard, Shield, CheckCircle, AlertCircle, Loader2, ShieldCheck
 } from 'lucide-react';
+import { supabase } from '@/lib/supabase/client';
 
 interface PaymentModalProps {
   isOpen: boolean;
@@ -37,57 +38,52 @@ export default function PaymentModal({
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
   const [paymentId, setPaymentId] = useState<string | null>(null);
-  
-  // ✅ SSR সেফ supabase
-  const [supabase, setSupabase] = useState<any>(null);
   const [isClient, setIsClient] = useState(false);
 
+  // ✅ ক্লায়েন্ট সাইড চেক - সরাসরি supabase ব্যবহার
   useEffect(() => {
     setIsClient(true);
-    import('@/lib/supabase/client').then(({ getSupabaseClient }) => {
-      setSupabase(getSupabaseClient());
-    });
   }, []);
 
   // ============ পেমেন্ট সফল হ্যান্ডলার ============
-  const handlePaymentSuccess = async (
+  const handlePaymentSuccess = useCallback(async (
     paymentId: string, 
-    type: string, 
-    referenceId: string | undefined, 
+    paymentType: string, 
+    refId: string | undefined, 
     userId: string | null
   ) => {
-    if (!supabase) return;
+    if (!userId) return;
     
     try {
-      switch (type) {
+      switch (paymentType) {
         case 'featured':
-          if (referenceId) {
+          if (refId) {
             await supabase
               .from('posts')
               .update({ is_featured: true })
-              .eq('id', referenceId);
+              .eq('id', refId);
           }
           break;
 
         case 'document':
-          if (referenceId) {
+          if (refId) {
             await supabase
               .from('documents')
               .update({ status: 'paid', payment_id: paymentId })
-              .eq('id', referenceId);
+              .eq('id', refId);
           }
           break;
 
         case 'matrimony_unlock':
         case 'matrimony_premium':
-          if (referenceId && userId) {
+          if (refId && userId) {
             await supabase
               .from('matrimony_payments')
               .insert({
                 payer_id: userId,
-                profile_id: referenceId,
+                profile_id: refId,
                 amount: amount,
-                type: type === 'matrimony_unlock' ? 'profile_unlock' : 'premium',
+                type: paymentType === 'matrimony_unlock' ? 'profile_unlock' : 'premium',
                 payment_method: paymentMethod,
                 status: 'completed',
               });
@@ -96,23 +92,21 @@ export default function PaymentModal({
       }
 
       // নোটিফিকেশন
-      if (userId) {
-        await supabase.from('notifications').insert({
-          user_id: userId,
-          title: 'পেমেন্ট সফল',
-          message: `আপনার ${amount} টাকা পেমেন্ট সফল হয়েছে।`,
-          type: 'payment',
-          data: { payment_id: paymentId, type },
-        });
-      }
+      await supabase.from('notifications').insert({
+        user_id: userId,
+        title: 'পেমেন্ট সফল',
+        message: `আপনার ${amount} টাকা পেমেন্ট সফল হয়েছে।`,
+        type: 'payment',
+        data: { payment_id: paymentId, type: paymentType },
+      });
     } catch (error) {
       console.error('Payment success handler error:', error);
     }
-  };
+  }, [amount, paymentMethod]);
 
   // ============ পেমেন্ট হ্যান্ডলার ============
   const handlePayment = useCallback(async () => {
-    if (!supabase || !isClient) {
+    if (!isClient) {
       setError('সিস্টেম লোড হচ্ছে, একটু অপেক্ষা করুন...');
       return;
     }
@@ -121,8 +115,16 @@ export default function PaymentModal({
     setError(null);
 
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      const userId = user?.id;
+      const { data: { user }, error: userError } = await supabase.auth.getUser();
+      
+      if (userError || !user) {
+        setError('পেমেন্ট করতে দয়া করে লগইন করুন');
+        setIsProcessing(false);
+        return;
+      }
+      
+      const userId = user.id;
+      const transactionId = `TXN_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`;
 
       const paymentData: any = {
         user_id: userId,
@@ -130,7 +132,7 @@ export default function PaymentModal({
         type: type,
         payment_method: paymentMethod,
         status: 'completed',
-        transaction_id: `TXN_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`,
+        transaction_id: transactionId,
       };
 
       if (type === 'featured' || type === 'document') {
@@ -153,7 +155,7 @@ export default function PaymentModal({
         await handlePaymentSuccess(payment.id, type, referenceId, userId);
       }
 
-      // লোকাল স্টোরেজ
+      // লোকাল স্টোরেজ ব্যাকআপ
       const payments = JSON.parse(localStorage.getItem('payments') || '[]');
       payments.push({
         ...paymentData,
@@ -169,21 +171,32 @@ export default function PaymentModal({
         onClose();
         setSuccess(false);
         setError(null);
+        setPaymentMethod("bkash");
       }, 1500);
 
     } catch (err: any) {
       console.error('Payment error:', err);
-      setError(err.message || 'পেমেন্ট করতে সমস্যা হয়েছে!');
+      setError(err.message || 'পেমেন্ট করতে সমস্যা হয়েছে! আবার চেষ্টা করুন।');
     } finally {
       setIsProcessing(false);
     }
-  }, [supabase, isClient, amount, type, referenceId, paymentMethod, onSuccess, onClose]);
+  }, [isClient, amount, type, referenceId, paymentMethod, onSuccess, onClose, handlePaymentSuccess]);
+
+  // মডাল বন্ধ হলে স্টেট রিসেট
+  const handleClose = useCallback(() => {
+    if (!isProcessing) {
+      setSuccess(false);
+      setError(null);
+      setPaymentMethod("bkash");
+      onClose();
+    }
+  }, [isProcessing, onClose]);
 
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-      <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-gray-100">
+    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={handleClose}>
+      <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-gray-100" onClick={e => e.stopPropagation()}>
         
         {/* হেডার */}
         <div className="flex justify-between items-center mb-4">
@@ -192,7 +205,7 @@ export default function PaymentModal({
             {title}
           </h2>
           <button 
-            onClick={onClose} 
+            onClick={handleClose} 
             disabled={isProcessing}
             className="text-gray-400 hover:text-gray-600 p-1 hover:bg-gray-100 rounded-full transition disabled:opacity-50"
           >

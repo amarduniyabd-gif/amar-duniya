@@ -1,7 +1,7 @@
 "use client";
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { Flag, X, Loader2, CheckCircle, AlertCircle } from "lucide-react";
-import { getSupabaseClient } from "@/lib/supabase/client";
+import { supabase } from "@/lib/supabase/client";
 
 interface ReportButtonProps {
   postId?: string;
@@ -42,9 +42,16 @@ export default function ReportButton({
   const [error, setError] = useState<string | null>(null);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
 
-  const supabase = getSupabaseClient();
+  // ইউজার আইডি লোড করুন
+  useEffect(() => {
+    const fetchUser = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) setCurrentUserId(user.id);
+    };
+    fetchUser();
+  }, []);
 
-  // ============ রিপোর্ট সাবমিট ============
+  // রিপোর্ট সাবমিট ফাংশন
   const handleSubmit = useCallback(async () => {
     if (!selectedReason) return;
     
@@ -58,16 +65,12 @@ export default function ReportButton({
     setError(null);
 
     try {
-      // ইউজার চেক
-      const { data: { user } } = await supabase.auth.getUser();
-      const userId = user?.id || null;
-      setCurrentUserId(userId);
-
       // রিপোর্ট ডাটা
       const reportData: any = {
-        reporter_id: userId,
+        reporter_id: currentUserId,
         reason: selectedReason === 'other' ? `other: ${otherText}` : selectedReason,
         status: 'pending',
+        post_title: postTitle,
       };
 
       if (postId) reportData.post_id = postId;
@@ -77,7 +80,7 @@ export default function ReportButton({
       // Supabase এ সেভ
       const { error: insertError } = await supabase
         .from('reports')
-        .insert(reportData);
+        .insert([reportData]);  // [ ] এরে আকারে পাঠাতে হবে
 
       if (insertError) throw insertError;
 
@@ -105,13 +108,13 @@ export default function ReportButton({
 
     } catch (err: any) {
       console.error('Report error:', err);
-      setError('রিপোর্ট করতে সমস্যা হয়েছে! আবার চেষ্টা করুন।');
+      setError(err.message || 'রিপোর্ট করতে সমস্যা হয়েছে! আবার চেষ্টা করুন।');
     } finally {
       setIsSubmitting(false);
     }
-  }, [selectedReason, otherText, postId, auctionId, matrimonyId, onSuccess]);
+  }, [selectedReason, otherText, postId, auctionId, matrimonyId, postTitle, currentUserId, onSuccess]);
 
-  // ============ মডাল ক্লোজ ============
+  // মডাল ক্লোজ
   const handleClose = useCallback(() => {
     if (!isSubmitting) {
       setShowModal(false);
@@ -121,7 +124,7 @@ export default function ReportButton({
     }
   }, [isSubmitting]);
 
-  // ============ ভ্যারিয়েন্ট স্টাইল ============
+  // ভ্যারিয়েন্ট স্টাইল
   const getButtonStyle = () => {
     switch (variant) {
       case 'icon':

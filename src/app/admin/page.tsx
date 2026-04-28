@@ -9,7 +9,7 @@ import {
   Search, Download, CheckCircle, XCircle, AlertCircle,
   BarChart3, Settings, LogOut, Shield, Home, FileText,
   MessageCircle, ChevronDown, Smartphone, Image, MapPin, Tag,
-  Globe, UserPlus, UserMinus
+  Globe, UserPlus, UserMinus, Loader2
 } from "lucide-react";
 
 // নোটিফিকেশন টাইপ
@@ -88,22 +88,21 @@ export default function AdminDashboard() {
     
     // লাইভ ভিজিটর সিমুলেট
     const updateLiveVisitors = () => {
-      const baseVisitors = Math.floor(Math.random() * 50) + 20; // ২০-৭০ জন
-      const baseOnline = Math.floor(Math.random() * 30) + 10; // ১০-৪০ জন
+      const baseVisitors = Math.floor(Math.random() * 50) + 20;
+      const baseOnline = Math.floor(Math.random() * 30) + 10;
       setLiveVisitors(baseVisitors);
       setOnlineUsers(baseOnline);
       
-      // ট্রেন্ড আপডেট
-      const prevVisitors = liveVisitors;
-      if (baseVisitors > prevVisitors) setVisitorTrend('up');
-      else if (baseVisitors < prevVisitors) setVisitorTrend('down');
-      else setVisitorTrend('stable');
+      setVisitorTrend(prev => {
+        if (baseVisitors > (prev === 'up' ? 50 : prev === 'down' ? 30 : 40)) return 'up';
+        else if (baseVisitors < (prev === 'up' ? 50 : prev === 'down' ? 30 : 40)) return 'down';
+        else return 'stable';
+      });
     };
     
     updateLiveVisitors();
-    const interval = setInterval(updateLiveVisitors, 8000); // প্রতি ৮ সেকেন্ড
+    const interval = setInterval(updateLiveVisitors, 8000);
     
-    // আজকের ভিজিট বাড়ানো
     const visitInterval = setInterval(() => {
       setTodayVisits(prev => {
         const newVal = prev + 1;
@@ -116,7 +115,7 @@ export default function AdminDashboard() {
         localStorage.setItem("totalVisits", newVal.toString());
         return newVal;
       });
-    }, 15000); // প্রতি ১৫ সেকেন্ডে ১ ভিজিট বাড়বে
+    }, 15000);
     
     return () => {
       clearInterval(interval);
@@ -126,10 +125,12 @@ export default function AdminDashboard() {
 
   // ============ নোটিফিকেশন সাউন্ড ============
   useEffect(() => {
-    audioRef.current = new Audio('/notification.mp3');
-    const soundSetting = localStorage.getItem('notificationSound');
-    if (soundSetting !== null) {
-      setNotificationSoundEnabled(soundSetting === 'true');
+    if (typeof window !== 'undefined') {
+      audioRef.current = new Audio('/notification.mp3');
+      const soundSetting = localStorage.getItem('notificationSound');
+      if (soundSetting !== null) {
+        setNotificationSoundEnabled(soundSetting === 'true');
+      }
     }
   }, []);
 
@@ -148,18 +149,33 @@ export default function AdminDashboard() {
   // নোটিফিকেশন ডাটা
   const [notifications, setNotifications] = useState<Notification[]>([
     { 
-      id: 1, title: "🆕 নতুন ইউজার রেজিস্ট্রেশন", message: "আলমগীর হোসেন নতুন অ্যাকাউন্ট তৈরি করেছেন", 
-      time: "এখনই", read: false, type: "user" 
+      id: 1, 
+      title: "🆕 নতুন ইউজার রেজিস্ট্রেশন", 
+      message: "আলমগীর হোসেন নতুন অ্যাকাউন্ট তৈরি করেছেন", 
+      time: "এখনই", 
+      read: false, 
+      type: "user" 
     },
     { 
-      id: 2, title: "📝 পোস্ট পেন্ডিং", message: "নতুন পোস্ট অ্যাপ্রুভালের জন্য অপেক্ষমান", 
-      time: "২ মিনিট আগে", read: false, type: "post", postId: 101, 
-      postTitle: "iPhone 15 Pro Max", sellerName: "রহিম উদ্দিন", 
-      postImage: "📱", postPrice: 75000 
+      id: 2, 
+      title: "📝 পোস্ট পেন্ডিং", 
+      message: "নতুন পোস্ট অ্যাপ্রুভালের জন্য অপেক্ষমান", 
+      time: "২ মিনিট আগে", 
+      read: false, 
+      type: "post", 
+      postId: 101, 
+      postTitle: "iPhone 15 Pro Max", 
+      sellerName: "রহিম উদ্দিন", 
+      postImage: "📱", 
+      postPrice: 75000 
     },
     { 
-      id: 3, title: "💰 পেমেন্ট সফল", message: "করিম মিয়া ৳১০০ পেমেন্ট সম্পন্ন করেছেন", 
-      time: "৫ মিনিট আগে", read: false, type: "payment" 
+      id: 3, 
+      title: "💰 পেমেন্ট সফল", 
+      message: "করিম মিয়া ৳১০০ পেমেন্ট সম্পন্ন করেছেন", 
+      time: "৫ মিনিট আগে", 
+      read: false, 
+      type: "payment" 
     },
   ]);
 
@@ -181,7 +197,7 @@ export default function AdminDashboard() {
     };
     setNotifications(prev => [newNotification, ...prev]);
     playNotificationSound();
-  }, []);
+  }, [playNotificationSound]);
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -192,7 +208,7 @@ export default function AdminDashboard() {
     return () => clearInterval(interval);
   }, [addPostNotification]);
 
-  const [stats, setStats] = useState({
+  const [stats] = useState({
     users: { total: 1234, new: 45, growth: 12 },
     posts: { total: 5678, new: 89, growth: 8 },
     auctions: { total: 89, new: 12, growth: -3 },
@@ -215,64 +231,100 @@ export default function AdminDashboard() {
     { id: 5, title: "Sony PlayStation 5", seller: "আলমগীর হোসেন", price: 55000, status: "approved", date: "২০২৬-০৪-১২", views: 1560, category: "ইলেকট্রনিক্স", location: "সিলেট", image: "🎮", description: "PS5 Disc Edition, ২টি কন্ট্রোলার সহ" },
   ]);
 
-  const [recentActivities, setRecentActivities] = useState([
+  const [, setRecentActivities] = useState([
     { id: 1, action: "নতুন ইউজার রেজিস্ট্রেশন", user: "আলমগীর হোসেন", time: "এখনই", type: "user", icon: "👤" },
     { id: 2, action: "নতুন পোস্ট জমা", user: "নাজমা বেগম", time: "২ মিনিট আগে", type: "post", icon: "📝" },
     { id: 3, action: "পেমেন্ট সফল", user: "করিম মিয়া", amount: 100, time: "৫ মিনিট আগে", type: "payment", icon: "💰" },
   ]);
 
-  const monthlyData = [65000, 45000, 78000, 55000, 89000, 70000, 92000, 80000, 75000, 88000, 95000, 85000];
-  const months = ["জানু", "ফেব", "মার্চ", "এপ্রি", "মে", "জুন", "জুল", "আগ", "সেপ", "অক্টো", "নভে", "ডিসে"];
-
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      if (notificationRef.current && !notificationRef.current.contains(event.target as Node)) setShowNotifications(false);
-      if (profileMenuRef.current && !profileMenuRef.current.contains(event.target as Node)) setShowProfileMenu(false);
+      if (notificationRef.current && !notificationRef.current.contains(event.target as Node)) {
+        setShowNotifications(false);
+      }
+      if (profileMenuRef.current && !profileMenuRef.current.contains(event.target as Node)) {
+        setShowProfileMenu(false);
+      }
     };
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
+  // ============ অথেনটিকেশন চেক ============
   useEffect(() => {
     setMounted(true);
-    const adminLoggedIn = localStorage.getItem("adminLoggedIn");
-    if (adminLoggedIn !== "true") router.push("/admin/login");
-    else { setIsLoggedIn(true); setLoading(false); }
+    
+    const checkAuth = () => {
+      const adminLoggedIn = localStorage.getItem("adminLoggedIn");
+      const cookies = document.cookie.split(';').reduce((acc, cookie) => {
+        const [key, value] = cookie.trim().split('=');
+        if (key) acc[key] = value;
+        return acc;
+      }, {} as Record<string, string>);
+      
+      const hasCookie = cookies.adminLoggedIn === 'true';
+      const hasSession = sessionStorage.getItem("adminAuth") === "true";
+      
+      if (adminLoggedIn === "true" || hasCookie || hasSession) {
+        setIsLoggedIn(true);
+        setLoading(false);
+        sessionStorage.setItem("adminAuth", "true");
+      } else {
+        router.push("/admin/login");
+      }
+    };
+    
+    checkAuth();
   }, [router]);
 
+  // ============ লগআউট ফাংশন ============
   const handleLogout = () => { 
     localStorage.removeItem("adminLoggedIn"); 
-    localStorage.removeItem("isLoggedIn");
     localStorage.removeItem("adminEmail");
-    router.push("/admin/login"); 
+    localStorage.removeItem("isLoggedIn");
+    sessionStorage.removeItem("adminAuth");
+    document.cookie = "adminLoggedIn=; path=/; expires=Thu, 01 Jan 1970 00:00:01 GMT;";
+    window.location.href = "/admin/login"; 
   };
 
   const handleRefresh = () => {
     setLoading(true);
-    setTimeout(() => { setLastUpdated(new Date()); setLoading(false); }, 800);
+    setTimeout(() => { 
+      setLastUpdated(new Date()); 
+      setLoading(false); 
+    }, 800);
   };
 
   const handleApprovePost = (id: number) => {
     const post = recentPosts.find(p => p.id === id);
     setRecentPosts(posts => posts.map(p => p.id === id ? { ...p, status: 'approved' } : p));
-    addActivity("পোস্ট অ্যাপ্রুভ করা হয়েছে", post?.seller || "অ্যাডমিন", "post", "✅");
+    setRecentActivities(prev => [{ 
+      id: Date.now(), 
+      action: "পোস্ট অ্যাপ্রুভ করা হয়েছে", 
+      user: post?.seller || "অ্যাডমিন", 
+      time: "এখনই", 
+      type: "post", 
+      icon: "✅" 
+    }, ...prev.slice(0, 9)]);
     setNotifications(prev => prev.filter(n => n.postId !== id));
   };
 
   const handleRejectPost = (id: number) => {
     const post = recentPosts.find(p => p.id === id);
     setRecentPosts(posts => posts.map(p => p.id === id ? { ...p, status: 'rejected' } : p));
-    addActivity("পোস্ট রিজেক্ট করা হয়েছে", post?.seller || "অ্যাডমিন", "post", "❌");
+    setRecentActivities(prev => [{ 
+      id: Date.now(), 
+      action: "পোস্ট রিজেক্ট করা হয়েছে", 
+      user: post?.seller || "অ্যাডমিন", 
+      time: "এখনই", 
+      type: "post", 
+      icon: "❌" 
+    }, ...prev.slice(0, 9)]);
     setNotifications(prev => prev.filter(n => n.postId !== id));
   };
 
-  const handleToggleUserStatus = (id: number) => {
-    setRecentUsers(users => users.map(user => user.id === id ? { ...user, status: user.status === 'active' ? 'blocked' : 'active' } : user));
-  };
-
   const addActivity = (action: string, user: string, type: string, icon: string) => {
-    const newActivity = { id: Date.now(), action, user, time: "এখনই", type, icon };
-    setRecentActivities(prev => [newActivity, ...prev.slice(0, 9)]);
+    setRecentActivities(prev => [{ id: Date.now(), action, user, time: "এখনই", type, icon }, ...prev.slice(0, 9)]);
   };
 
   const markAllNotificationsRead = () => setNotifications(prev => prev.map(n => ({ ...n, read: true })));
@@ -292,7 +344,16 @@ export default function AdminDashboard() {
 
   const handleDownloadReport = () => {
     const now = new Date();
-    const reportData = [["আমার দুনিয়া - রিপোর্ট"], ["তারিখ: " + now.toLocaleDateString('bn-BD')], [], ["মোট ইউজার", stats.users.total.toString()], ["মোট পোস্ট", stats.posts.total.toString()], ["আজকের ভিজিটর", todayVisits.toString()], ["লাইভ ভিজিটর", liveVisitors.toString()], ["অনলাইন ইউজার", onlineUsers.toString()]];
+    const reportData = [
+      ["আমার দুনিয়া - রিপোর্ট"], 
+      ["তারিখ: " + now.toLocaleDateString('bn-BD')], 
+      [], 
+      ["মোট ইউজার", stats.users.total.toString()], 
+      ["মোট পোস্ট", stats.posts.total.toString()], 
+      ["আজকের ভিজিটর", todayVisits.toString()], 
+      ["লাইভ ভিজিটর", liveVisitors.toString()], 
+      ["অনলাইন ইউজার", onlineUsers.toString()]
+    ];
     let csvContent = reportData.map(row => row.join(',')).join('\n');
     const blob = new Blob(["\uFEFF" + csvContent], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
@@ -305,18 +366,42 @@ export default function AdminDashboard() {
     alert("✅ রিপোর্ট ডাউনলোড হয়েছে!");
   };
 
-  if (!mounted || !isLoggedIn) return null;
-
   const pendingPostsCount = recentPosts.filter(p => p.status === 'pending').length;
+
+  // ============ লোডিং স্টেট ============
+  if (!mounted || loading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-gray-900 to-gray-800 flex items-center justify-center">
+        <div className="text-center">
+          <Loader2 className="w-12 h-12 text-orange-500 animate-spin mx-auto mb-4" />
+          <p className="text-white font-medium">ড্যাশবোর্ড লোড হচ্ছে...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!isLoggedIn) return null;
 
   return (
     <div className="min-h-screen bg-gray-100">
-      <button onClick={() => setSidebarOpen(!sidebarOpen)} className="md:hidden fixed top-4 left-4 z-50 bg-[#f85606] text-white p-3 rounded-xl shadow-lg">
+      <button 
+        onClick={() => setSidebarOpen(!sidebarOpen)} 
+        className="md:hidden fixed top-4 left-4 z-50 bg-[#f85606] text-white p-3 rounded-xl shadow-lg"
+      >
         {sidebarOpen ? <X size={20} /> : <Menu size={20} />}
       </button>
 
-      <div className="fixed inset-y-0 left-0 z-40 w-72 hidden md:block"><AdminSidebar /></div>
-      {sidebarOpen && <div className="fixed inset-0 bg-black/50 z-30 md:hidden backdrop-blur-sm" onClick={() => setSidebarOpen(false)} />}
+      <div className="fixed inset-y-0 left-0 z-40 w-72 hidden md:block">
+        <AdminSidebar />
+      </div>
+      
+      {sidebarOpen && (
+        <div 
+          className="fixed inset-0 bg-black/50 z-30 md:hidden backdrop-blur-sm" 
+          onClick={() => setSidebarOpen(false)} 
+        />
+      )}
+      
       <div className={`fixed inset-y-0 left-0 z-40 w-72 transform transition-transform md:hidden ${sidebarOpen ? "translate-x-0" : "-translate-x-full"}`}>
         <AdminSidebar />
       </div>
@@ -324,20 +409,41 @@ export default function AdminDashboard() {
       <div className="md:ml-72">
         <div className="bg-white/90 backdrop-blur-sm shadow-sm px-3 md:px-6 py-3 md:py-4 sticky top-0 z-30 border-b border-gray-100">
           <div className="flex flex-wrap items-center justify-between gap-2">
-            <h1 className="text-lg md:text-2xl font-bold bg-gradient-to-r from-[#f85606] to-orange-500 bg-clip-text text-transparent">ড্যাশবোর্ড</h1>
+            <h1 className="text-lg md:text-2xl font-bold bg-gradient-to-r from-[#f85606] to-orange-500 bg-clip-text text-transparent">
+              ড্যাশবোর্ড
+            </h1>
             
             <div className="flex items-center gap-1 md:gap-3">
               <div className="flex md:hidden items-center gap-1">
-                <button onClick={() => setActiveTab('overview')} className={`px-2 py-1 rounded-lg text-xs font-medium ${activeTab === 'overview' ? 'bg-[#f85606] text-white' : 'bg-gray-100'}`}>ওভারভিউ</button>
-                <button onClick={() => setActiveTab('posts')} className={`px-2 py-1 rounded-lg text-xs font-medium ${activeTab === 'posts' ? 'bg-[#f85606] text-white' : 'bg-gray-100'}`}>পোস্ট {pendingPostsCount > 0 && `(${pendingPostsCount})`}</button>
+                <button 
+                  onClick={() => setActiveTab('overview')} 
+                  className={`px-2 py-1 rounded-lg text-xs font-medium ${activeTab === 'overview' ? 'bg-[#f85606] text-white' : 'bg-gray-100'}`}
+                >
+                  ওভারভিউ
+                </button>
+                <button 
+                  onClick={() => setActiveTab('posts')} 
+                  className={`px-2 py-1 rounded-lg text-xs font-medium ${activeTab === 'posts' ? 'bg-[#f85606] text-white' : 'bg-gray-100'}`}
+                >
+                  পোস্ট {pendingPostsCount > 0 && `(${pendingPostsCount})`}
+                </button>
               </div>
 
-              <button onClick={handleRefresh} className="p-2 hover:bg-gray-100 rounded-xl"><RefreshCw size={18} className="text-gray-500" /></button>
+              <button onClick={handleRefresh} className="p-2 hover:bg-gray-100 rounded-xl">
+                <RefreshCw size={18} className="text-gray-500" />
+              </button>
               
               <div className="relative" ref={notificationRef}>
-                <button onClick={() => setShowNotifications(!showNotifications)} className="relative p-2 hover:bg-gray-100 rounded-xl">
+                <button 
+                  onClick={() => setShowNotifications(!showNotifications)} 
+                  className="relative p-2 hover:bg-gray-100 rounded-xl"
+                >
                   <Bell size={18} className="text-gray-500" />
-                  {unreadCount > 0 && <span className="absolute -top-1 -right-1 w-4 h-4 md:w-5 md:h-5 bg-red-500 text-white text-[9px] md:text-[10px] rounded-full flex items-center justify-center animate-pulse">{unreadCount}</span>}
+                  {unreadCount > 0 && (
+                    <span className="absolute -top-1 -right-1 w-4 h-4 md:w-5 md:h-5 bg-red-500 text-white text-[9px] md:text-[10px] rounded-full flex items-center justify-center animate-pulse">
+                      {unreadCount}
+                    </span>
+                  )}
                 </button>
                 
                 {showNotifications && (
@@ -345,10 +451,15 @@ export default function AdminDashboard() {
                     <div className="p-3 border-b flex justify-between items-center sticky top-0 bg-white">
                       <h3 className="font-semibold">নোটিফিকেশন</h3>
                       <div className="flex items-center gap-2">
-                        <button onClick={toggleNotificationSound} className={`text-xs ${notificationSoundEnabled ? 'text-green-600' : 'text-gray-400'}`}>
+                        <button 
+                          onClick={toggleNotificationSound} 
+                          className={`text-xs ${notificationSoundEnabled ? 'text-green-600' : 'text-gray-400'}`}
+                        >
                           {notificationSoundEnabled ? '🔊' : '🔇'}
                         </button>
-                        <button onClick={markAllNotificationsRead} className="text-xs text-[#f85606]">সব পড়া</button>
+                        <button onClick={markAllNotificationsRead} className="text-xs text-[#f85606]">
+                          সব পড়া
+                        </button>
                       </div>
                     </div>
                     <div className="divide-y">
@@ -357,15 +468,23 @@ export default function AdminDashboard() {
                           <p className="text-sm font-medium">{n.title}</p>
                           <p className="text-xs text-gray-500">{n.message}</p>
                           {n.type === 'post' && n.postPrice && (
-                            <p className="text-xs font-semibold text-[#f85606] mt-1">{n.postImage} ৳{n.postPrice?.toLocaleString()}</p>
+                            <p className="text-xs font-semibold text-[#f85606] mt-1">
+                              {n.postImage} ৳{n.postPrice?.toLocaleString()}
+                            </p>
                           )}
                           <p className="text-[10px] text-gray-400 mt-1">{n.time}</p>
                           {n.type === 'post' && n.postId && (
                             <div className="flex gap-2 mt-2">
-                              <button onClick={() => handleApproveFromNotification(n)} className="bg-green-500 text-white px-3 py-1 rounded-lg text-xs flex items-center gap-1">
+                              <button 
+                                onClick={() => handleApproveFromNotification(n)} 
+                                className="bg-green-500 text-white px-3 py-1 rounded-lg text-xs flex items-center gap-1"
+                              >
                                 <CheckCircle size={10} /> অ্যাপ্রুভ
                               </button>
-                              <button onClick={() => handleRejectPost(n.postId!)} className="bg-red-500 text-white px-3 py-1 rounded-lg text-xs flex items-center gap-1">
+                              <button 
+                                onClick={() => handleRejectPost(n.postId!)} 
+                                className="bg-red-500 text-white px-3 py-1 rounded-lg text-xs flex items-center gap-1"
+                              >
                                 <XCircle size={10} /> রিজেক্ট
                               </button>
                             </div>
@@ -378,15 +497,38 @@ export default function AdminDashboard() {
               </div>
               
               <div className="relative" ref={profileMenuRef}>
-                <button onClick={() => setShowProfileMenu(!showProfileMenu)} className="flex items-center gap-2 hover:bg-gray-100 p-1.5 rounded-xl">
-                  <div className="hidden sm:block text-right"><p className="text-sm font-medium">অ্যাডমিন</p><p className="text-xs text-gray-400">admin@amarduniya.com</p></div>
-                  <div className="w-8 h-8 md:w-10 md:h-10 rounded-full bg-gradient-to-r from-[#f85606] to-orange-500 flex items-center justify-center text-white font-bold">A</div>
+                <button 
+                  onClick={() => setShowProfileMenu(!showProfileMenu)} 
+                  className="flex items-center gap-2 hover:bg-gray-100 p-1.5 rounded-xl"
+                >
+                  <div className="hidden sm:block text-right">
+                    <p className="text-sm font-medium">অ্যাডমিন</p>
+                    <p className="text-xs text-gray-400">admin@amarduniya.com</p>
+                  </div>
+                  <div className="w-8 h-8 md:w-10 md:h-10 rounded-full bg-gradient-to-r from-[#f85606] to-orange-500 flex items-center justify-center text-white font-bold">
+                    A
+                  </div>
                 </button>
                 {showProfileMenu && (
                   <div className="absolute right-0 mt-2 w-48 bg-white rounded-xl shadow-xl border overflow-hidden z-50">
-                    <Link href="/admin/settings"><button className="w-full px-4 py-2.5 text-left text-sm hover:bg-gray-50 flex items-center gap-3"><Settings size={16} /> সেটিংস</button></Link>
-                    <Link href="/"><button className="w-full px-4 py-2.5 text-left text-sm hover:bg-gray-50 flex items-center gap-3"><Home size={16} /> হোম পেজ</button></Link>
-                    <div className="border-t"><button onClick={handleLogout} className="w-full px-4 py-2.5 text-left text-sm hover:bg-red-50 text-red-600 flex items-center gap-3"><LogOut size={16} /> লগ আউট</button></div>
+                    <Link href="/admin/settings">
+                      <button className="w-full px-4 py-2.5 text-left text-sm hover:bg-gray-50 flex items-center gap-3">
+                        <Settings size={16} /> সেটিংস
+                      </button>
+                    </Link>
+                    <Link href="/">
+                      <button className="w-full px-4 py-2.5 text-left text-sm hover:bg-gray-50 flex items-center gap-3">
+                        <Home size={16} /> হোম পেজ
+                      </button>
+                    </Link>
+                    <div className="border-t">
+                      <button 
+                        onClick={handleLogout} 
+                        className="w-full px-4 py-2.5 text-left text-sm hover:bg-red-50 text-red-600 flex items-center gap-3"
+                      >
+                        <LogOut size={16} /> লগ আউট
+                      </button>
+                    </div>
                   </div>
                 )}
               </div>
@@ -395,15 +537,27 @@ export default function AdminDashboard() {
         </div>
 
         <div className="p-3 md:p-6">
-          {/* স্ট্যাটাস কার্ড - মোবাইল ২ কলাম */}
+          {/* স্ট্যাটাস কার্ড */}
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 md:gap-5 mb-4 md:mb-6">
-            <div className="bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl p-3 text-white"><p className="text-xs">মোট ইউজার</p><p className="text-xl font-bold">{stats.users.total}</p></div>
-            <div className="bg-gradient-to-br from-green-500 to-green-600 rounded-xl p-3 text-white"><p className="text-xs">মোট পোস্ট</p><p className="text-xl font-bold">{stats.posts.total}</p></div>
-            <div className="bg-gradient-to-br from-orange-500 to-orange-600 rounded-xl p-3 text-white"><p className="text-xs">মোট নিলাম</p><p className="text-xl font-bold">{stats.auctions.total}</p></div>
-            <div className="bg-gradient-to-br from-purple-500 to-purple-600 rounded-xl p-3 text-white"><p className="text-xs">লেনদেন</p><p className="text-xl font-bold">৳{stats.revenue.total.toLocaleString()}</p></div>
+            <div className="bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl p-3 text-white">
+              <p className="text-xs">মোট ইউজার</p>
+              <p className="text-xl font-bold">{stats.users.total}</p>
+            </div>
+            <div className="bg-gradient-to-br from-green-500 to-green-600 rounded-xl p-3 text-white">
+              <p className="text-xs">মোট পোস্ট</p>
+              <p className="text-xl font-bold">{stats.posts.total}</p>
+            </div>
+            <div className="bg-gradient-to-br from-orange-500 to-orange-600 rounded-xl p-3 text-white">
+              <p className="text-xs">মোট নিলাম</p>
+              <p className="text-xl font-bold">{stats.auctions.total}</p>
+            </div>
+            <div className="bg-gradient-to-br from-purple-500 to-purple-600 rounded-xl p-3 text-white">
+              <p className="text-xs">লেনদেন</p>
+              <p className="text-xl font-bold">৳{stats.revenue.total.toLocaleString()}</p>
+            </div>
           </div>
 
-          {/* 🔥 লাইভ ভিজিটর কার্ড */}
+          {/* লাইভ ভিজিটর কার্ড */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-2 md:gap-5 mb-4 md:mb-6">
             <div className="bg-gradient-to-br from-emerald-500 to-teal-600 rounded-xl p-3 text-white">
               <div className="flex justify-between items-start">
@@ -457,8 +611,16 @@ export default function AdminDashboard() {
           {/* পেন্ডিং পোস্ট অ্যালার্ট */}
           {pendingPostsCount > 0 && (
             <div className="md:hidden mb-4 bg-yellow-50 border border-yellow-200 rounded-xl p-3 flex items-center justify-between">
-              <div className="flex items-center gap-2"><AlertCircle size={18} className="text-yellow-600" /><span className="text-sm font-medium">{pendingPostsCount} টি পোস্ট পেন্ডিং</span></div>
-              <button onClick={() => setActiveTab('posts')} className="bg-yellow-500 text-white px-3 py-1.5 rounded-lg text-xs">রিভিউ</button>
+              <div className="flex items-center gap-2">
+                <AlertCircle size={18} className="text-yellow-600" />
+                <span className="text-sm font-medium">{pendingPostsCount} টি পোস্ট পেন্ডিং</span>
+              </div>
+              <button 
+                onClick={() => setActiveTab('posts')} 
+                className="bg-yellow-500 text-white px-3 py-1.5 rounded-lg text-xs"
+              >
+                রিভিউ
+              </button>
             </div>
           )}
 
@@ -468,7 +630,9 @@ export default function AdminDashboard() {
               {recentPosts.map(post => (
                 <div key={post.id} className="bg-white rounded-xl p-3 shadow-sm border">
                   <div className="flex gap-3">
-                    <div className="w-16 h-16 bg-gradient-to-br from-orange-50 to-orange-100 rounded-xl flex items-center justify-center text-3xl">{post.image}</div>
+                    <div className="w-16 h-16 bg-gradient-to-br from-orange-50 to-orange-100 rounded-xl flex items-center justify-center text-3xl">
+                      {post.image}
+                    </div>
                     <div className="flex-1">
                       <h3 className="font-medium text-sm">{post.title}</h3>
                       <p className="text-xs text-gray-400">{post.seller}</p>
@@ -476,15 +640,34 @@ export default function AdminDashboard() {
                     </div>
                   </div>
                   <div className="flex items-center justify-between mt-2">
-                    <span className={`text-xs px-2 py-0.5 rounded-full ${post.status === "approved" ? "bg-green-100 text-green-700" : post.status === "pending" ? "bg-yellow-100 text-yellow-700" : "bg-red-100 text-red-700"}`}>
+                    <span className={`text-xs px-2 py-0.5 rounded-full ${
+                      post.status === "approved" ? "bg-green-100 text-green-700" : 
+                      post.status === "pending" ? "bg-yellow-100 text-yellow-700" : 
+                      "bg-red-100 text-red-700"
+                    }`}>
                       {post.status === "approved" ? "অনুমোদিত" : post.status === "pending" ? "পেন্ডিং" : "বাতিল"}
                     </span>
                     <div className="flex gap-2">
-                      <button onClick={() => handleViewPostDetails(post)} className="text-blue-500 text-xs flex items-center gap-1"><Eye size={12} /> বিস্তারিত</button>
+                      <button 
+                        onClick={() => handleViewPostDetails(post)} 
+                        className="text-blue-500 text-xs flex items-center gap-1"
+                      >
+                        <Eye size={12} /> বিস্তারিত
+                      </button>
                       {post.status === 'pending' && (
                         <>
-                          <button onClick={() => handleApprovePost(post.id)} className="bg-green-500 text-white px-3 py-1 rounded-lg text-xs">অ্যাপ্রুভ</button>
-                          <button onClick={() => handleRejectPost(post.id)} className="bg-red-500 text-white px-3 py-1 rounded-lg text-xs">রিজেক্ট</button>
+                          <button 
+                            onClick={() => handleApprovePost(post.id)} 
+                            className="bg-green-500 text-white px-3 py-1 rounded-lg text-xs"
+                          >
+                            অ্যাপ্রুভ
+                          </button>
+                          <button 
+                            onClick={() => handleRejectPost(post.id)} 
+                            className="bg-red-500 text-white px-3 py-1 rounded-lg text-xs"
+                          >
+                            রিজেক্ট
+                          </button>
                         </>
                       )}
                     </div>
@@ -499,38 +682,69 @@ export default function AdminDashboard() {
             <div className="bg-white rounded-xl shadow-sm border overflow-hidden mb-4">
               <div className="p-3 md:p-4 border-b flex justify-between">
                 <h2 className="font-bold text-gray-800">পেন্ডিং পোস্ট ({pendingPostsCount})</h2>
-                <Link href="/admin/posts"><button className="text-xs text-[#f85606]">সব দেখুন →</button></Link>
+                <Link href="/admin/posts">
+                  <button className="text-xs text-[#f85606]">সব দেখুন →</button>
+                </Link>
               </div>
               {recentPosts.filter(p => p.status === 'pending').slice(0, 3).map(post => (
                 <div key={post.id} className="p-3 md:p-4 hover:bg-gray-50 border-b last:border-b-0">
                   <div className="flex flex-col md:flex-row md:items-center gap-2">
                     <div className="flex items-center gap-3 flex-1">
-                      <div className="w-10 h-10 bg-gradient-to-br from-orange-50 to-orange-100 rounded-lg flex items-center justify-center text-xl">{post.image}</div>
+                      <div className="w-10 h-10 bg-gradient-to-br from-orange-50 to-orange-100 rounded-lg flex items-center justify-center text-xl">
+                        {post.image}
+                      </div>
                       <div>
                         <p className="font-medium">{post.title}</p>
-                        <p className="text-xs text-gray-400">{post.seller} • ৳{post.price.toLocaleString()} • {post.location}</p>
+                        <p className="text-xs text-gray-400">
+                          {post.seller} • ৳{post.price.toLocaleString()} • {post.location}
+                        </p>
                       </div>
                     </div>
                     <div className="flex gap-2">
-                      <button onClick={() => handleViewPostDetails(post)} className="text-blue-500 text-xs flex items-center gap-1"><Eye size={12} /> বিস্তারিত</button>
-                      <button onClick={() => handleApprovePost(post.id)} className="bg-green-500 text-white px-4 py-2 rounded-lg text-xs flex items-center gap-1"><CheckCircle size={12} /> অ্যাপ্রুভ</button>
-                      <button onClick={() => handleRejectPost(post.id)} className="bg-red-500 text-white px-4 py-2 rounded-lg text-xs flex items-center gap-1"><XCircle size={12} /> রিজেক্ট</button>
+                      <button 
+                        onClick={() => handleViewPostDetails(post)} 
+                        className="text-blue-500 text-xs flex items-center gap-1"
+                      >
+                        <Eye size={12} /> বিস্তারিত
+                      </button>
+                      <button 
+                        onClick={() => handleApprovePost(post.id)} 
+                        className="bg-green-500 text-white px-4 py-2 rounded-lg text-xs flex items-center gap-1"
+                      >
+                        <CheckCircle size={12} /> অ্যাপ্রুভ
+                      </button>
+                      <button 
+                        onClick={() => handleRejectPost(post.id)} 
+                        className="bg-red-500 text-white px-4 py-2 rounded-lg text-xs flex items-center gap-1"
+                      >
+                        <XCircle size={12} /> রিজেক্ট
+                      </button>
                     </div>
                   </div>
                 </div>
               ))}
-              {pendingPostsCount === 0 && <p className="text-center text-gray-400 py-6 text-sm">কোনো পেন্ডিং পোস্ট নেই</p>}
+              {pendingPostsCount === 0 && (
+                <p className="text-center text-gray-400 py-6 text-sm">কোনো পেন্ডিং পোস্ট নেই</p>
+              )}
             </div>
           )}
 
           {/* রিপোর্ট ডাউনলোড */}
           <div className="relative">
-            <button onClick={() => setShowReportOptions(!showReportOptions)} className="w-full md:w-auto bg-gradient-to-r from-[#f85606] to-orange-500 text-white py-2.5 px-4 rounded-xl text-sm font-semibold flex items-center justify-center gap-2">
+            <button 
+              onClick={() => setShowReportOptions(!showReportOptions)} 
+              className="w-full md:w-auto bg-gradient-to-r from-[#f85606] to-orange-500 text-white py-2.5 px-4 rounded-xl text-sm font-semibold flex items-center justify-center gap-2"
+            >
               <Download size={16} /> রিপোর্ট ডাউনলোড
             </button>
             {showReportOptions && (
               <div className="absolute bottom-full left-0 mb-2 bg-white rounded-xl shadow-xl border overflow-hidden z-50">
-                <button onClick={handleDownloadReport} className="w-full px-4 py-3 text-left text-sm hover:bg-orange-50 flex items-center gap-2"><FileText size={16} className="text-[#f85606]" /> CSV রিপোর্ট</button>
+                <button 
+                  onClick={handleDownloadReport} 
+                  className="w-full px-4 py-3 text-left text-sm hover:bg-orange-50 flex items-center gap-2"
+                >
+                  <FileText size={16} className="text-[#f85606]" /> CSV রিপোর্ট
+                </button>
               </div>
             )}
           </div>
@@ -539,15 +753,22 @@ export default function AdminDashboard() {
 
       {/* পোস্ট ডিটেইল মডাল */}
       {showPostDetailModal && selectedPost && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={() => setShowPostDetailModal(false)}>
+        <div 
+          className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4" 
+          onClick={() => setShowPostDetailModal(false)}
+        >
           <div className="bg-white rounded-2xl max-w-md w-full max-h-[90vh] overflow-y-auto shadow-2xl" onClick={e => e.stopPropagation()}>
             <div className="sticky top-0 bg-gradient-to-r from-[#f85606] to-orange-500 text-white p-4 flex justify-between items-center">
               <h3 className="font-bold">পোস্ট বিস্তারিত</h3>
-              <button onClick={() => setShowPostDetailModal(false)}><X size={20} /></button>
+              <button onClick={() => setShowPostDetailModal(false)}>
+                <X size={20} />
+              </button>
             </div>
             <div className="p-4">
               <div className="flex items-center gap-4 mb-4">
-                <div className="w-20 h-20 bg-gradient-to-br from-orange-50 to-orange-100 rounded-xl flex items-center justify-center text-5xl">{selectedPost.image}</div>
+                <div className="w-20 h-20 bg-gradient-to-br from-orange-50 to-orange-100 rounded-xl flex items-center justify-center text-5xl">
+                  {selectedPost.image}
+                </div>
                 <div>
                   <h2 className="text-xl font-bold">{selectedPost.title}</h2>
                   <p className="text-2xl font-bold text-[#f85606]">৳{selectedPost.price?.toLocaleString()}</p>
@@ -563,8 +784,24 @@ export default function AdminDashboard() {
               </div>
               {selectedPost.status === 'pending' && (
                 <div className="flex gap-2 mt-4">
-                  <button onClick={() => { handleApprovePost(selectedPost.id); setShowPostDetailModal(false); }} className="flex-1 bg-green-500 text-white py-3 rounded-xl font-semibold">অ্যাপ্রুভ করুন</button>
-                  <button onClick={() => { handleRejectPost(selectedPost.id); setShowPostDetailModal(false); }} className="flex-1 bg-red-500 text-white py-3 rounded-xl font-semibold">রিজেক্ট করুন</button>
+                  <button 
+                    onClick={() => { 
+                      handleApprovePost(selectedPost.id); 
+                      setShowPostDetailModal(false); 
+                    }} 
+                    className="flex-1 bg-green-500 text-white py-3 rounded-xl font-semibold"
+                  >
+                    অ্যাপ্রুভ করুন
+                  </button>
+                  <button 
+                    onClick={() => { 
+                      handleRejectPost(selectedPost.id); 
+                      setShowPostDetailModal(false); 
+                    }} 
+                    className="flex-1 bg-red-500 text-white py-3 rounded-xl font-semibold"
+                  >
+                    রিজেক্ট করুন
+                  </button>
                 </div>
               )}
             </div>

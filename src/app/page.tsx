@@ -1,14 +1,17 @@
 "use client";
-import React, { useState, useEffect, useCallback, useRef, memo } from 'react';
+import React, { useState, useEffect, useCallback, useRef, memo } from "react";
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { 
-    Search, ShoppingBag, Heart, Loader2, ChevronLeft, ChevronRight
+  Search, ShoppingBag, Heart, Loader2, ChevronLeft, ChevronRight 
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { getRootCategories } from '@/data/categories';
-import { getSupabaseClient } from '@/lib/supabase/client';
+// ✅ এখানে আমরা supabase ইম্পোর্ট করছি এবং ওটার নাম দিচ্ছি supabaseInstance
+import { supabase as supabaseInstance } from '@/lib/supabase/client';
 
+// ✅ এখন আপনার পুরো ফাইলে getSupabaseClient() কল করলে এই ইনস্ট্যান্সটাই কাজ করবে
+const getSupabaseClient = () => supabaseInstance;
 // ============ টাইপ ডেফিনিশন ============
 type AdItem = {
   id: number | string;
